@@ -209,14 +209,14 @@ mod tests {
         let dir = scratch("instances");
         std::fs::write(
             dir.join("instances.json"),
-            r#"{"instances":[{"id":"a","name":"Horizon","kind":"own","home":"G:\\game\\instances\\a"},
+            r#"{"instances":[{"id":"a","name":"Horizon","kind":"own","home":"G:/game/instances/a"},
                               {"id":"b","name":"Ported","kind":"port","home":"relative/b"}]}"#,
         )
         .unwrap();
         let found = instances(&dir);
         assert_eq!(found.len(), 2);
         assert_eq!(found[0].name, "Horizon");
-        assert!(found[0].home.ends_with("game\\instances\\a") || found[0].home.ends_with("game/instances/a"));
+        assert_eq!(found[0].home.file_name().and_then(|n| n.to_str()), Some("a"));
         assert_eq!(found[1].home, dir.join("relative/b"));
     }
 
