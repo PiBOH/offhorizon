@@ -2,3 +2,4 @@
 *.pdb
 *.ilk
 .DS_Store
+/.local
