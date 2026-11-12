@@ -6,7 +6,7 @@ name: Auto Release
 
 on:
   push:
-    branches: [offline-patch]
+    branches: [offhorizon]
   workflow_dispatch:
     inputs:
       version:
@@ -62,10 +62,10 @@ jobs:
         include:
           - name: windows-x64
             os: windows-latest
-            asset: offline-patch-windows-x64.exe
+            asset: offhorizon-windows-x64.exe
           - name: linux-x64
             os: ubuntu-latest
-            asset: offline-patch-linux-x64
+            asset: offhorizon-linux-x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -91,9 +91,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp target/release/offline-patch.exe "${{ matrix.asset }}"
+            cp target/release/offhorizon.exe "${{ matrix.asset }}"
           else
-            cp target/release/offline-patch "${{ matrix.asset }}"
+            cp target/release/offhorizon "${{ matrix.asset }}"
           fi
 
       - uses: actions/upload-artifact@v4
@@ -118,7 +118,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.version }}
-          name: Offline Patch ${{ needs.version.outputs.version }}
+          name: OffHorizon ${{ needs.version.outputs.version }}
           prerelease: ${{ needs.version.outputs.prerelease }}
           body_path: CHANGELOG.md
           files: assets/*

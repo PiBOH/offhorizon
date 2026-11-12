@@ -1,16 +1,16 @@
 [workspace]
 
 [package]
-name = "offline-patch"
-version = "0.1.0"
+name = "offhorizon"
+version = "0.2.0"
 edition = "2021"
 license = "Unlicense"
-description = "Reversible offline profile patcher for Horizon: Minecraft Java Edition in Rust"
+description = "Portable, telemetry-free companion for Horizon: Minecraft Java Edition in Rust"
 repository = "https://github.com/PiBOH/offhorizon"
 build = "build.rs"
 
 [[bin]]
-name = "offline-patch"
+name = "offhorizon"
 path = "src/main.rs"
 
 [dependencies]

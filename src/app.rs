@@ -1,244 +1,152 @@
-//! The window: what the tool found on this computer on the left, the page it is on in the middle,
-//! and what it did at the bottom.
+//! The window: the pages every action lives on. Each button calls [`crate::actions::Session`], so
+//! the window and the terminal share one implementation and can never drift apart.
 
-use crate::{items, launcher, nbt, store::Store, theme, world};
-use std::path::PathBuf;
+use crate::actions::{Session, Snapshot};
+use crate::i18n;
+use crate::others::Found;
+use crate::theme::{self, Icon};
+use crate::world::{self, Preview, Weather};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Tab {
+enum Page {
     Profile,
+    Worlds,
     Player,
     Inventory,
+    Time,
+    Launchers,
     Backups,
 }
 
-impl Tab {
-    const ALL: [Tab; 4] = [Tab::Profile, Tab::Player, Tab::Inventory, Tab::Backups];
+impl Page {
+    const ALL: [Page; 7] = [
+        Page::Profile,
+        Page::Worlds,
+        Page::Player,
+        Page::Inventory,
+        Page::Time,
+        Page::Launchers,
+        Page::Backups,
+    ];
 
-    fn name(self) -> &'static str {
-        match self {
-            Tab::Profile => "Profile",
-            Tab::Player => "Player",
-            Tab::Inventory => "Inventory",
-            Tab::Backups => "Backups",
-        }
+    fn name(self) -> String {
+        i18n::t(match self {
+            Page::Profile => "nav.profile",
+            Page::Worlds => "nav.worlds",
+            Page::Player => "nav.player",
+            Page::Inventory => "nav.inventory",
+            Page::Time => "nav.world",
+            Page::Launchers => "nav.launchers",
+            Page::Backups => "nav.backups",
+        })
     }
 
-    fn glyph(self) -> &'static str {
+    fn icon(self) -> Icon {
         match self {
-            Tab::Profile => "◈",
-            Tab::Player => "♥",
-            Tab::Inventory => "▤",
-            Tab::Backups => "⟲",
+            Page::Profile => Icon::Person,
+            Page::Worlds => Icon::World,
+            Page::Player => Icon::Heart,
+            Page::Inventory => Icon::Bag,
+            Page::Time => Icon::Clock,
+            Page::Launchers => Icon::Folder,
+            Page::Backups => Icon::Restore,
         }
     }
 }
 
 pub struct App {
-    tab: Tab,
-    layout: launcher::Layout,
-    home_index: usize,
-    worlds: Vec<world::World>,
-    world_index: usize,
-    root: Option<nbt::Root>,
-    stats: Option<world::Stats>,
+    session: Session,
+    page: Page,
+    snapshot: Snapshot,
+    index: usize,
     name_input: String,
     item_id: String,
     item_count: i32,
     level_input: i32,
-    store: Store,
+    time_input: i64,
+    weather_ticks: i32,
+    launchers: Vec<Found>,
     log: Vec<String>,
-    load_requested: bool,
 }
 
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         theme::apply(&cc.egui_ctx);
-        let layout = launcher::detect();
+        let session = Session::open();
         let mut app = Self {
-            tab: Tab::Profile,
-            home_index: 0,
-            layout,
-            worlds: Vec::new(),
-            world_index: 0,
-            root: None,
-            stats: None,
+            snapshot: Snapshot::default(),
+            launchers: Vec::new(),
+            page: Page::Profile,
+            index: 0,
             name_input: String::new(),
             item_id: "minecraft:bread".into(),
             item_count: 16,
             level_input: 30,
-            store: Store::open(),
+            time_input: world::TICKS_NOON,
+            weather_ticks: 6_000,
             log: Vec::new(),
-            load_requested: false,
+            session,
         };
-        app.say(format!("Offline Patch {}", crate::VERSION));
-        if let Some(home) = app.home() {
-            app.say(format!("Game folder: {}", home.display()));
-        } else {
-            app.say("No game folder found: start the game once, or set HORIZON_HOME.");
-        }
-        if let Some(launcher) = app.layout.launcher.clone() {
-            app.say(format!("Launcher data: {}", launcher.display()));
-        }
-        app.reload_worlds();
+        app.say(format!(
+            "{} {} — {}",
+            i18n::t("app.name"),
+            crate::VERSION,
+            i18n::t("portable.telemetry")
+        ));
+        app.refresh();
         app
     }
 
-    fn home(&self) -> Option<PathBuf> {
-        self.layout.homes.get(self.home_index).cloned()
-    }
-
-    /// A line in the log at the bottom.
     fn say(&mut self, line: impl Into<String>) {
         self.log.push(format!("[{}] {}", clock(), line.into()));
     }
 
     fn fail(&mut self, line: impl Into<String>) {
-        self.say(format!("✗ {}", line.into()));
+        self.log
+            .push(format!("[{}] ✗ {}", clock(), line.into()));
     }
 
-    fn rescan(&mut self) {
-        self.layout = launcher::detect();
-        self.home_index = self.home_index.min(self.layout.homes.len().saturating_sub(1));
-        self.say(format!(
-            "Found {} game folder(s){}",
-            self.layout.homes.len(),
-            if self.layout.launcher.is_some() {
-                " and a launcher"
-            } else {
-                ""
-            }
-        ));
-        self.reload_worlds();
-    }
-
-    fn reload_worlds(&mut self) {
-        self.worlds = self
-            .home()
-            .map(|home| world::worlds(&home))
-            .unwrap_or_default();
-        self.world_index = 0;
-        self.say(format!("{} world(s) under saves/", self.worlds.len()));
-        if self.worlds.is_empty() {
-            self.root = None;
-            self.stats = None;
-        } else {
-            self.load_world();
+    /// Reads the game folders, the worlds and the launchers again.
+    fn refresh(&mut self) {
+        self.session.rescan();
+        self.snapshot = self.session.snapshot();
+        self.launchers = self.session.launchers();
+        if self.index >= self.snapshot.worlds.len() {
+            self.index = 0;
         }
-        let name = self.home().and_then(|h| launcher::offline_name(&h));
-        if let Some(name) = name {
-            self.name_input = name.clone();
-            self.say(format!("Offline player name: {name}"));
-        }
-    }
-
-    fn load_world(&mut self) {
-        let Some(world) = self.worlds.get(self.world_index).cloned() else {
-            return;
-        };
-        match world::load(&world.level) {
-            Ok(root) => match world::stats(&root) {
-                Ok(stats) => {
-                    self.say(format!("Loaded “{}”", world.name));
-                    self.stats = Some(stats);
-                    self.root = Some(root);
-                }
-                Err(e) => {
-                    self.fail(e);
-                    self.root = Some(root);
-                    self.stats = None;
-                }
-            },
-            Err(e) => {
-                self.fail(e);
-                self.root = None;
-                self.stats = None;
+        if self.name_input.is_empty() {
+            if let Some(name) = crate::launcher::offline_name(&self.session.home()) {
+                self.name_input = name;
             }
         }
     }
 
-    /// Copies the save, changes it and writes it back: the one path every edit takes.
-    fn commit(&mut self, what: &str, edit: impl FnOnce(&mut nbt::Root) -> Result<String, String>) {
-        let Some(world) = self.worlds.get(self.world_index).cloned() else {
-            self.fail("Pick a world first.");
+    fn world(&self) -> Option<world::World> {
+        self.snapshot.worlds.get(self.index).cloned()
+    }
+
+    fn preview(&self) -> Option<&Preview> {
+        self.snapshot.previews.get(self.index)
+    }
+
+    /// Runs one action and puts its answer in the log.
+    fn carry(&mut self, what: Result<String, String>) {
+        match what {
+            Ok(said) => self.say(said),
+            Err(why) => self.fail(why),
+        }
+        self.refresh();
+    }
+
+    /// Runs one action that needs a world, over the world picked in the window.
+    fn carry_world(&mut self, what: impl FnOnce(&mut Session, &world::World) -> Result<String, String>) {
+        let Some(world) = self.world() else {
+            let why = i18n::t("status.no_world");
+            self.fail(why);
             return;
         };
-        let Some(mut root) = self.root.take() else {
-            self.fail("No save is loaded.");
-            return;
-        };
-        let said = match edit(&mut root) {
-            Ok(said) => said,
-            Err(e) => {
-                self.root = Some(root);
-                self.fail(format!("{what}: {e}"));
-                return;
-            }
-        };
-        if let Err(e) = self.store.backup(&world.level, what) {
-            self.root = Some(root);
-            self.fail(format!("No backup, so nothing was written: {e}"));
-            return;
-        }
-        if let Err(e) = world::save(&world.level, &root) {
-            self.root = Some(root);
-            self.fail(e);
-            return;
-        }
-        self.stats = world::stats(&root).ok();
-        self.root = Some(root);
-        self.say(format!("{what}: {said} (backup kept)"));
-    }
-
-    fn set_name(&mut self) {
-        let Some(home) = self.home() else {
-            self.fail("Pick a game folder first.");
-            return;
-        };
-        let name = self.name_input.clone();
-        let mut store = std::mem::replace(&mut self.store, Store::open());
-        let result = launcher::set_offline_name(&mut store, &home, &name);
-        self.store = store;
-        match result {
-            Ok(file) => {
-                self.say(format!("Offline name {name} written to {}", file.display()));
-                let _ = home;
-            }
-            Err(e) => self.fail(e),
-        }
-    }
-
-    fn remove_item(&mut self, slot: i32) {
-        self.commit("Remove item", |root| world::remove_slot(root, slot));
-    }
-
-    fn add_item(&mut self) {
-        let id = self.item_id.clone();
-        let count = self.item_count;
-        self.commit("Add item", |root| world::add_item(root, &id, count));
-    }
-
-    fn heal(&mut self) {
-        self.commit("Heal", world::heal);
-    }
-
-    fn feed(&mut self) {
-        self.commit("Feed", world::feed);
-    }
-
-    fn set_level(&mut self) {
-        let level = self.level_input;
-        self.commit("Set level", |root| world::set_level(root, level));
-    }
-
-    fn restore(&mut self, id: String) {
-        match self.store.restore(&id) {
-            Ok(file) => {
-                self.say(format!("Restored {}", file.display()));
-                self.load_world();
-            }
-            Err(e) => self.fail(e),
-        }
+        let result = what(&mut self.session, &world);
+        self.carry(result);
     }
 }
 
@@ -251,26 +159,68 @@ fn clock() -> String {
     format!("{:02}:{:02}:{:02}", day / 3600, (day / 60) % 60, day % 60)
 }
 
+fn bytes(size: u64) -> String {
+    if size >= 1_048_576 {
+        format!("{:.1} MiB", size as f64 / 1_048_576.0)
+    } else if size >= 1024 {
+        format!("{:.1} KiB", size as f64 / 1024.0)
+    } else {
+        format!("{size} B")
+    }
+}
+
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("head")
-            .frame(egui::Frame::none().fill(theme::PANEL).inner_margin(egui::Margin::symmetric(16.0, 10.0)))
+            .frame(
+                egui::Frame::none()
+                    .fill(theme::PANEL)
+                    .inner_margin(egui::Margin::symmetric(16.0, 10.0)),
+            )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("OFFLINE PATCH").size(20.0).color(theme::AMBER).strong());
+                    crate::logo::draw(ui, 26.0);
+                    ui.label(
+                        egui::RichText::new(i18n::t("app.name"))
+                            .size(20.0)
+                            .color(theme::AMBER)
+                            .strong(),
+                    );
                     ui.label(theme::label(crate::VERSION));
                     ui.separator();
-                    match &self.layout.launcher {
+                    match &self.session.layout.launcher {
                         Some(path) => {
-                            ui.label(theme::label(format!("launcher: {}", path.display())));
+                            ui.label(theme::label(path.display().to_string()));
                         }
                         None => {
-                            ui.label(theme::note("no Horizon launcher data folder found", false));
+                            ui.label(theme::note(i18n::t("status.no_launcher"), false));
                         }
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("Rescan").clicked() {
-                            self.rescan();
+                        let native = i18n::LANGUAGES
+                            .iter()
+                            .find(|(code, _)| *code == self.session.lang.as_str())
+                            .map(|(_, name)| *name)
+                            .unwrap_or("English");
+                        egui::ComboBox::from_id_salt("lang")
+                            .selected_text(native)
+                            .width(130.0)
+                            .show_ui(ui, |ui| {
+                                for (code, name) in i18n::LANGUAGES {
+                                    let picked = self.session.lang == *code;
+                                    if ui.selectable_label(picked, *name).clicked() {
+                                        let code = code.to_string();
+                                        let result = self.session.set_language(&code);
+                                        self.carry(result);
+                                    }
+                                }
+                            });
+                        if ui.button(i18n::t("common.rescan")).clicked() {
+                            self.refresh();
+                            self.say(i18n::tf(
+                                "status.done",
+                                &[("what", i18n::t("common.rescan"))],
+                            ));
                         }
                     });
                 });
@@ -278,67 +228,73 @@ impl eframe::App for App {
 
         egui::SidePanel::left("nav")
             .resizable(false)
-            .exact_width(232.0)
-            .frame(egui::Frame::none().fill(theme::PANEL).inner_margin(egui::Margin::same(12.0)))
+            .exact_width(240.0)
+            .frame(
+                egui::Frame::none()
+                    .fill(theme::PANEL)
+                    .inner_margin(egui::Margin::same(12.0)),
+            )
             .show(ctx, |ui| {
                 ui.add_space(4.0);
-                for tab in Tab::ALL {
-                    let picked = self.tab == tab;
-                    let text = egui::RichText::new(format!("{}   {}", tab.glyph(), tab.name()))
-                        .size(14.5)
-                        .color(if picked { theme::AMBER } else { theme::TEXT });
-                    if ui
-                        .add_sized(
-                            [208.0, 34.0],
-                            egui::Button::new(text)
-                                .fill(if picked { theme::PANEL_HI } else { theme::PANEL })
-                                .stroke(egui::Stroke::new(1.0, if picked { theme::AMBER } else { theme::LINE })),
-                        )
-                        .clicked()
-                    {
-                        self.tab = tab;
+                for page in Page::ALL {
+                    let picked = self.page == page;
+                    let (rect, response) = ui.allocate_exact_size(
+                        egui::vec2(216.0, 34.0),
+                        egui::Sense::click(),
+                    );
+                    let painter = ui.painter();
+                    painter.rect_filled(
+                        rect,
+                        8.0,
+                        if picked { theme::PANEL_HI } else { theme::PANEL },
+                    );
+                    painter.rect_stroke(
+                        rect,
+                        8.0,
+                        egui::Stroke::new(
+                            1.0,
+                            if picked { theme::AMBER } else { theme::LINE },
+                        ),
+                    );
+                    let color = if picked { theme::AMBER } else { theme::TEXT };
+                    theme::paint_icon(painter, page.icon(), rect.left_center() + egui::vec2(16.0, 0.0), color);
+                    painter.text(
+                        rect.left_center() + egui::vec2(36.0, 0.0),
+                        egui::Align2::LEFT_CENTER,
+                        page.name(),
+                        egui::FontId::proportional(14.0),
+                        color,
+                    );
+                    if response.clicked() {
+                        self.page = page;
                     }
                 }
 
                 ui.add_space(16.0);
                 ui.separator();
                 ui.add_space(8.0);
-                ui.label(theme::label("GAME FOLDERS"));
-                let homes = self.layout.homes.clone();
-                if homes.is_empty() {
-                    ui.label(theme::note("none found", false));
-                }
-                for (index, home) in homes.iter().enumerate() {
-                    let picked = index == self.home_index;
-                    let label = home
-                        .file_name()
-                        .map(|n| n.to_string_lossy().into_owned())
-                        .unwrap_or_else(|| home.display().to_string());
-                    if ui
-                        .selectable_label(picked, egui::RichText::new(label).size(13.0))
-                        .on_hover_text(home.display().to_string())
-                        .clicked()
-                        && !picked
-                    {
-                        self.home_index = index;
-                        self.reload_worlds();
-                    }
-                }
-                if let Some(home) = self.home() {
-                    ui.add_space(6.0);
-                    ui.label(theme::label(home.display().to_string()));
-                }
+                ui.label(theme::label(i18n::t("portable.minecraft")));
+                ui.label(theme::value(self.session.home().display().to_string()));
+                ui.label(theme::label(i18n::t("portable.tool")));
+                ui.label(theme::value(self.session.portable.tool().display().to_string()));
+                ui.add_space(8.0);
+                ui.label(theme::label(i18n::t("portable.telemetry")));
+                ui.label(theme::note("off — nothing is ever sent", true));
             });
 
         egui::TopBottomPanel::bottom("log")
             .resizable(true)
-            .default_height(130.0)
-            .frame(egui::Frame::none().fill(theme::PANEL).inner_margin(egui::Margin::same(12.0)))
+            .default_height(120.0)
+            .frame(
+                egui::Frame::none()
+                    .fill(theme::PANEL)
+                    .inner_margin(egui::Margin::same(12.0)),
+            )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(theme::label("WHAT THE TOOL DID"));
+                    ui.label(theme::label(i18n::t("common.open")));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("Clear").clicked() {
+                        if ui.button(i18n::t("common.clear")).clicked() {
                             self.log.clear();
                         }
                     });
@@ -348,295 +304,469 @@ impl eframe::App for App {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         for line in &self.log {
-                            let color = if line.contains("✗") {
+                            let color = if line.contains('✗') {
                                 theme::RED
                             } else {
                                 theme::DIM
                             };
-                            ui.label(egui::RichText::new(line).monospace().size(12.0).color(color));
+                            ui.label(
+                                egui::RichText::new(line)
+                                    .monospace()
+                                    .size(12.0)
+                                    .color(color),
+                            );
                         }
                     });
             });
 
         egui::CentralPanel::default()
-            .frame(egui::Frame::none().fill(theme::BG).inner_margin(egui::Margin::same(18.0)))
-            .show(ctx, |ui| match self.tab {
-                Tab::Profile => self.profile_page(ui),
-                Tab::Player => self.player_page(ui),
-                Tab::Inventory => self.inventory_page(ui),
-                Tab::Backups => self.backups_page(ui),
+            .frame(
+                egui::Frame::none()
+                    .fill(theme::BG)
+                    .inner_margin(egui::Margin::same(18.0)),
+            )
+            .show(ctx, |ui| match self.page {
+                Page::Profile => self.profile_page(ui),
+                Page::Worlds => self.worlds_page(ui),
+                Page::Player => self.player_page(ui),
+                Page::Inventory => self.inventory_page(ui),
+                Page::Time => self.time_page(ui),
+                Page::Launchers => self.launchers_page(ui),
+                Page::Backups => self.backups_page(ui),
             });
-
-        if self.load_requested {
-            self.load_requested = false;
-            self.load_world();
-        }
     }
 }
 
 impl App {
     fn profile_page(&mut self, ui: &mut egui::Ui) {
-        ui.label(theme::title("Profile"));
-        ui.label(
-            theme::label("The name the game plays under when no account is signed in, kept in the game folder's horizon-player.txt."),
-        );
-        ui.add_space(10.0);
-        let home = self.home();
-        match &home {
-            Some(home) => {
-                let file = launcher::player_name_file(home);
-                let current = launcher::offline_name(home).unwrap_or_else(|| "—".into());
-                ui.horizontal(|ui| {
-                    ui.label(theme::label("FILE"));
-                    ui.label(theme::value(file.display().to_string()));
-                });
-                ui.horizontal(|ui| {
-                    ui.label(theme::label("NAME NOW"));
-                    ui.label(theme::value(current));
-                });
-                ui.add_space(12.0);
-                ui.horizontal(|ui| {
-                    ui.label(theme::label("OFFLINE NAME"));
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.name_input)
-                            .hint_text("Steve")
-                            .desired_width(180.0),
-                    );
-                    if ui.button(theme::action("Set name")).clicked() {
-                        self.set_name();
+        ui.label(theme::title(&i18n::t("profile.title")));
+        ui.label(theme::label(i18n::t("profile.blurb")));
+        ui.add_space(12.0);
+        let home = self.session.home();
+        let file = crate::launcher::player_name_file(&home);
+        let current = crate::launcher::offline_name(&home).unwrap_or_else(|| "—".into());
+        ui.horizontal(|ui| {
+            ui.label(theme::label(i18n::t("profile.file")));
+            ui.label(theme::value(file.display().to_string()));
+        });
+        ui.horizontal(|ui| {
+            ui.label(theme::label(i18n::t("profile.name_now")));
+            ui.label(theme::value(current));
+        });
+        ui.add_space(12.0);
+        ui.horizontal(|ui| {
+            ui.label(theme::label(i18n::t("profile.offline_name")));
+            ui.add(
+                egui::TextEdit::singleline(&mut self.name_input)
+                    .hint_text("Steve")
+                    .desired_width(180.0),
+            );
+            if ui.button(theme::action(&i18n::t("profile.set_name"))).clicked() {
+                let name = self.name_input.clone();
+                let result = self.session.set_name(&name);
+                self.carry(result);
+            }
+        });
+
+        ui.add_space(18.0);
+        ui.separator();
+        ui.add_space(8.0);
+        ui.label(theme::label(i18n::t("portable.title")));
+        ui.label(theme::label(i18n::t("portable.dirs")));
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if ui.button(theme::action(&i18n::t("portable.point"))).clicked() {
+                match self.session.point_launcher() {
+                    Ok(change) => {
+                        self.say(format!(
+                            "{} → {}",
+                            change.settings.display(),
+                            self.session.home().display()
+                        ));
+                        for copy in &change.copies {
+                            self.say(format!("copy: {}", copy.display()));
+                        }
                     }
-                });
-                ui.add_space(16.0);
-                ui.separator();
-                ui.add_space(8.0);
-                ui.label(theme::label("WHAT A PATCH TOUCHES"));
-                ui.label(
-                    egui::RichText::new(
-                        "horizon-player.txt — the offline player name.\n\
-                         level.dat — the player's health, hunger, experience and inventory.\n\n\
-                         Every file is copied to the tool's backup folder before it is written, and \
-                         the Backups page puts any copy back. Nothing else in the save changes.",
-                    )
-                    .size(13.0)
-                    .color(theme::TEXT),
-                );
-                ui.add_space(10.0);
-                ui.label(
-                    theme::label(
-                        "The launcher's own account check is not bypassed here: this tool patches the \
-                         profile, not Horizon's sign-in.",
-                    ),
-                );
+                    Err(why) => self.fail(why),
+                }
+                self.refresh();
             }
-            None => {
-                ui.label(theme::note("No game folder: set HORIZON_HOME, or start the game once.", false));
+            if ui.button(i18n::t("portable.unpoint")).clicked() {
+                match self.session.undo_launcher() {
+                    Ok(file) => self.say(format!("{} {}", i18n::t("portable.unpoint"), file.display())),
+                    Err(why) => self.fail(why),
+                }
+                self.refresh();
             }
+        });
+    }
+
+    fn worlds_page(&mut self, ui: &mut egui::Ui) {
+        ui.label(theme::title(&i18n::t("worlds.title")));
+        ui.add_space(6.0);
+        if self.snapshot.previews.is_empty() {
+            ui.label(theme::note(i18n::t("worlds.none"), false));
+            return;
         }
+        let previews = self.snapshot.previews.clone();
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for (index, preview) in previews.iter().enumerate() {
+                    let picked = index == self.index;
+                    egui::Frame::none()
+                        .fill(if picked { theme::PANEL_HI } else { theme::PANEL })
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            if picked { theme::AMBER } else { theme::LINE },
+                        ))
+                        .rounding(8.0)
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                theme::icon(ui, Icon::World, theme::AMBER);
+                                ui.label(theme::value(preview.label.clone()));
+                                ui.label(theme::label(bytes(preview.bytes)));
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui.button(i18n::t("common.open")).clicked() {
+                                            self.index = index;
+                                            self.page = Page::Player;
+                                        }
+                                    },
+                                );
+                            });
+                            ui.add_space(4.0);
+                            ui.horizontal(|ui| {
+                                ui.label(theme::label(i18n::t("worlds.health")));
+                                ui.add(
+                                    egui::ProgressBar::new(preview.health_fraction())
+                                        .desired_width(120.0)
+                                        .text(format!(
+                                            "{:.0}/20",
+                                            preview.health.unwrap_or(0.0)
+                                        )),
+                                );
+                                ui.label(theme::label(format!(
+                                    "{} {}/20",
+                                    i18n::t("worlds.food"),
+                                    preview.food.unwrap_or(0)
+                                )));
+                                ui.label(theme::label(format!(
+                                    "{} {}",
+                                    i18n::t("worlds.level"),
+                                    preview.xp_level.unwrap_or(0)
+                                )));
+                            });
+                            if let Some(error) = &preview.error {
+                                ui.label(theme::note(error.clone(), false));
+                            } else {
+                                ui.label(theme::label(
+                                    preview
+                                        .items
+                                        .iter()
+                                        .map(|item| format!("{} x{}", short(&item.id), item.count))
+                                        .collect::<Vec<_>>()
+                                        .join(", "),
+                                ));
+                            }
+                        });
+                    ui.add_space(8.0);
+                }
+            });
     }
 
     fn player_page(&mut self, ui: &mut egui::Ui) {
-        ui.label(theme::title("Player"));
+        ui.label(theme::title(&i18n::t("player.title")));
         ui.add_space(6.0);
+        self.world_picker(ui);
+        ui.add_space(12.0);
+        let Some(stats) = self
+            .preview()
+            .map(|p| (p.health, p.food, p.xp_level, p.error.clone()))
+        else {
+            ui.label(theme::note(i18n::t("status.no_world"), false));
+            return;
+        };
+        if let Some(error) = stats.3 {
+            ui.label(theme::note(error, false));
+        }
+        egui::Grid::new("stats")
+            .num_columns(3)
+            .spacing([28.0, 10.0])
+            .show(ui, |ui| {
+                ui.label(theme::label(i18n::t("worlds.health")));
+                ui.label(theme::label(i18n::t("worlds.food")));
+                ui.label(theme::label(i18n::t("worlds.level")));
+                ui.end_row();
+                ui.label(theme::value(format!("{:.1} / 20", stats.0.unwrap_or(0.0))));
+                ui.label(theme::value(format!("{} / 20", stats.1.unwrap_or(0))));
+                ui.label(theme::value(stats.2.unwrap_or(0).to_string()));
+                ui.end_row();
+            });
+        ui.add_space(16.0);
         ui.horizontal(|ui| {
-            ui.label(theme::label("WORLD"));
+            if ui
+                .add_sized(
+                    [150.0, 36.0],
+                    egui::Button::new(theme::action(&format!("♥  {}", i18n::t("player.heal")))),
+                )
+                .clicked()
+            {
+                self.carry_world(|session, world| session.heal(world));
+            }
+            if ui
+                .add_sized(
+                    [150.0, 36.0],
+                    egui::Button::new(theme::action(&format!("🍗  {}", i18n::t("player.feed")))),
+                )
+                .clicked()
+            {
+                self.carry_world(|session, world| session.feed(world));
+            }
+        });
+        ui.add_space(10.0);
+        ui.horizontal(|ui| {
+            ui.label(theme::label(i18n::t("player.level")));
+            ui.add(egui::DragValue::new(&mut self.level_input).range(0..=30_000));
+            if ui.button(i18n::t("common.set")).clicked() {
+                let level = self.level_input;
+                self.carry_world(|session, world| session.set_level(world, level));
+            }
+        });
+    }
+
+    fn world_picker(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.label(theme::label(i18n::t("nav.worlds")));
             let selected = self
-                .worlds
-                .get(self.world_index)
-                .map(|w| w.name.clone())
-                .unwrap_or_else(|| "no world".into());
+                .preview()
+                .map(|p| p.label.clone())
+                .unwrap_or_else(|| "—".into());
             egui::ComboBox::from_id_salt("world")
                 .selected_text(selected)
                 .width(280.0)
                 .show_ui(ui, |ui| {
-                    let names: Vec<String> = self.worlds.iter().map(|w| w.name.clone()).collect();
-                    for (index, name) in names.iter().enumerate() {
+                    let labels: Vec<String> =
+                        self.snapshot.previews.iter().map(|p| p.label.clone()).collect();
+                    for (index, label) in labels.iter().enumerate() {
                         if ui
-                            .selectable_label(self.world_index == index, name)
+                            .selectable_label(self.index == index, label)
                             .clicked()
-                            && self.world_index != index
                         {
-                            self.world_index = index;
-                            self.load_requested = true;
+                            self.index = index;
                         }
                     }
                 });
-            if ui.button("Reload").clicked() {
-                self.load_world();
-            }
-        });
-        ui.add_space(12.0);
-
-        let Some(stats) = self.stats.clone() else {
-            ui.label(theme::note("No player in this save yet: open the world once and save.", false));
-            return;
-        };
-
-        egui::Grid::new("stats")
-            .num_columns(4)
-            .spacing([28.0, 10.0])
-            .show(ui, |ui| {
-                ui.label(theme::label("HEALTH"));
-                ui.label(theme::label("HUNGER"));
-                ui.label(theme::label("SATURATION"));
-                ui.label(theme::label("AIR"));
-                ui.end_row();
-                ui.label(theme::value(format!("{:.1} / 20", stats.health)));
-                ui.label(theme::value(format!("{} / 20", stats.food)));
-                ui.label(theme::value(format!("{:.1}", stats.saturation)));
-                ui.label(theme::value(stats.air.to_string()));
-                ui.end_row();
-                ui.label(theme::label("LEVEL"));
-                ui.label(theme::label("POINTS"));
-                ui.label(theme::label("EXHAUSTION"));
-                ui.label(theme::label("ABSORPTION"));
-                ui.end_row();
-                ui.label(theme::value(stats.xp_level.to_string()));
-                ui.label(theme::value(stats.xp_total.to_string()));
-                ui.label(theme::value(format!("{:.2}", stats.exhaustion)));
-                ui.label(theme::value(format!("{:.1}", stats.absorption)));
-                ui.end_row();
-            });
-
-        ui.add_space(16.0);
-        ui.horizontal(|ui| {
-            if ui
-                .add_sized([150.0, 36.0], egui::Button::new(theme::action("♥  Heal")))
-                .clicked()
-            {
-                self.heal();
-            }
-            if ui
-                .add_sized([150.0, 36.0], egui::Button::new(theme::action("🍗  Feed")))
-                .clicked()
-            {
-                self.feed();
-            }
-        });
-        ui.add_space(10.0);
-        ui.horizontal(|ui| {
-            ui.label(theme::label("LEVEL"));
-            ui.add(egui::DragValue::new(&mut self.level_input).range(0..=30_000));
-            if ui.button(theme::action("Set level")).clicked() {
-                self.set_level();
+            if ui.button(i18n::t("common.reload")).clicked() {
+                self.refresh();
             }
         });
     }
 
     fn inventory_page(&mut self, ui: &mut egui::Ui) {
-        ui.label(theme::title("Inventory"));
+        ui.label(theme::title(&i18n::t("inv.title")));
         ui.add_space(6.0);
-        let Some(stats) = self.stats.clone() else {
-            ui.label(theme::note("No player in this save yet: open the world once and save.", false));
+        self.world_picker(ui);
+        ui.add_space(10.0);
+        let Some(preview) = self.preview().cloned() else {
+            ui.label(theme::note(i18n::t("status.no_world"), false));
             return;
         };
-
         egui::ScrollArea::vertical()
-            .max_height(330.0)
+            .max_height(300.0)
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 egui::Grid::new("items")
-                    .num_columns(4)
+                    .num_columns(3)
                     .striped(true)
                     .spacing([20.0, 6.0])
                     .show(ui, |ui| {
                         ui.label(theme::label("SLOT"));
-                        ui.label(theme::label("ITEM"));
-                        ui.label(theme::label("COUNT"));
-                        ui.label("");
+                        ui.label(theme::label(i18n::t("worlds.items")));
+                        ui.label(theme::label(i18n::t("inv.count")));
                         ui.end_row();
-                        for item in &stats.items {
+                        let mut removed = None;
+                        for item in &preview.items {
                             ui.label(theme::value(item.slot.to_string()));
                             ui.label(theme::value(item.id.clone()));
-                            ui.label(theme::value(item.count.to_string()));
-                            if ui.small_button("Remove").clicked() {
-                                self.remove_item(item.slot);
-                            }
+                            ui.horizontal(|ui| {
+                                ui.label(theme::value(item.count.to_string()));
+                                if ui.small_button(i18n::t("common.remove")).clicked() {
+                                    removed = Some(item.slot);
+                                }
+                            });
                             ui.end_row();
                         }
-                        if stats.items.is_empty() {
-                            ui.label(theme::label("nothing in the inventory"));
+                        if preview.items.is_empty() {
+                            ui.label(theme::label(i18n::t("inv.empty")));
                             ui.end_row();
+                        }
+                        if let Some(slot) = removed {
+                            self.carry_world(|session, world| session.remove_slot(world, slot));
                         }
                     });
             });
-
         ui.add_space(14.0);
         ui.separator();
         ui.add_space(8.0);
         ui.horizontal(|ui| {
-            ui.label(theme::label("ADD"));
+            ui.label(theme::label(i18n::t("inv.add")));
             ui.add(
                 egui::TextEdit::singleline(&mut self.item_id)
                     .hint_text("minecraft:bread")
-                    .desired_width(280.0),
+                    .desired_width(260.0),
             );
-            egui::ComboBox::from_id_salt("suggest")
-                .selected_text("▾")
-                .show_ui(ui, |ui| {
-                    for id in items::COMMON {
-                        if ui.selectable_label(self.item_id == *id, *id).clicked() {
-                            self.item_id = (*id).to_string();
-                        }
-                    }
-                });
             ui.add(egui::DragValue::new(&mut self.item_count).range(1..=64));
-            if ui.button(theme::action("Add item")).clicked() {
-                self.add_item();
+            if ui.button(theme::action(&i18n::t("common.add"))).clicked() {
+                let id = self.item_id.clone();
+                let count = self.item_count;
+                self.carry_world(|session, world| session.add_item(world, &id, count));
             }
         });
         ui.add_space(6.0);
-        ui.label(theme::label(
-            "Any id works, modded ones too (modid:item). Stacks go on the one there if it isn't full, else in the first free slot.",
-        ));
+        ui.label(theme::label(i18n::t("inv.hint")));
+    }
+
+    fn time_page(&mut self, ui: &mut egui::Ui) {
+        ui.label(theme::title(&i18n::t("world.title")));
+        ui.add_space(6.0);
+        self.world_picker(ui);
+        ui.add_space(12.0);
+        let Some(preview) = self.preview().cloned() else {
+            ui.label(theme::note(i18n::t("status.no_world"), false));
+            return;
+        };
+        let ticks = world::load(&preview.level)
+            .ok()
+            .and_then(|root| world::time_of_day(&root));
+        ui.horizontal(|ui| {
+            ui.label(theme::label(i18n::t("world.time")));
+            ui.label(theme::value(match ticks {
+                Some(ticks) => format!("{ticks} {}", i18n::t("world.ticks")),
+                None => "—".into(),
+            }));
+        });
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            for (name, ticks) in [
+                (i18n::t("world.day"), world::TICKS_DAY),
+                (i18n::t("world.noon"), world::TICKS_NOON),
+                (i18n::t("world.night"), world::TICKS_NIGHT),
+                (i18n::t("world.midnight"), world::TICKS_MIDNIGHT),
+            ] {
+                if ui.button(name).clicked() {
+                    self.carry_world(|session, world| session.set_time(world, ticks));
+                }
+            }
+            ui.add(egui::DragValue::new(&mut self.time_input).range(0..=23_999));
+            if ui.button(i18n::t("world.set_time")).clicked() {
+                let ticks = self.time_input;
+                self.carry_world(|session, world| session.set_time(world, ticks));
+            }
+        });
+        ui.add_space(16.0);
+        ui.separator();
+        ui.add_space(8.0);
+        ui.label(theme::label(i18n::t("world.weather")));
+        ui.horizontal(|ui| {
+            for (name, weather) in [
+                (i18n::t("world.clear"), Weather::Clear),
+                (i18n::t("world.rain"), Weather::Rain),
+                (i18n::t("world.thunder"), Weather::Thunder),
+            ] {
+                if ui.button(name).clicked() {
+                    let ticks = self.weather_ticks;
+                    self.carry_world(|session, world| session.set_weather(world, weather, ticks));
+                }
+            }
+            ui.label(theme::label(i18n::t("world.ticks")));
+            ui.add(egui::DragValue::new(&mut self.weather_ticks).range(1..=1_000_000));
+        });
+    }
+
+    fn launchers_page(&mut self, ui: &mut egui::Ui) {
+        ui.label(theme::title(&i18n::t("launchers.title")));
+        ui.add_space(6.0);
+        if self.launchers.is_empty() {
+            ui.label(theme::note(i18n::t("launchers.none"), false));
+        }
+        let launchers = self.launchers.clone();
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for install in &launchers {
+                    ui.horizontal(|ui| {
+                        theme::icon(ui, Icon::Folder, theme::AMBER);
+                        ui.label(theme::value(install.name));
+                        ui.label(theme::label(install.kind));
+                        ui.label(theme::label(format!(
+                            "{}: {}",
+                            i18n::t("launchers.worlds"),
+                            install.worlds
+                        )));
+                        ui.with_layout(
+                            egui::Layout::right_to_left(egui::Align::Center),
+                            |ui| {
+                                if ui.button(i18n::t("launchers.import")).clicked() {
+                                    let id = install.id.to_string();
+                                    let result = self.session.import(&id);
+                                    self.carry(result);
+                                }
+                            },
+                        );
+                    });
+                    ui.label(theme::label(install.game.display().to_string()));
+                    ui.add_space(6.0);
+                }
+            });
     }
 
     fn backups_page(&mut self, ui: &mut egui::Ui) {
-        ui.label(theme::title("Backups"));
-        ui.label(theme::label(format!("{} kept in {}", self.store.entries.len(), self.store.root.display())));
+        ui.label(theme::title(&i18n::t("backups.title")));
+        ui.label(theme::label(self.session.store.root.display().to_string()));
         ui.add_space(10.0);
-        ui.horizontal(|ui| {
-            if ui.button("Reload").clicked() {
-                self.store.reload();
-            }
-        });
+        if ui.button(i18n::t("common.reload")).clicked() {
+            self.refresh();
+        }
         ui.add_space(10.0);
-        let entries = self.store.entries.clone();
+        let entries = self.session.backups().to_vec();
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 egui::Grid::new("backups")
-                    .num_columns(4)
+                    .num_columns(3)
                     .striped(true)
                     .spacing([20.0, 6.0])
                     .show(ui, |ui| {
                         ui.label(theme::label("WHEN"));
-                        ui.label(theme::label("WHAT"));
-                        ui.label(theme::label("FILE"));
+                        ui.label(theme::label(i18n::t("portable.launcher")));
                         ui.label("");
                         ui.end_row();
+                        let mut restore = None;
                         for entry in &entries {
-                            ui.label(theme::value(entry.when.to_string()));
-                            ui.label(theme::value(entry.tool.clone()));
-                            ui.label(
-                                theme::value(
-                                    entry
-                                        .original
-                                        .file_name()
-                                        .map(|n| n.to_string_lossy().into_owned())
-                                        .unwrap_or_default(),
-                                ),
-                            )
-                            .on_hover_text(entry.original.display().to_string());
-                            if ui.small_button("Restore").clicked() {
-                                self.restore(entry.id.clone());
+                            ui.label(theme::value(entry.id.clone()));
+                            ui.label(theme::value(entry.tool.clone()))
+                                .on_hover_text(entry.original.display().to_string());
+                            if ui.small_button(i18n::t("common.restore")).clicked() {
+                                restore = Some(entry.id.clone());
                             }
                             ui.end_row();
                         }
                         if entries.is_empty() {
-                            ui.label(theme::label("nothing changed yet"));
+                            ui.label(theme::label(i18n::t("backups.none")));
                             ui.end_row();
+                        }
+                        if let Some(id) = restore {
+                            let result = self.session.restore(&id);
+                            self.carry(result);
                         }
                     });
             });
     }
+}
+
+fn short(id: &str) -> &str {
+    id.strip_prefix("minecraft:").unwrap_or(id)
 }

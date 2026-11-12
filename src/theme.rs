@@ -64,3 +64,98 @@ pub fn note(text: impl Into<String>, ok: bool) -> RichText {
 pub fn action(text: &str) -> RichText {
     RichText::new(text).size(13.5).color(AMBER).strong()
 }
+
+/// The icons the pages use: thin, one colour, drawn from lines and circles — the Material way, and
+/// no XML file to trust.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Icon {
+    Person,
+    World,
+    Heart,
+    Bag,
+    Clock,
+    Folder,
+    Restore,
+}
+
+/// Paints `icon` centred on `center`, one colour, `16` points tall.
+pub fn paint_icon(painter: &egui::Painter, icon: Icon, center: egui::Pos2, color: Color32) {
+    let stroke = egui::Stroke::new(1.6, color);
+    let at = |x: f32, y: f32| center + egui::vec2(x, y);
+    match icon {
+        Icon::Person => {
+            painter.circle_stroke(at(0.0, -4.0), 3.0, stroke);
+            let arc: Vec<egui::Pos2> = (0..=10)
+                .map(|step| {
+                    let angle = std::f32::consts::PI * step as f32 / 10.0;
+                    at(-6.0 * angle.cos(), 6.0 - 4.0 * angle.sin())
+                })
+                .collect();
+            painter.add(egui::Shape::line(arc, stroke));
+        }
+        Icon::World => {
+            painter.circle_stroke(center, 6.0, stroke);
+            painter.line_segment([at(-6.0, 0.0), at(6.0, 0.0)], stroke);
+            painter.add(egui::Shape::line(
+                (0..=12)
+                    .map(|step| {
+                        let angle = std::f32::consts::TAU * step as f32 / 12.0;
+                        at(2.6 * angle.cos(), 6.0 * angle.sin())
+                    })
+                    .collect(),
+                stroke,
+            ));
+        }
+        Icon::Heart => {
+            painter.circle_stroke(at(-2.8, -2.6), 2.9, stroke);
+            painter.circle_stroke(at(2.8, -2.6), 2.9, stroke);
+            painter.add(egui::Shape::line(
+                vec![at(-5.5, -1.2), at(0.0, 6.0), at(5.5, -1.2)],
+                stroke,
+            ));
+        }
+        Icon::Bag => {
+            painter.rect_stroke(
+                egui::Rect::from_min_max(at(-5.5, -2.0), at(5.5, 6.0)),
+                2.0,
+                stroke,
+            );
+            painter.add(egui::Shape::line(
+                vec![at(-2.5, -2.0), at(-2.5, -5.0), at(2.5, -5.0), at(2.5, -2.0)],
+                stroke,
+            ));
+        }
+        Icon::Clock => {
+            painter.circle_stroke(center, 6.0, stroke);
+            painter.line_segment([center, at(0.0, -3.4)], stroke);
+            painter.line_segment([center, at(3.0, 1.0)], stroke);
+        }
+        Icon::Folder => {
+            painter.add(egui::Shape::line(
+                vec![
+                    at(-6.0, 5.0),
+                    at(-6.0, -4.0),
+                    at(-1.5, -4.0),
+                    at(0.0, -2.0),
+                    at(6.0, -2.0),
+                    at(6.0, 5.0),
+                    at(-6.0, 5.0),
+                ],
+                stroke,
+            ));
+        }
+        Icon::Restore => {
+            painter.circle_stroke(center, 5.6, stroke);
+            painter.add(egui::Shape::line(
+                vec![at(-5.4, -1.0), at(-5.4, -4.6), at(-1.8, -4.6)],
+                stroke,
+            ));
+        }
+    }
+}
+
+/// The same, taking its own space in a row of widgets.
+pub fn icon(ui: &mut egui::Ui, icon: Icon, color: Color32) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
+    paint_icon(ui.painter(), icon, rect.center(), color);
+}

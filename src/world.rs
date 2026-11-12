@@ -65,7 +65,7 @@ pub fn load(level: &Path) -> Result<Root, String> {
 /// Writes a world's `level.dat` back, through a temporary file so a crash leaves the old one whole.
 pub fn save(level: &Path, root: &Root) -> Result<(), String> {
     let bytes = nbt::write_gzip(root).map_err(|e| e.to_string())?;
-    let tmp = level.with_extension("dat.offline-patch.tmp");
+    let tmp = level.with_extension("dat.offhorizon.tmp");
     std::fs::write(&tmp, bytes).map_err(|e| format!("{}: {e}", tmp.display()))?;
     std::fs::rename(&tmp, level).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);
@@ -256,6 +256,189 @@ pub fn set_level(root: &mut Root, level: i32) -> Result<String, String> {
     Ok(format!("Level {level}, {total} points"))
 }
 
+/// Ticks into a Minecraft day: dawn, noon, dusk and midnight.
+pub const TICKS_DAY: i64 = 1_000;
+pub const TICKS_NOON: i64 = 6_000;
+pub const TICKS_NIGHT: i64 = 13_000;
+pub const TICKS_MIDNIGHT: i64 = 18_000;
+
+/// The weather the save should hold from now on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Weather {
+    Clear,
+    Rain,
+    Thunder,
+}
+
+impl Weather {
+    /// The name the CLI and the window both use.
+    pub fn parse(word: &str) -> Option<Self> {
+        match word.trim().to_lowercase().as_str() {
+            "clear" | "sun" | "sunny" | "sereno" => Some(Weather::Clear),
+            "rain" | "raining" | "pioggia" => Some(Weather::Rain),
+            "thunder" | "storm" | "temporale" => Some(Weather::Thunder),
+            _ => None,
+        }
+    }
+}
+
+/// A world as the Worlds page shows it, before the player opens it: what the save holds and a word
+/// on whether it was read at all.
+#[derive(Clone, Debug, Default)]
+pub struct Preview {
+    /// The folder name under `saves/`.
+    pub name: String,
+    /// The name the game shows (`Data.LevelName`), falling back to the folder.
+    pub label: String,
+    pub level: PathBuf,
+    pub bytes: u64,
+    pub modified: u64,
+    pub last_played: Option<i64>,
+    pub health: Option<f32>,
+    pub food: Option<i32>,
+    pub xp_level: Option<i32>,
+    pub items: Vec<Item>,
+    pub error: Option<String>,
+}
+
+impl Preview {
+    /// The health as a bar reads it, `0..=20`.
+    pub fn health_fraction(&self) -> f32 {
+        (self.health.unwrap_or(0.0) / 20.0).clamp(0.0, 1.0)
+    }
+}
+
+/// The size of a world folder, every file under it.
+pub fn folder_size(dir: &Path) -> u64 {
+    let Ok(list) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    let mut total = 0;
+    for entry in list.flatten() {
+        let path = entry.path();
+        match entry.metadata() {
+            Ok(meta) if meta.is_dir() => total += folder_size(&path),
+            Ok(meta) => total += meta.len(),
+            Err(_) => {}
+        }
+    }
+    total
+}
+
+/// What the Worlds page shows for a world it has not opened.
+pub fn preview(world: &World) -> Preview {
+    let mut preview = Preview {
+        name: world.name.clone(),
+        label: world.name.clone(),
+        level: world.level.clone(),
+        bytes: world
+            .level
+            .parent()
+            .map(folder_size)
+            .unwrap_or_default(),
+        modified: std::fs::metadata(&world.level)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0),
+        ..Preview::default()
+    };
+    match load(&world.level) {
+        Ok(root) => {
+            if let Some(label) = root
+                .get("Data")
+                .and_then(|d| d.get("LevelName"))
+                .and_then(Tag::as_str)
+                .filter(|l| !l.trim().is_empty())
+            {
+                preview.label = label.to_string();
+            }
+            preview.last_played = root
+                .get("Data")
+                .and_then(|d| d.get("LastPlayed"))
+                .and_then(Tag::as_i32)
+                .map(|v| v as i64);
+            match stats(&root) {
+                Ok(stats) => {
+                    preview.health = Some(stats.health);
+                    preview.food = Some(stats.food);
+                    preview.xp_level = Some(stats.xp_level);
+                    preview.items = stats.items;
+                }
+                Err(e) => preview.error = Some(e),
+            }
+        }
+        Err(e) => preview.error = Some(e),
+    }
+    preview
+}
+
+/// The ticks in the world's own day (`Data.Time`).
+pub fn time_of_day(root: &Root) -> Option<i64> {
+    root.get("Data")
+        .and_then(|d| d.get("Time"))
+        .and_then(|t| t.as_i32().map(i64::from).or_else(|| match t {
+            Tag::Long(v) => Some(*v),
+            _ => None,
+        }))
+}
+
+/// Whether it rains and whether it thunders, right now.
+pub fn weather_of(root: &Root) -> (bool, bool) {
+    let data = root.get("Data");
+    let flag = |name: &str| {
+        data.and_then(|d| d.get(name))
+            .and_then(Tag::as_i32)
+            .is_some_and(|v| v != 0)
+    };
+    (flag("raining"), flag("thundering"))
+}
+
+/// Sets the time of day, keeping the world's day count: `Data.Time` is the tick in the day and
+/// `Data.DayTime` the total the game counts, so noon of a later day is still that day's noon.
+pub fn set_time(root: &mut Root, ticks: i64) -> Result<String, String> {
+    let ticks = ticks.rem_euclid(24_000);
+    let data = root
+        .path_mut(&["Data"])
+        .ok_or_else(|| "This save has no Data tag.".to_string())?;
+    let total = data
+        .get("DayTime")
+        .and_then(|t| t.as_i32().map(i64::from).or_else(|| match t {
+            Tag::Long(v) => Some(*v),
+            _ => None,
+        }))
+        .unwrap_or(0);
+    let day = total.div_euclid(24_000);
+    data.set("Time", Tag::Long(ticks));
+    data.set("DayTime", Tag::Long(day * 24_000 + ticks));
+    Ok(format!("time set to {ticks} ticks"))
+}
+
+/// Sets the weather and how long it lasts, in ticks.
+pub fn set_weather(root: &mut Root, weather: Weather, ticks: i32) -> Result<String, String> {
+    let ticks = ticks.max(1);
+    let data = root
+        .path_mut(&["Data"])
+        .ok_or_else(|| "This save has no Data tag.".to_string())?;
+    let (rain, thunder) = match weather {
+        Weather::Clear => (false, false),
+        Weather::Rain => (true, false),
+        Weather::Thunder => (true, true),
+    };
+    data.set("raining", Tag::Byte(i8::from(rain)));
+    data.set("thundering", Tag::Byte(i8::from(thunder)));
+    data.set("rainTime", Tag::Int(if rain { ticks } else { 0 }));
+    data.set("thunderTime", Tag::Int(if thunder { ticks } else { 0 }));
+    data.set("clearWeatherTime", Tag::Int(if rain { 0 } else { ticks }));
+    let said = match weather {
+        Weather::Clear => format!("clear for {ticks} ticks"),
+        Weather::Rain => format!("rain for {ticks} ticks"),
+        Weather::Thunder => format!("thunder for {ticks} ticks"),
+    };
+    Ok(said)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,6 +531,60 @@ mod tests {
         let stats = stats(&root).unwrap();
         assert_eq!(stats.xp_level, 30);
         assert_eq!(stats.xp_total, 1395);
+    }
+
+    #[test]
+    fn the_time_is_set_inside_the_day_the_world_is_on() {
+        let mut root = world(&[("Health".into(), Tag::Float(20.0))]);
+        root.path_mut(&["Data"])
+            .unwrap()
+            .set("DayTime", Tag::Long(3 * 24_000 + 100));
+        set_time(&mut root, TICKS_NIGHT).unwrap();
+        assert_eq!(time_of_day(&root), Some(TICKS_NIGHT));
+        let total = match root.get("Data").unwrap().get("DayTime").unwrap() {
+            Tag::Long(v) => *v,
+            other => panic!("DayTime is {other:?}"),
+        };
+        assert_eq!(total, 3 * 24_000 + TICKS_NIGHT);
+    }
+
+    #[test]
+    fn a_time_outside_the_day_wraps_into_it() {
+        let mut root = world(&[("Health".into(), Tag::Float(20.0))]);
+        set_time(&mut root, 24_000 + TICKS_NOON).unwrap();
+        assert_eq!(time_of_day(&root), Some(TICKS_NOON));
+    }
+
+    #[test]
+    fn weather_is_written_the_way_the_game_reads_it() {
+        let mut root = world(&[("Health".into(), Tag::Float(20.0))]);
+        set_weather(&mut root, Weather::Thunder, 6_000).unwrap();
+        assert_eq!(weather_of(&root), (true, true));
+        set_weather(&mut root, Weather::Clear, 12_000).unwrap();
+        assert_eq!(weather_of(&root), (false, false));
+        assert_eq!(
+            root.get("Data").unwrap().get("clearWeatherTime").unwrap().as_i32(),
+            Some(12_000)
+        );
+    }
+
+    #[test]
+    fn a_preview_reads_the_player_without_opening_the_world() {
+        let dir = std::env::temp_dir().join(format!("offhorizon-preview-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut root = world(&[("Health".into(), Tag::Float(20.0))]);
+        add_item(&mut root, "minecraft:bread", 2).unwrap();
+        let level = dir.join("level.dat");
+        save(&level, &root).unwrap();
+        let preview = preview(&World {
+            name: "Test".into(),
+            level,
+        });
+        assert_eq!(preview.health, Some(20.0));
+        assert_eq!(preview.items.len(), 1);
+        assert!(preview.bytes > 0);
+        assert!(preview.error.is_none());
     }
 
     #[test]

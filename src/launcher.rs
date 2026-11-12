@@ -1,8 +1,13 @@
 //! Where the launcher and the game keep what this tool patches: the launcher's data folder (its
-//! `accounts.json` and `instances.json`), the game folders with their worlds, and the offline
-//! player name the game reads from `horizon-player.txt`.
+//! `settings.json`, `accounts.json` and `instances.json`), the game folders with their worlds, and
+//! the offline player name the game reads from `horizon-player.txt`.
+//!
+//! Pointing the launcher at the portable game folder is a change to a file outside the stick, so
+//! it leaves `.offhorizon.bak` beside that file, a second copy in the launcher's own folder and a
+//! third in the temporary folder, and `undo` puts every byte back.
 
-use crate::store::Store;
+use crate::portable::Portable;
+use crate::store::{now, Store};
 use std::path::{Path, PathBuf};
 
 /// What was found on this computer.
@@ -10,7 +15,7 @@ use std::path::{Path, PathBuf};
 pub struct Layout {
     /// The launcher's data folder, when one is there.
     pub launcher: Option<PathBuf>,
-    /// Game folders that hold `saves/` or a player name.
+    /// Game folders, the portable one first.
     pub homes: Vec<PathBuf>,
 }
 
@@ -26,8 +31,10 @@ fn exists(path: &Path) -> bool {
 }
 
 /// The folders Horizon's launcher uses for its own data, most likely first.
-pub fn launcher_dirs() -> Vec<PathBuf> {
+pub fn launcher_dirs(portable: &Portable) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
+    // A launcher carried on the stick comes first: the whole setup is portable.
+    dirs.push(portable.launcher());
     if let Some(home) = std::env::var_os("HORIZON_LAUNCHER_HOME").filter(|h| !h.is_empty()) {
         dirs.push(PathBuf::from(home));
     }
@@ -60,8 +67,8 @@ pub fn launcher_dirs() -> Vec<PathBuf> {
 }
 
 /// The game folders a copy of the game might have left here.
-pub fn game_home_candidates() -> Vec<PathBuf> {
-    let mut homes = Vec::new();
+pub fn game_home_candidates(portable: &Portable) -> Vec<PathBuf> {
+    let mut homes = vec![portable.minecraft()];
     if let Some(home) = std::env::var_os("HORIZON_HOME").filter(|h| !h.is_empty()) {
         homes.push(PathBuf::from(home));
     }
@@ -79,10 +86,10 @@ pub fn game_home_candidates() -> Vec<PathBuf> {
 }
 
 /// Finds the launcher folder and every game folder on this computer.
-pub fn detect() -> Layout {
+pub fn detect(portable: &Portable) -> Layout {
     let mut homes: Vec<PathBuf> = Vec::new();
     let mut launcher = None;
-    for dir in launcher_dirs() {
+    for dir in launcher_dirs(portable) {
         if !exists(&dir) {
             continue;
         }
@@ -96,7 +103,7 @@ pub fn detect() -> Layout {
             push_unique(&mut homes, game);
         }
     }
-    for home in game_home_candidates() {
+    for home in game_home_candidates(portable) {
         if home.join("saves").is_dir() || home.join("horizon-player.txt").is_file() {
             push_unique(&mut homes, home);
         }
@@ -154,6 +161,16 @@ pub fn settings_game_dir(launcher: &Path) -> Option<PathBuf> {
     dir.is_dir().then_some(dir)
 }
 
+/// The launcher's settings file.
+pub fn settings_file(launcher: &Path) -> PathBuf {
+    launcher.join("settings.json")
+}
+
+/// The marker left beside the launcher's settings: what the file was before this tool wrote it.
+pub fn marker(launcher: &Path) -> PathBuf {
+    launcher.join("settings.json.offhorizon.bak")
+}
+
 /// The name file the game keeps its offline player in.
 pub fn player_name_file(home: &Path) -> PathBuf {
     home.join("horizon-player.txt")
@@ -193,12 +210,139 @@ pub fn set_offline_name(store: &mut Store, home: &Path, name: &str) -> Result<Pa
     Ok(file)
 }
 
+/// What pointing the launcher here did, and where every copy of the old file is.
+#[derive(Clone, Debug)]
+pub struct LauncherChange {
+    pub settings: PathBuf,
+    pub marker: PathBuf,
+    pub copies: Vec<PathBuf>,
+}
+
+/// Points the launcher's `minecraft_dir` at the portable game folder. The old settings are kept
+/// four times over: the marker beside them, the tool's backup list, a dated copy in the launcher's
+/// own `offhorizon-backups` folder and one in the temporary folder.
+pub fn point_at(
+    store: &mut Store,
+    portable: &Portable,
+    launcher: &Path,
+    dir: &Path,
+) -> Result<LauncherChange, String> {
+    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let settings = settings_file(launcher);
+    let before = if settings.is_file() {
+        let text = std::fs::read_to_string(&settings)
+            .map_err(|e| format!("{}: {e}", settings.display()))?;
+        let value = serde_json::from_str::<serde_json::Value>(&text)
+            .map_err(|e| format!("{}: {e}", settings.display()))?;
+        Some((text, value))
+    } else {
+        None
+    };
+    let when = now();
+    let stamp = when.to_string();
+    let marker = marker(launcher);
+    let record = match &before {
+        Some((_, value)) => serde_json::json!({
+            "existed": true,
+            "when": when,
+            "settings": value,
+        }),
+        None => serde_json::json!({ "existed": false, "when": when }),
+    };
+    std::fs::write(&marker, format!("{record}\n"))
+        .map_err(|e| format!("{}: {e}", marker.display()))?;
+
+    let mut copies = vec![marker.clone()];
+    if before.is_some() {
+        // The tool's own list, the launcher's folder and the temporary folder each keep one.
+        if let Ok(copy) = store.backup(&settings, "launcher folder") {
+            copies.push(copy);
+        }
+        if let Some((text, _)) = &before {
+            let bytes = text.as_bytes();
+            let name = format!("settings.json.{stamp}.offhorizon.bak");
+            if let Ok(copy) = store.copy_to(bytes, &launcher.join("offhorizon-backups"), &name) {
+                copies.push(copy);
+            }
+            if let Ok(copy) = store.copy_to(bytes, &portable.temp_copy(), &name) {
+                copies.push(copy);
+            }
+        }
+    }
+
+    let mut value = match before {
+        Some((_, value)) => value,
+        None => serde_json::json!({}),
+    };
+    if !value.is_object() {
+        value = serde_json::json!({});
+    }
+    if let Some(object) = value.as_object_mut() {
+        object.insert(
+            "minecraft_dir".into(),
+            serde_json::json!(dir.display().to_string()),
+        );
+    }
+    let text = format!("{value}\n");
+    let tmp = settings.with_extension("json.offhorizon.tmp");
+    std::fs::write(&tmp, text).map_err(|e| format!("{}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, &settings).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        format!("{}: {e}", settings.display())
+    })?;
+    Ok(LauncherChange {
+        settings,
+        marker,
+        copies,
+    })
+}
+
+/// Puts the launcher's settings back as they were before [`point_at`].
+pub fn undo(launcher: &Path) -> Result<PathBuf, String> {
+    let settings = settings_file(launcher);
+    let marker = marker(launcher);
+    let text = std::fs::read_to_string(&marker)
+        .map_err(|e| format!("{}: {e}", marker.display()))?;
+    let record = serde_json::from_str::<serde_json::Value>(&text)
+        .map_err(|e| format!("{}: {e}", marker.display()))?;
+    let existed = record
+        .get("existed")
+        .and_then(|e| e.as_bool())
+        .unwrap_or(false);
+    if existed {
+        let original = record
+            .get("settings")
+            .cloned()
+            .ok_or_else(|| "The marker has no settings in it.".to_string())?;
+        std::fs::write(&settings, format!("{original}\n"))
+            .map_err(|e| format!("{}: {e}", settings.display()))?;
+    } else {
+        // There was no settings file: take the key back out, and the file with it when empty.
+        let mut value = std::fs::read_to_string(&settings)
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .unwrap_or_else(|| serde_json::json!({}));
+        if let Some(object) = value.as_object_mut() {
+            object.remove("minecraft_dir");
+        }
+        let empty = value.as_object().is_none_or(|object| object.is_empty());
+        if empty {
+            let _ = std::fs::remove_file(&settings);
+        } else {
+            std::fs::write(&settings, format!("{value}\n"))
+                .map_err(|e| format!("{}: {e}", settings.display()))?;
+        }
+    }
+    let _ = std::fs::remove_file(&marker);
+    Ok(settings)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("offline-patch-launcher-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("offhorizon-launcher-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -238,5 +382,51 @@ mod tests {
         for bad in ["", " ", "a name", "thisnameiswaytoolong"] {
             assert!(set_offline_name(&mut store, &dir, bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn pointing_the_launcher_keeps_the_old_settings_and_undo_puts_them_back() {
+        let dir = scratch("point");
+        let launcher = dir.join("launcher");
+        let portable = Portable::at(dir.join("stick"));
+        std::fs::create_dir_all(&launcher).unwrap();
+        std::fs::write(
+            launcher.join("settings.json"),
+            r#"{"minecraft_dir":"C:/old","language":"it"}"#,
+        )
+        .unwrap();
+        let mut store = Store::at(portable.backups());
+        let change = point_at(&mut store, &portable, &launcher, &portable.minecraft()).unwrap();
+        let after: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&change.settings).unwrap()).unwrap();
+        assert_eq!(
+            after.get("minecraft_dir").and_then(|d| d.as_str()),
+            Some(portable.minecraft().display().to_string().as_str())
+        );
+        assert_eq!(after.get("language").and_then(|l| l.as_str()), Some("it"));
+        assert!(change.marker.is_file());
+        // A dated copy in the launcher's folder and one in the temporary folder.
+        assert!(launcher.join("offhorizon-backups").is_dir());
+        assert!(portable.temp_copy().is_dir());
+
+        undo(&launcher).unwrap();
+        let back: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(launcher.join("settings.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(back.get("minecraft_dir").and_then(|d| d.as_str()), Some("C:/old"));
+        assert!(!change.marker.exists());
+    }
+
+    #[test]
+    fn undo_takes_the_key_out_when_there_was_no_settings_file() {
+        let dir = scratch("point-new");
+        let launcher = dir.join("launcher");
+        let portable = Portable::at(dir.join("stick"));
+        std::fs::create_dir_all(&launcher).unwrap();
+        let mut store = Store::at(portable.backups());
+        point_at(&mut store, &portable, &launcher, &portable.minecraft()).unwrap();
+        undo(&launcher).unwrap();
+        assert!(!launcher.join("settings.json").exists());
     }
 }

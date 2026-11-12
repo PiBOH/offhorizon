@@ -1,6 +1,7 @@
 //! Every file this tool changes is copied before it is written, and the copy is listed here so
 //! that any change can be taken back. A patch that can't be undone is not one this tool makes.
 
+use crate::portable::Portable;
 use std::path::{Path, PathBuf};
 
 /// One file as it was before the tool touched it.
@@ -22,31 +23,9 @@ pub struct Store {
 }
 
 impl Store {
-    /// The tool's own folder: `OFFLINE_PATCH_HOME`, else the platform's data folder.
-    pub fn folder() -> PathBuf {
-        if let Some(home) = std::env::var_os("OFFLINE_PATCH_HOME").filter(|h| !h.is_empty()) {
-            return PathBuf::from(home);
-        }
-        if cfg!(windows) {
-            if let Some(appdata) = std::env::var_os("APPDATA").filter(|h| !h.is_empty()) {
-                return PathBuf::from(appdata).join("offline-patch");
-            }
-        }
-        if cfg!(target_os = "macos") {
-            if let Some(home) = std::env::var_os("HOME") {
-                return PathBuf::from(home).join("Library/Application Support/offline-patch");
-            }
-        }
-        if let Some(data) = std::env::var_os("XDG_DATA_HOME").filter(|h| !h.is_empty()) {
-            return PathBuf::from(data).join("offline-patch");
-        }
-        std::env::var_os("HOME")
-            .map(|home| PathBuf::from(home).join(".local/share/offline-patch"))
-            .unwrap_or_else(|| PathBuf::from("offline-patch"))
-    }
-
+    /// The backups beside the executable (`<exe>/.offhorizon/backups`).
     pub fn open() -> Self {
-        Self::at(Self::folder())
+        Self::at(Portable::find().backups())
     }
 
     /// The same, in a folder of the caller's choosing (the tests keep theirs in the temp folder).
@@ -62,8 +41,7 @@ impl Store {
     /// Reads the copies on disk back into `entries`.
     pub fn reload(&mut self) {
         self.entries.clear();
-        let dir = self.root.join("backups");
-        let Ok(list) = std::fs::read_dir(&dir) else {
+        let Ok(list) = std::fs::read_dir(&self.root) else {
             return;
         };
         for entry in list.flatten() {
@@ -102,17 +80,14 @@ impl Store {
     /// Copies `file` aside, answering where. Every write of the tool goes through here first.
     pub fn backup(&mut self, file: &Path, tool: &str) -> Result<PathBuf, String> {
         let bytes = std::fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
-        let when = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
+        let when = now();
         let mut id = when.to_string();
         let mut n = 0;
-        while self.root.join("backups").join(&id).exists() {
+        while self.root.join(&id).exists() {
             n += 1;
             id = format!("{when}-{n}");
         }
-        let dir = self.root.join("backups").join(&id);
+        let dir = self.root.join(&id);
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         let copy = dir.join("original");
         std::fs::write(&copy, &bytes).map_err(|e| format!("{}: {e}", copy.display()))?;
@@ -121,13 +96,20 @@ impl Store {
             "when": when,
             "tool": tool,
         });
-        std::fs::write(
-            dir.join("manifest.json"),
-            format!("{manifest}\n"),
-        )
-        .map_err(|e| e.to_string())?;
+        std::fs::write(dir.join("manifest.json"), format!("{manifest}\n"))
+            .map_err(|e| e.to_string())?;
         self.reload();
         Ok(copy)
+    }
+
+    /// Keeps a second copy of a file the tool is about to rewrite, outside the backup folder.
+    /// The launcher's own folder and the temporary folder each get one, so a change can be undone
+    /// even when the stick is gone.
+    pub fn copy_to(&self, bytes: &[u8], dir: &Path, name: &str) -> Result<PathBuf, String> {
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        let file = dir.join(name);
+        std::fs::write(&file, bytes).map_err(|e| format!("{}: {e}", file.display()))?;
+        Ok(file)
     }
 
     /// Puts a copy back over the file it came from, keeping the copy.
@@ -148,12 +130,20 @@ impl Store {
     }
 }
 
+/// Milliseconds since the epoch, used for the backup ids and the manifests.
+pub fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("offline-patch-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("offhorizon-store-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -164,7 +154,7 @@ mod tests {
         let dir = scratch("backup");
         let file = dir.join("level.dat");
         std::fs::write(&file, b"before").unwrap();
-        let mut store = Store::at(dir.join("home"));
+        let mut store = Store::at(dir.join("backups"));
         store.backup(&file, "heal").unwrap();
         std::fs::write(&file, b"after").unwrap();
         assert_eq!(std::fs::read(&file).unwrap(), b"after");
@@ -176,7 +166,7 @@ mod tests {
         let dir = scratch("restore");
         let file = dir.join("horizon-player.txt");
         std::fs::write(&file, "name:Steve\n").unwrap();
-        let mut store = Store::at(dir.join("home"));
+        let mut store = Store::at(dir.join("backups"));
         store.backup(&file, "offline name").unwrap();
         std::fs::write(&file, "name:Alex\n").unwrap();
         let id = store.entries[0].id.clone();

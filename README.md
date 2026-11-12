@@ -1,33 +1,69 @@
-# Offline Patch
+# OffHorizon
 
-A reversible profile patcher for **Horizon** — Minecraft: Java Edition rewritten in Rust. It does
-what Project ALM does for Euro Truck Simulator 2 profiles, for Horizon's:
+The portable, telemetry-free companion for **Horizon** — Minecraft: Java Edition rewritten in Rust.
+It reads and edits your saves and your launcher, keeps a copy of everything it touches, and sends
+nothing anywhere.
 
-- the **offline player name** (`horizon-player.txt`) the game plays under with no account signed in;
-- the **player in a save**: health, hunger, saturation, air, experience level — and the inventory,
-  where an item can be put in or taken out, modded ids included.
+![mark](brand/offhorizon.svg)
 
-Every file is copied to the tool's backup folder before it is written, and the Backups page puts any
-copy back. A change this tool can't undo is not one it makes.
+## What it does
 
-![icon](icon.png)
+- **Profile** — the offline player name (`horizon-player.txt`) and the portable game folder beside
+  the executable.
+- **Worlds** — every save with a preview before you open it: health, hunger, level, inventory and
+  size.
+- **Player** — heal, feed, experience level.
+- **Inventory** — see the stacks, take one out, add one (modded ids too).
+- **Time and weather** — `Time`, `DayTime`, `raining`, `thundering` and their timers, with a backup
+  each time.
+- **Launchers** — finds the 16 launchers players use (Horizon, SKLauncher, Prism, MultiMC, CurseForge,
+  Modrinth, ATLauncher, GDLauncher, Technic, FTB, Lunar, Badlion, XMCL, TLauncher, PolyMC, the
+  Minecraft Launcher) and imports their worlds onto the stick.
+- **Backups** — every file it wrote, and one button to put each back.
 
-## What it touches
+The same list from the terminal:
 
-| File | What changes |
+```sh
+offhorizon status
+offhorizon worlds
+offhorizon time night --world "My World"
+offhorizon weather thunder 6000
+offhorizon launcher point          # the installed launcher plays from this stick
+offhorizon launcher undo           # settings.json back as it was
+offhorizon launchers
+offhorizon import sklauncher
+offhorizon backups
+offhorizon restore 1731...
+```
+
+Without arguments the window opens; every button there is one of these commands.
+
+## Portable
+
+Everything lives beside the executable — on a USB stick, the stick carries the whole setup:
+
+| Path | What |
 |---|---|
-| `<game folder>/horizon-player.txt` | `name:<Player>` — the offline name |
-| `<game folder>/saves/<world>/level.dat` | `Data.Player`: `Health`, `foodLevel`, `foodSaturationLevel`, `Air`, `Fire`, `XpLevel`, `XpTotal`, `Inventory` |
+| `./.minecraft` | the game folder: worlds, options, `horizon-player.txt` |
+| `./.offhorizon/backups` | a copy of every file before it was written |
+| `./.offhorizon/settings.json` | the language |
+| `./.offhorizon/launcher-backups` | copies of launcher files |
 
-Nothing else in the save changes: the NBT reader keeps every tag it doesn't understand, in order.
-The launcher's own account check is not bypassed — this tool patches the profile, not Horizon's
-sign-in.
+The one file outside the stick it may touch is the installed launcher's `settings.json`, and only
+when you press **Point the launcher here**: it leaves `settings.json.offhorizon.bak` beside it, a
+dated copy in `<launcher>/offhorizon-backups/`, one in the temporary folder and one in its own
+backup list. **Undo** restores it.
 
-## Where its folders are
+## Languages
 
-- Game folders: `HORIZON_HOME`, the launcher's `instances.json` and `settings.json`
-  (`minecraft_dir`), `%APPDATA%\.minecraft`, and the folder the tool runs in. **Rescan** looks again.
-- Backups: `%APPDATA%\offline-patch\backups` (`OFFLINE_PATCH_HOME` moves it).
+Eighteen XML tables in `lang/`, the same set as the other PiBOH projects: en, it, de, fr, es, pt, nl,
+pl, cs, sv, ru, uk, tr, ar, hi, zh, ja, ko. The list and the format are in [AGENTS.md](AGENTS.md).
+
+## Accounts
+
+It does not forge a Microsoft account or write into Horizon's sign-in store, and it never will: the
+game plays under the offline name this tool writes, and the launcher plays from the folder this tool
+points it at. Its own games never need an account.
 
 ## Build
 
@@ -36,7 +72,7 @@ cargo build --release
 cargo test
 ```
 
-Windows and Linux builds ship from the release workflow; `version.txt` is the only version source.
+`version.txt` is the only version source.
 
 ## License
 
