@@ -63,6 +63,31 @@ impl Portable {
     pub fn temp_copy(&self) -> PathBuf {
         std::env::temp_dir().join("offhorizon")
     }
+
+    /// One value of the tool's settings file.
+    pub fn get(&self, key: &str) -> Option<String> {
+        let text = std::fs::read_to_string(self.settings_file()).ok()?;
+        let value = serde_json::from_str::<serde_json::Value>(&text).ok()?;
+        value.get(key)?.as_str().map(str::to_string)
+    }
+
+    /// Writes one value and keeps the others.
+    pub fn set(&self, key: &str, value: &str) -> Result<PathBuf, String> {
+        let file = self.settings_file();
+        if let Some(dir) = file.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        }
+        let mut json = std::fs::read_to_string(&file)
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .unwrap_or_else(|| serde_json::json!({}));
+        if let Some(object) = json.as_object_mut() {
+            object.insert(key.to_string(), serde_json::json!(value));
+        }
+        std::fs::write(&file, format!("{json}\n"))
+            .map_err(|e| format!("{}: {e}", file.display()))?;
+        Ok(file)
+    }
 }
 
 #[cfg(test)]

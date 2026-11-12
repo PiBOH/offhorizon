@@ -82,4 +82,13 @@
   <string key="status.error">Erreur : {why}</string>
   <string key="status.no_launcher">Aucun dossier de données du launcher Horizon trouvé.</string>
   <string key="portable.telemetry_off">désactivée — rien n'est jamais envoyé</string>
+  <string key="nav.home">Accueil</string>
+  <string key="home.versions">Versions</string>
+  <string key="home.play">Jouer</string>
+  <string key="home.player">Joueur</string>
+  <string key="home.tagline">Un launcher portable sans télémétrie</string>
+  <string key="home.no_version">Aucune version ici : installez-en une ou importez-la depuis un autre launcher.</string>
+  <string key="home.java_missing">Java introuvable : installez-le, ou laissez un autre launcher télécharger un runtime.</string>
+  <string key="home.launched">{version} démarré en tant que {name}.</string>
+  <string key="home.last_world">Dernier monde</string>
 </strings>

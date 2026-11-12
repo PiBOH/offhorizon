@@ -82,4 +82,13 @@
   <string key="status.error">त्रुटि: {why}</string>
   <string key="status.no_launcher">Horizon लॉन्चर का डेटा फ़ोल्डर नहीं मिला।</string>
   <string key="portable.telemetry_off">बंद — कुछ भी नहीं भेजा जाता</string>
+  <string key="nav.home">होम</string>
+  <string key="home.versions">संस्करण</string>
+  <string key="home.play">खेलें</string>
+  <string key="home.player">खिलाड़ी</string>
+  <string key="home.tagline">बिना टेलीमेट्री वाला पोर्टेबल लॉन्चर</string>
+  <string key="home.no_version">यहाँ अभी कोई गेम संस्करण नहीं है: एक इंस्टॉल करें या दूसरे लॉन्चर से आयात करें।</string>
+  <string key="home.java_missing">Java नहीं मिला: इसे इंस्टॉल करें या किसी दूसरे लॉन्चर को रनटाइम डाउनलोड करने दें।</string>
+  <string key="home.launched">{version} {name} के रूप में शुरू हुआ।</string>
+  <string key="home.last_world">अंतिम विश्व</string>
 </strings>

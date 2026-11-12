@@ -82,4 +82,13 @@
   <string key="status.error">오류: {why}</string>
   <string key="status.no_launcher">Horizon 런처 데이터 폴더를 찾지 못했습니다.</string>
   <string key="portable.telemetry_off">꺼짐 — 아무것도 전송하지 않습니다</string>
+  <string key="nav.home">홈</string>
+  <string key="home.versions">버전</string>
+  <string key="home.play">플레이</string>
+  <string key="home.player">플레이어</string>
+  <string key="home.tagline">텔레메트리 없는 포터블 런처</string>
+  <string key="home.no_version">여기에는 아직 게임 버전이 없습니다. 설치하거나 다른 런처에서 가져오세요.</string>
+  <string key="home.java_missing">Java를 찾을 수 없습니다. 설치하거나 다른 런처가 런타임을 내려받게 하세요.</string>
+  <string key="home.launched">{version}을(를) {name}(으)로 시작했습니다.</string>
+  <string key="home.last_world">마지막 월드</string>
 </strings>

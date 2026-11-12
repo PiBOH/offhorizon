@@ -82,4 +82,13 @@
   <string key="status.error">错误：{why}</string>
   <string key="status.no_launcher">未找到 Horizon 启动器的数据文件夹。</string>
   <string key="portable.telemetry_off">已关闭 — 从不发送任何内容</string>
+  <string key="nav.home">主页</string>
+  <string key="home.versions">版本</string>
+  <string key="home.play">启动游戏</string>
+  <string key="home.player">玩家</string>
+  <string key="home.tagline">无遥测的便携启动器</string>
+  <string key="home.no_version">这里还没有游戏版本：请安装一个，或从其他启动器导入。</string>
+  <string key="home.java_missing">未找到 Java：请安装，或让其他启动器下载运行时。</string>
+  <string key="home.launched">{version} 已以 {name} 启动。</string>
+  <string key="home.last_world">最近的存档</string>
 </strings>

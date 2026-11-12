@@ -82,4 +82,13 @@
   <string key="status.error">Chyba: {why}</string>
   <string key="status.no_launcher">Složka dat launcheru Horizon nebyla nalezena.</string>
   <string key="portable.telemetry_off">vypnuta — nic se neodesílá</string>
+  <string key="nav.home">Domů</string>
+  <string key="home.versions">Verze</string>
+  <string key="home.play">Hrát</string>
+  <string key="home.player">Hráč</string>
+  <string key="home.tagline">Přenosný launcher bez telemetrie</string>
+  <string key="home.no_version">Zatím tu není žádná verze hry: nainstalujte ji nebo importujte z jiného launcheru.</string>
+  <string key="home.java_missing">Java nenalezena: nainstalujte ji nebo nechte jiný launcher stáhnout runtime.</string>
+  <string key="home.launched">{version} spuštěna jako {name}.</string>
+  <string key="home.last_world">Poslední svět</string>
 </strings>

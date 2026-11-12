@@ -82,4 +82,13 @@
   <string key="status.error">Fout: {why}</string>
   <string key="status.no_launcher">Geen gegevensmap van de Horizon-launcher gevonden.</string>
   <string key="portable.telemetry_off">uit — er wordt nooit iets verzonden</string>
+  <string key="nav.home">Start</string>
+  <string key="home.versions">Versies</string>
+  <string key="home.play">Spelen</string>
+  <string key="home.player">Speler</string>
+  <string key="home.tagline">Een draagbare launcher zonder telemetrie</string>
+  <string key="home.no_version">Nog geen spelversie: installeer er een of importeer er een uit een andere launcher.</string>
+  <string key="home.java_missing">Java niet gevonden: installeer het, of laat een andere launcher een runtime downloaden.</string>
+  <string key="home.launched">{version} gestart als {name}.</string>
+  <string key="home.last_world">Laatste wereld</string>
 </strings>

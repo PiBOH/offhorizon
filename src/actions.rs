@@ -1,6 +1,7 @@
 //! Every action the window and the terminal can take. Both front ends call the same functions, so
 //! anything the window does the terminal does, and the other way round.
 
+use crate::launch;
 use crate::launcher::{self, LauncherChange, Layout};
 use crate::nbt::Root;
 use crate::others::{self, Found};
@@ -140,6 +141,50 @@ impl Session {
         let home = self.home();
         launcher::set_offline_name(&mut self.store, &home, name)?;
         Ok(format!("name:{}", name.trim()))
+    }
+
+    /// Every version installed in the game folders this tool reads, the stick's first.
+    pub fn versions(&self) -> Vec<launch::Version> {
+        let mut all: Vec<launch::Version> = Vec::new();
+        for home in self.homes() {
+            for version in launch::versions(&home) {
+                if all
+                    .iter()
+                    .any(|known| known.id == version.id && known.game == version.game)
+                {
+                    continue;
+                }
+                all.push(version);
+            }
+        }
+        all
+    }
+
+    /// The name the game plays under: the file on the stick, or `Player` until one is set.
+    pub fn player_name(&self) -> String {
+        launcher::offline_name(&self.home()).unwrap_or_else(|| "Player".to_string())
+    }
+
+    /// Starts a version, keeping the choice with the stick. With no name, the one played last.
+    pub fn play(&mut self, id: Option<&str>) -> Result<String, String> {
+        let versions = self.versions();
+        let picked = match id {
+            Some(id) => versions.iter().find(|v| v.id == id).cloned(),
+            None => self
+                .portable
+                .get("version")
+                .and_then(|id| versions.iter().find(|v| v.id == id).cloned())
+                .or_else(|| versions.first().cloned()),
+        };
+        let picked = picked.ok_or_else(|| i18n::t("home.no_version"))?;
+        let name = self.player_name();
+        let plan = launch::plan(&picked.game, &picked, &name)?;
+        plan.spawn()?;
+        self.portable.set("version", &picked.id)?;
+        Ok(i18n::tf(
+            "home.launched",
+            &[("version", picked.id), ("name", name)],
+        ))
     }
 
     pub fn heal(&mut self, world: &World) -> Result<String, String> {

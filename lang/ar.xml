@@ -82,4 +82,13 @@
   <string key="status.error">خطأ: {why}</string>
   <string key="status.no_launcher">لم يُعثر على مجلد بيانات مشغّل Horizon.</string>
   <string key="portable.telemetry_off">متوقفة — لا يُرسل شيء أبدًا</string>
+  <string key="nav.home">الرئيسية</string>
+  <string key="home.versions">الإصدارات</string>
+  <string key="home.play">تشغيل</string>
+  <string key="home.player">اللاعب</string>
+  <string key="home.tagline">مشغّل محمول بلا قياسات</string>
+  <string key="home.no_version">لا يوجد إصدار لعبة هنا بعد: ثبّت واحدًا أو استورده من مشغّل آخر.</string>
+  <string key="home.java_missing">لم يُعثر على Java: ثبّتها أو دع مشغّلًا آخر ينزّل بيئة التشغيل.</string>
+  <string key="home.launched">تم تشغيل {version} باسم {name}.</string>
+  <string key="home.last_world">آخر عالم</string>
 </strings>

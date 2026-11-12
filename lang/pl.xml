@@ -82,4 +82,13 @@
   <string key="status.error">Błąd: {why}</string>
   <string key="status.no_launcher">Nie znaleziono folderu danych launchera Horizon.</string>
   <string key="portable.telemetry_off">wyłączona — nic nie jest wysyłane</string>
+  <string key="nav.home">Start</string>
+  <string key="home.versions">Wersje</string>
+  <string key="home.play">Graj</string>
+  <string key="home.player">Gracz</string>
+  <string key="home.tagline">Przenośny launcher bez telemetrii</string>
+  <string key="home.no_version">Brak tu jeszcze wersji gry: zainstaluj ją lub zaimportuj z innego launchera.</string>
+  <string key="home.java_missing">Nie znaleziono Javy: zainstaluj ją lub pozwól innemu launcherowi pobrać środowisko.</string>
+  <string key="home.launched">{version} uruchomiona jako {name}.</string>
+  <string key="home.last_world">Ostatni świat</string>
 </strings>

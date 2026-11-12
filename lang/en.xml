@@ -82,4 +82,13 @@
   <string key="status.error">Error: {why}</string>
   <string key="status.no_launcher">No Horizon launcher data folder found.</string>
   <string key="portable.telemetry_off">off — nothing is ever sent</string>
+  <string key="nav.home">Home</string>
+  <string key="home.versions">Versions</string>
+  <string key="home.play">Play</string>
+  <string key="home.player">Player</string>
+  <string key="home.tagline">A portable launcher with no telemetry</string>
+  <string key="home.no_version">No game version here yet: install one, or import from another launcher.</string>
+  <string key="home.java_missing">No Java found: install one, or let another launcher download a runtime.</string>
+  <string key="home.launched">{version} started as {name}.</string>
+  <string key="home.last_world">Last world</string>
 </strings>

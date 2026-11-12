@@ -82,4 +82,13 @@
   <string key="status.error">Помилка: {why}</string>
   <string key="status.no_launcher">Теку даних лаунчера Horizon не знайдено.</string>
   <string key="portable.telemetry_off">вимкнена — нічого не надсилається</string>
+  <string key="nav.home">Головна</string>
+  <string key="home.versions">Версії</string>
+  <string key="home.play">Грати</string>
+  <string key="home.player">Гравець</string>
+  <string key="home.tagline">Портативний лаунчер без телеметрії</string>
+  <string key="home.no_version">Тут ще немає версії гри: встановіть її або імпортуйте з іншого лаунчера.</string>
+  <string key="home.java_missing">Java не знайдено: встановіть її або дозвольте іншому лаунчеру завантажити середовище.</string>
+  <string key="home.launched">{version} запущено як {name}.</string>
+  <string key="home.last_world">Останній світ</string>
 </strings>

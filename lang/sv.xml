@@ -82,4 +82,13 @@
   <string key="status.error">Fel: {why}</string>
   <string key="status.no_launcher">Ingen datamapp för Horizon-launchern hittades.</string>
   <string key="portable.telemetry_off">av — inget skickas någonsin</string>
+  <string key="nav.home">Start</string>
+  <string key="home.versions">Versioner</string>
+  <string key="home.play">Spela</string>
+  <string key="home.player">Spelare</string>
+  <string key="home.tagline">En portabel launcher utan telemetri</string>
+  <string key="home.no_version">Ingen spelversion här än: installera en eller importera från en annan launcher.</string>
+  <string key="home.java_missing">Java hittades inte: installera det eller låt en annan launcher ladda ner en runtime.</string>
+  <string key="home.launched">{version} startad som {name}.</string>
+  <string key="home.last_world">Senaste världen</string>
 </strings>

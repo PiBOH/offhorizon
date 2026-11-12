@@ -11,6 +11,8 @@ OffHorizon — portable companion for Horizon
 
   offhorizon                       open the window
   offhorizon status                where everything is, what it found
+  offhorizon versions              the game versions found here
+  offhorizon play [VERSION]        start the game as the offline name
   offhorizon worlds                the saves, with health and inventory
   offhorizon name <NAME>           the offline player name
   offhorizon heal                  full health, air, fire out
@@ -62,6 +64,29 @@ pub fn run(args: &[String]) -> i32 {
         "version" | "--version" | "-V" => {
             println!("{} {}", i18n::t("app.name"), crate::VERSION);
             0
+        }
+        "versions" => {
+            let versions = session.versions();
+            if versions.is_empty() {
+                return done(vec![i18n::t("home.no_version")]);
+            }
+            done(versions
+                .iter()
+                .map(|v| {
+                    format!(
+                        "{:<24} {:<10} {:<12} {}",
+                        v.id,
+                        v.loader,
+                        v.release_time,
+                        v.game.display()
+                    )
+                })
+                .collect())
+        }
+        "play" => {
+            let id = word(1);
+            let id = (!id.is_empty()).then(|| id.to_string());
+            result(session.play(id.as_deref()))
         }
         "status" => done(session.status()),
         "worlds" => {

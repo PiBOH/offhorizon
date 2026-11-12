@@ -82,4 +82,13 @@
   <string key="status.error">Ошибка: {why}</string>
   <string key="status.no_launcher">Папка данных лаунчера Horizon не найдена.</string>
   <string key="portable.telemetry_off">выключена — ничего не отправляется</string>
+  <string key="nav.home">Главная</string>
+  <string key="home.versions">Версии</string>
+  <string key="home.play">Играть</string>
+  <string key="home.player">Игрок</string>
+  <string key="home.tagline">Портативный лаунчер без телеметрии</string>
+  <string key="home.no_version">Здесь пока нет версии игры: установите её или импортируйте из другого лаунчера.</string>
+  <string key="home.java_missing">Java не найдена: установите её или позвольте другому лаунчеру скачать среду выполнения.</string>
+  <string key="home.launched">{version} запущена как {name}.</string>
+  <string key="home.last_world">Последний мир</string>
 </strings>

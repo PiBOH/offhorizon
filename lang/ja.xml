@@ -82,4 +82,13 @@
   <string key="status.error">エラー: {why}</string>
   <string key="status.no_launcher">Horizon ランチャーのデータフォルダーが見つかりません。</string>
   <string key="portable.telemetry_off">オフ — 何も送信しません</string>
+  <string key="nav.home">ホーム</string>
+  <string key="home.versions">バージョン</string>
+  <string key="home.play">プレイ</string>
+  <string key="home.player">プレイヤー</string>
+  <string key="home.tagline">テレメトリのないポータブルランチャー</string>
+  <string key="home.no_version">ここにはまだゲームのバージョンがありません。インストールするか、他のランチャーから取り込んでください。</string>
+  <string key="home.java_missing">Java が見つかりません。インストールするか、他のランチャーにランタイムをダウンロードさせてください。</string>
+  <string key="home.launched">{version} を {name} として起動しました。</string>
+  <string key="home.last_world">最後のワールド</string>
 </strings>

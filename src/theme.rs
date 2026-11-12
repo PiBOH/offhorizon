@@ -1,17 +1,19 @@
-//! The look: Project ALM v4.5.0 Insanux's dark tool window — a navy wall, panels a shade lighter,
-//! one amber accent for what acts and a green one for what is fine.
+//! The look: the "Horizon Red Fracture" tile — an ink wall, panels a shade lighter, the violet of
+//! the horizon line for what acts, and the fracture red for what is wrong.
 
 use egui::{Color32, RichText, Style, Visuals};
 
-pub const BG: Color32 = Color32::from_rgb(15, 18, 24);
-pub const PANEL: Color32 = Color32::from_rgb(22, 27, 35);
-pub const PANEL_HI: Color32 = Color32::from_rgb(30, 36, 46);
-pub const LINE: Color32 = Color32::from_rgb(42, 50, 62);
-pub const TEXT: Color32 = Color32::from_rgb(222, 228, 238);
-pub const DIM: Color32 = Color32::from_rgb(138, 149, 165);
-pub const AMBER: Color32 = Color32::from_rgb(240, 165, 60);
-pub const GREEN: Color32 = Color32::from_rgb(96, 200, 140);
-pub const RED: Color32 = Color32::from_rgb(230, 100, 100);
+pub const BG: Color32 = Color32::from_rgb(0x16, 0x18, 0x1f);
+pub const PANEL: Color32 = Color32::from_rgb(0x1c, 0x1f, 0x28);
+pub const PANEL_HI: Color32 = Color32::from_rgb(0x25, 0x29, 0x34);
+pub const LINE: Color32 = Color32::from_rgb(0x33, 0x38, 0x46);
+pub const TEXT: Color32 = Color32::from_rgb(0xec, 0xed, 0xf3);
+pub const DIM: Color32 = Color32::from_rgb(0x8f, 0x96, 0xa8);
+pub const ACCENT: Color32 = Color32::from_rgb(0x9a, 0x86, 0xff);
+/// Writing that sits on the accent.
+pub const ON_ACCENT: Color32 = Color32::from_rgb(0x14, 0x15, 0x1c);
+pub const GREEN: Color32 = Color32::from_rgb(0x60, 0xc8, 0x8c);
+pub const RED: Color32 = Color32::from_rgb(0xff, 0x4d, 0x4d);
 
 /// Applies the window's look to a context.
 pub fn apply(ctx: &egui::Context) {
@@ -19,18 +21,18 @@ pub fn apply(ctx: &egui::Context) {
     let mut visuals = Visuals::dark();
     visuals.panel_fill = BG;
     visuals.window_fill = PANEL;
-    visuals.extreme_bg_color = Color32::from_rgb(12, 15, 20);
+    visuals.extreme_bg_color = Color32::from_rgb(0x10, 0x12, 0x18);
     visuals.faint_bg_color = PANEL_HI;
     visuals.widgets.noninteractive.bg_fill = PANEL;
     visuals.widgets.noninteractive.fg_stroke.color = TEXT;
     visuals.widgets.inactive.bg_fill = PANEL_HI;
     visuals.widgets.inactive.fg_stroke.color = TEXT;
-    visuals.widgets.hovered.bg_fill = Color32::from_rgb(40, 48, 60);
-    visuals.widgets.hovered.fg_stroke.color = AMBER;
-    visuals.widgets.active.bg_fill = Color32::from_rgb(48, 57, 70);
-    visuals.widgets.active.fg_stroke.color = AMBER;
-    visuals.selection.bg_fill = AMBER.linear_multiply(0.35);
-    visuals.selection.stroke.color = AMBER;
+    visuals.widgets.hovered.bg_fill = Color32::from_rgb(0x2f, 0x35, 0x44);
+    visuals.widgets.hovered.fg_stroke.color = ACCENT;
+    visuals.widgets.active.bg_fill = Color32::from_rgb(0x39, 0x40, 0x52);
+    visuals.widgets.active.fg_stroke.color = ACCENT;
+    visuals.selection.bg_fill = ACCENT.linear_multiply(0.35);
+    visuals.selection.stroke.color = ACCENT;
     visuals.window_stroke.color = LINE;
     style.visuals = visuals;
     style.spacing.item_spacing = egui::vec2(10.0, 8.0);
@@ -62,13 +64,15 @@ pub fn note(text: impl Into<String>, ok: bool) -> RichText {
 
 /// The accent used by what acts.
 pub fn action(text: &str) -> RichText {
-    RichText::new(text).size(13.5).color(AMBER).strong()
+    RichText::new(text).size(13.5).color(ACCENT).strong()
 }
 
 /// The icons the pages use: thin, one colour, drawn from lines and circles — the Material way, and
 /// no XML file to trust.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Icon {
+    Home,
+    Play,
     Person,
     World,
     Heart,
@@ -83,6 +87,24 @@ pub fn paint_icon(painter: &egui::Painter, icon: Icon, center: egui::Pos2, color
     let stroke = egui::Stroke::new(1.6, color);
     let at = |x: f32, y: f32| center + egui::vec2(x, y);
     match icon {
+        Icon::Home => {
+            painter.add(egui::Shape::line(
+                vec![at(-6.2, 0.0), at(0.0, -6.0), at(6.2, 0.0)],
+                stroke,
+            ));
+            painter.rect_stroke(
+                egui::Rect::from_min_max(at(-4.6, 0.0), at(4.6, 6.0)),
+                1.0,
+                stroke,
+            );
+        }
+        Icon::Play => {
+            painter.add(egui::Shape::convex_polygon(
+                vec![at(-3.4, -6.0), at(6.0, 0.0), at(-3.4, 6.0)],
+                color,
+                egui::Stroke::NONE,
+            ));
+        }
         Icon::Person => {
             painter.circle_stroke(at(0.0, -4.0), 3.0, stroke);
             let arc: Vec<egui::Pos2> = (0..=10)

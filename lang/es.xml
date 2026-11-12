@@ -82,4 +82,13 @@
   <string key="status.error">Error: {why}</string>
   <string key="status.no_launcher">No se encontró la carpeta de datos del launcher Horizon.</string>
   <string key="portable.telemetry_off">desactivada — nunca se envía nada</string>
+  <string key="nav.home">Inicio</string>
+  <string key="home.versions">Versiones</string>
+  <string key="home.play">Jugar</string>
+  <string key="home.player">Jugador</string>
+  <string key="home.tagline">Un lanzador portátil sin telemetría</string>
+  <string key="home.no_version">Aún no hay ninguna versión: instala una o importa desde otro lanzador.</string>
+  <string key="home.java_missing">No se encontró Java: instálalo o deja que otro lanzador descargue un entorno.</string>
+  <string key="home.launched">{version} iniciado como {name}.</string>
+  <string key="home.last_world">Último mundo</string>
 </strings>

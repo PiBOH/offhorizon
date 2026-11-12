@@ -168,28 +168,13 @@ fn normalise(raw: &str) -> String {
 
 /// The language this portable copy last ran in.
 pub fn saved(portable: &Portable) -> Option<String> {
-    let text = std::fs::read_to_string(portable.settings_file()).ok()?;
-    let value = serde_json::from_str::<serde_json::Value>(&text).ok()?;
-    let lang = value.get("lang")?.as_str()?;
-    Some(normalise(lang))
+    portable.get("lang").map(|code| normalise(&code))
 }
 
 /// Keeps the language with the stick. The tool's own settings file is the one file written
 /// without a copy: it holds nothing a player could lose.
 pub fn save(portable: &Portable, code: &str) -> Result<PathBuf, String> {
-    let file = portable.settings_file();
-    if let Some(dir) = file.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    }
-    let mut value = std::fs::read_to_string(&file)
-        .ok()
-        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-        .unwrap_or_else(|| serde_json::json!({}));
-    if let Some(object) = value.as_object_mut() {
-        object.insert("lang".into(), serde_json::json!(code));
-    }
-    std::fs::write(&file, format!("{value}\n")).map_err(|e| format!("{}: {e}", file.display()))?;
-    Ok(file)
+    portable.set("lang", code)
 }
 
 /// Reads a table, for the CLI's `lang --table` and the tests.

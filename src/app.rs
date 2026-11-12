@@ -9,6 +9,7 @@ use crate::world::{self, Preview, Weather};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
+    Home,
     Profile,
     Worlds,
     Player,
@@ -19,7 +20,8 @@ enum Page {
 }
 
 impl Page {
-    const ALL: [Page; 7] = [
+    const ALL: [Page; 8] = [
+        Page::Home,
         Page::Profile,
         Page::Worlds,
         Page::Player,
@@ -31,6 +33,7 @@ impl Page {
 
     fn name(self) -> String {
         i18n::t(match self {
+            Page::Home => "nav.home",
             Page::Profile => "nav.profile",
             Page::Worlds => "nav.worlds",
             Page::Player => "nav.player",
@@ -43,6 +46,7 @@ impl Page {
 
     fn icon(self) -> Icon {
         match self {
+            Page::Home => Icon::Home,
             Page::Profile => Icon::Person,
             Page::Worlds => Icon::World,
             Page::Player => Icon::Heart,
@@ -66,6 +70,8 @@ pub struct App {
     time_input: i64,
     weather_ticks: i32,
     launchers: Vec<Found>,
+    versions: Vec<crate::launch::Version>,
+    version_index: usize,
     log: Vec<String>,
 }
 
@@ -76,7 +82,9 @@ impl App {
         let mut app = Self {
             snapshot: Snapshot::default(),
             launchers: Vec::new(),
-            page: Page::Profile,
+            versions: Vec::new(),
+            version_index: 0,
+            page: Page::Home,
             index: 0,
             name_input: String::new(),
             item_id: "minecraft:bread".into(),
@@ -111,6 +119,13 @@ impl App {
         self.session.rescan();
         self.snapshot = self.session.snapshot();
         self.launchers = self.session.launchers();
+        self.versions = self.session.versions();
+        if self.version_index >= self.versions.len() {
+            let saved = self.session.portable.get("version");
+            self.version_index = saved
+                .and_then(|id| self.versions.iter().position(|v| v.id == id))
+                .unwrap_or(0);
+        }
         if self.index >= self.snapshot.worlds.len() {
             self.index = 0;
         }
@@ -183,7 +198,7 @@ impl eframe::App for App {
                     ui.label(
                         egui::RichText::new(i18n::t("app.name"))
                             .size(20.0)
-                            .color(theme::AMBER)
+                            .color(theme::ACCENT)
                             .strong(),
                     );
                     ui.label(theme::label(crate::VERSION));
@@ -253,10 +268,10 @@ impl eframe::App for App {
                         8.0,
                         egui::Stroke::new(
                             1.0,
-                            if picked { theme::AMBER } else { theme::LINE },
+                            if picked { theme::ACCENT } else { theme::LINE },
                         ),
                     );
-                    let color = if picked { theme::AMBER } else { theme::TEXT };
+                    let color = if picked { theme::ACCENT } else { theme::TEXT };
                     theme::paint_icon(painter, page.icon(), rect.left_center() + egui::vec2(16.0, 0.0), color);
                     painter.text(
                         rect.left_center() + egui::vec2(36.0, 0.0),
@@ -326,6 +341,7 @@ impl eframe::App for App {
                     .inner_margin(egui::Margin::same(18.0)),
             )
             .show(ctx, |ui| match self.page {
+                Page::Home => self.home_page(ui),
                 Page::Profile => self.profile_page(ui),
                 Page::Worlds => self.worlds_page(ui),
                 Page::Player => self.player_page(ui),
@@ -338,6 +354,193 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// The launcher's own front page: the versions found here, the name the game plays under, and
+    /// the button that starts it.
+    fn home_page(&mut self, ui: &mut egui::Ui) {
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                egui::Frame::none()
+                    .fill(theme::PANEL)
+                    .stroke(egui::Stroke::new(1.0, theme::LINE))
+                    .rounding(12.0)
+                    .inner_margin(egui::Margin::same(18.0))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            crate::logo::draw(ui, 54.0);
+                            ui.add_space(8.0);
+                            ui.vertical(|ui| {
+                                ui.label(
+                                    egui::RichText::new(i18n::t("app.name"))
+                                        .size(26.0)
+                                        .color(theme::TEXT)
+                                        .strong(),
+                                );
+                                ui.label(theme::label(i18n::t("home.tagline")));
+                            });
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    ui.label(theme::note(i18n::t("portable.telemetry_off"), true));
+                                    ui.label(theme::label(crate::VERSION));
+                                },
+                            );
+                        });
+                    });
+
+                ui.add_space(16.0);
+                ui.horizontal_top(|ui| {
+                    let versions = self.versions.clone();
+                    let width = (ui.available_width() - 340.0).max(380.0);
+                    ui.vertical(|ui| {
+                        ui.set_width(width);
+                        ui.label(theme::title(&i18n::t("home.versions")));
+                        ui.add_space(6.0);
+                        if versions.is_empty() {
+                            ui.label(theme::note(i18n::t("home.no_version"), false));
+                            ui.add_space(6.0);
+                            if ui.button(i18n::t("nav.launchers")).clicked() {
+                                self.page = Page::Launchers;
+                            }
+                            return;
+                        }
+                        for (index, version) in versions.iter().enumerate() {
+                            let picked = index == self.version_index;
+                            let (rect, response) = ui
+                                .allocate_exact_size(egui::vec2(width, 48.0), egui::Sense::click());
+                            let painter = ui.painter();
+                            painter.rect_filled(
+                                rect,
+                                8.0,
+                                if picked { theme::PANEL_HI } else { theme::PANEL },
+                            );
+                            painter.rect_stroke(
+                                rect,
+                                8.0,
+                                egui::Stroke::new(
+                                    1.0,
+                                    if picked { theme::ACCENT } else { theme::LINE },
+                                ),
+                            );
+                            painter.text(
+                                rect.left_center() + egui::vec2(14.0, -8.0),
+                                egui::Align2::LEFT_CENTER,
+                                &version.id,
+                                egui::FontId::proportional(15.0),
+                                theme::TEXT,
+                            );
+                            painter.text(
+                                rect.left_center() + egui::vec2(14.0, 10.0),
+                                egui::Align2::LEFT_CENTER,
+                                format!("{} · {}", version.loader, version.release_time),
+                                egui::FontId::proportional(11.5),
+                                theme::DIM,
+                            );
+                            painter.text(
+                                rect.right_center() + egui::vec2(-14.0, 0.0),
+                                egui::Align2::RIGHT_CENTER,
+                                version.game.display().to_string(),
+                                egui::FontId::proportional(11.0),
+                                theme::DIM,
+                            );
+                            if response.clicked() {
+                                self.version_index = index;
+                            }
+                            ui.add_space(6.0);
+                        }
+                    });
+
+                    ui.add_space(16.0);
+                    ui.vertical(|ui| {
+                        ui.set_width(300.0);
+                        egui::Frame::none()
+                            .fill(theme::PANEL)
+                            .stroke(egui::Stroke::new(1.0, theme::LINE))
+                            .rounding(10.0)
+                            .inner_margin(egui::Margin::same(14.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    theme::icon(ui, Icon::Person, theme::ACCENT);
+                                    ui.label(theme::label(i18n::t("home.player")));
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut self.name_input)
+                                            .hint_text("Steve")
+                                            .desired_width(150.0),
+                                    );
+                                    if ui
+                                        .button(theme::action(&i18n::t("profile.set_name")))
+                                        .clicked()
+                                    {
+                                        let name = self.name_input.clone();
+                                        let result = self.session.set_name(&name);
+                                        self.carry(result);
+                                    }
+                                });
+                            });
+
+                        ui.add_space(12.0);
+                        let play = egui::Button::new(
+                            egui::RichText::new(format!("▶  {}", i18n::t("home.play")))
+                                .size(20.0)
+                                .color(theme::ON_ACCENT)
+                                .strong(),
+                        )
+                        .fill(theme::ACCENT)
+                        .min_size(egui::vec2(300.0, 54.0));
+                        if ui.add(play).clicked() {
+                            self.play();
+                        }
+
+                        ui.add_space(12.0);
+                        let last = self.snapshot.previews.first().cloned();
+                        if let Some(preview) = last {
+                            egui::Frame::none()
+                                .fill(theme::PANEL)
+                                .stroke(egui::Stroke::new(1.0, theme::LINE))
+                                .rounding(10.0)
+                                .inner_margin(egui::Margin::same(14.0))
+                                .show(ui, |ui| {
+                                    ui.label(theme::label(i18n::t("home.last_world")));
+                                    ui.horizontal(|ui| {
+                                        theme::icon(ui, Icon::World, theme::ACCENT);
+                                        ui.label(theme::value(preview.label.clone()));
+                                    });
+                                    ui.add(
+                                        egui::ProgressBar::new(preview.health_fraction())
+                                            .desired_width(220.0)
+                                            .text(format!(
+                                                "{:.0}/20",
+                                                preview.health.unwrap_or(0.0)
+                                            )),
+                                    );
+                                    ui.label(theme::label(format!(
+                                        "{} x{} · {} {} · {} {}",
+                                        i18n::t("worlds.food"),
+                                        preview.food.unwrap_or(0),
+                                        i18n::t("worlds.items"),
+                                        preview.items.len(),
+                                        i18n::t("worlds.level"),
+                                        preview.xp_level.unwrap_or(0)
+                                    )));
+                                    if ui.button(i18n::t("nav.worlds")).clicked() {
+                                        self.page = Page::Worlds;
+                                    }
+                                });
+                        }
+                    });
+                });
+            });
+    }
+
+    /// Starts the version picked on the home page, as the offline name.
+    fn play(&mut self) {
+        let id = self.versions.get(self.version_index).map(|v| v.id.clone());
+        let result = self.session.play(id.as_deref());
+        self.carry(result);
+    }
+
     fn profile_page(&mut self, ui: &mut egui::Ui) {
         ui.label(theme::title(&i18n::t("profile.title")));
         ui.label(theme::label(i18n::t("profile.blurb")));
@@ -418,13 +621,13 @@ impl App {
                         .fill(if picked { theme::PANEL_HI } else { theme::PANEL })
                         .stroke(egui::Stroke::new(
                             1.0,
-                            if picked { theme::AMBER } else { theme::LINE },
+                            if picked { theme::ACCENT } else { theme::LINE },
                         ))
                         .rounding(8.0)
                         .inner_margin(egui::Margin::same(12.0))
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                theme::icon(ui, Icon::World, theme::AMBER);
+                                theme::icon(ui, Icon::World, theme::ACCENT);
                                 ui.label(theme::value(preview.label.clone()));
                                 ui.label(theme::label(bytes(preview.bytes)));
                                 ui.with_layout(
@@ -698,7 +901,7 @@ impl App {
             .show(ui, |ui| {
                 for install in &launchers {
                     ui.horizontal(|ui| {
-                        theme::icon(ui, Icon::Folder, theme::AMBER);
+                        theme::icon(ui, Icon::Folder, theme::ACCENT);
                         ui.label(theme::value(install.name));
                         ui.label(theme::label(install.kind));
                         ui.label(theme::label(format!(

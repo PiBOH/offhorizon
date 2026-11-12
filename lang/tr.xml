@@ -82,4 +82,13 @@
   <string key="status.error">Hata: {why}</string>
   <string key="status.no_launcher">Horizon başlatıcısının veri klasörü bulunamadı.</string>
   <string key="portable.telemetry_off">kapalı — hiçbir şey gönderilmez</string>
+  <string key="nav.home">Ana sayfa</string>
+  <string key="home.versions">Sürümler</string>
+  <string key="home.play">Oyna</string>
+  <string key="home.player">Oyuncu</string>
+  <string key="home.tagline">Telemetrisiz taşınabilir bir başlatıcı</string>
+  <string key="home.no_version">Burada henüz oyun sürümü yok: bir tane kurun veya başka bir başlatıcıdan içe aktarın.</string>
+  <string key="home.java_missing">Java bulunamadı: kurun ya da başka bir başlatıcının çalışma zamanı indirmesine izin verin.</string>
+  <string key="home.launched">{version}, {name} olarak başlatıldı.</string>
+  <string key="home.last_world">Son dünya</string>
 </strings>
