@@ -13,6 +13,7 @@ OffHorizon — portable companion for Horizon
   offhorizon status                where everything is, what it found
   offhorizon versions              the game versions found here
   offhorizon play [VERSION]        start the game as the offline name
+                                   with --dry-run: print the command instead
   offhorizon worlds                the saves, with health and inventory
   offhorizon name <NAME>           the offline player name
   offhorizon heal                  full health, air, fire out
@@ -37,6 +38,7 @@ Every world command takes --world <NAME>; without it, the world played last.";
 pub fn run(args: &[String]) -> i32 {
     let mut session = Session::open();
     let mut world_name: Option<String> = None;
+    let mut dry_run = false;
     let mut words: Vec<String> = Vec::new();
     let mut index = 0;
     while index < args.len() {
@@ -44,6 +46,10 @@ pub fn run(args: &[String]) -> i32 {
             "--world" | "-w" => {
                 world_name = args.get(index + 1).cloned();
                 index += 2;
+            }
+            "--dry-run" => {
+                dry_run = true;
+                index += 1;
             }
             other => {
                 words.push(other.to_string());
@@ -86,6 +92,23 @@ pub fn run(args: &[String]) -> i32 {
         "play" => {
             let id = word(1);
             let id = (!id.is_empty()).then(|| id.to_string());
+            if dry_run {
+                return match session.plan(id.as_deref()) {
+                    Ok(plan) => {
+                        // shortcut: this is a debug dump, so its labels stay English.
+                        let mut lines = vec![
+                            format!("version: {}", plan.id),
+                            format!("java: {}", plan.java.display()),
+                            format!("main: {}", plan.main_class),
+                            format!("jvm: {}", plan.jvm.join(" ")),
+                            format!("args: {}", plan.game_args.join(" ")),
+                        ];
+                        lines.push(format!("cwd: {}", plan.cwd.display()));
+                        done(lines)
+                    }
+                    Err(why) => fail(why),
+                };
+            }
             result(session.play(id.as_deref()))
         }
         "status" => done(session.status()),

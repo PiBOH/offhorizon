@@ -165,8 +165,8 @@ impl Session {
         launcher::offline_name(&self.home()).unwrap_or_else(|| "Player".to_string())
     }
 
-    /// Starts a version, keeping the choice with the stick. With no name, the one played last.
-    pub fn play(&mut self, id: Option<&str>) -> Result<String, String> {
+    /// The command that would start a version, without starting it.
+    pub fn plan(&self, id: Option<&str>) -> Result<launch::Plan, String> {
         let versions = self.versions();
         let picked = match id {
             Some(id) => versions.iter().find(|v| v.id == id).cloned(),
@@ -177,13 +177,18 @@ impl Session {
                 .or_else(|| versions.first().cloned()),
         };
         let picked = picked.ok_or_else(|| i18n::t("home.no_version"))?;
+        launch::plan(&picked.game, &picked, &self.player_name())
+    }
+
+    /// Starts a version, keeping the choice with the stick. With no name, the one played last.
+    pub fn play(&mut self, id: Option<&str>) -> Result<String, String> {
+        let plan = self.plan(id)?;
         let name = self.player_name();
-        let plan = launch::plan(&picked.game, &picked, &name)?;
         plan.spawn()?;
-        self.portable.set("version", &picked.id)?;
+        self.portable.set("version", &plan.id)?;
         Ok(i18n::tf(
             "home.launched",
-            &[("version", picked.id), ("name", name)],
+            &[("version", plan.id), ("name", name)],
         ))
     }
 

@@ -24,6 +24,8 @@ pub struct Version {
 /// The command that runs one version.
 #[derive(Clone, Debug)]
 pub struct Plan {
+    /// The version this command runs.
+    pub id: String,
     pub java: PathBuf,
     pub jvm: Vec<String>,
     pub main_class: String,
@@ -306,6 +308,34 @@ fn java_for(game: &Path) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
+/// The game's own jars: this version's, and those of the versions it inherits from.
+fn jar_chain(json: &Path) -> Vec<PathBuf> {
+    let mut jars = Vec::new();
+    let mut current = json.to_path_buf();
+    for _ in 0..8 {
+        let Some(folder) = current.parent() else { break };
+        let id = folder
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let jar = folder.join(format!("{id}.jar"));
+        if jar.is_file() {
+            jars.push(jar);
+        }
+        let Ok(value) = read_json(&current) else { break };
+        let Some(parent) = value
+            .get("inheritedFrom")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+        else {
+            break;
+        };
+        let Some(versions) = folder.parent() else { break };
+        current = versions.join(&parent).join(format!("{parent}.json"));
+    }
+    jars
+}
+
 fn collect_java(dir: &Path, exe: &str, depth: u32, into: &mut Vec<PathBuf>) {
     if depth == 0 {
         return;
@@ -376,6 +406,13 @@ pub fn plan(game: &Path, version: &Version, name: &str) -> Result<Plan, String> 
             }
         }
     }
+    // The client jar itself is not a library: the launcher puts it on the classpath last.
+    for jar in jar_chain(&version.json) {
+        let full = jar.display().to_string();
+        if !jars.contains(&full) {
+            jars.push(full);
+        }
+    }
     let separator = if cfg!(windows) { ";" } else { ":" };
     let classpath = jars.join(separator);
     let assets = value
@@ -440,6 +477,7 @@ pub fn plan(game: &Path, version: &Version, name: &str) -> Result<Plan, String> 
         jvm.push(format!("-Djava.library.path={}", natives.display()));
     }
     Ok(Plan {
+        id: version.id.clone(),
         java,
         jvm,
         main_class,
@@ -490,6 +528,7 @@ mod tests {
             .to_string(),
         )
         .unwrap();
+        std::fs::write(folder.join("1.20.1.jar"), b"jar").unwrap();
         let exe = if cfg!(windows) { "java.exe" } else { "java" };
         let runtime = game.join("runtime/java-runtime/bin").join(exe);
         std::fs::create_dir_all(runtime.parent().unwrap()).unwrap();
@@ -511,6 +550,8 @@ mod tests {
             .expect("the library is on the classpath");
         assert!(classpath.contains(separator));
         assert!(!classpath.contains("elsewhere"));
+        assert!(classpath.contains("1.20.1.jar"), "the client jar plays too");
+        assert_eq!(plan.id, "1.20.1");
         let uuid = offline_uuid("Steve");
         assert_eq!(uuid.len(), 36);
         assert_eq!(offline_uuid("Steve"), uuid);
