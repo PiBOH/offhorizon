@@ -102,4 +102,5 @@
   <string key="home.instance_removed">‘{name}’ 인스턴스를 삭제했습니다.</string>
   <string key="home.instance_missing">‘{name}’ 인스턴스가 없습니다.</string>
   <string key="home.name_required">인스턴스에 이름을 주세요.</string>
+  <string key="home.version_not_there">{version}이(가) {folder}에 설치되어 있지 않습니다.</string>
 </strings>

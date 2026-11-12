@@ -183,11 +183,22 @@ impl Session {
         if name.is_empty() {
             return Err(i18n::t("home.name_required"));
         }
-        let Some(found) = self.versions().into_iter().find(|v| v.id == version) else {
-            return Err(i18n::t("home.no_version"));
-        };
         let game = game.unwrap_or_else(|| self.home());
         std::fs::create_dir_all(&game).map_err(|e| format!("{}: {e}", game.display()))?;
+        // The version has to live in the folder the instance plays from: its jars are there.
+        let Some(found) = self
+            .versions()
+            .into_iter()
+            .find(|v| v.id == version && v.game == game)
+        else {
+            return Err(i18n::tf(
+                "home.version_not_there",
+                &[
+                    ("version", version.to_string()),
+                    ("folder", game.display().to_string()),
+                ],
+            ));
+        };
         let mut list = self.instances();
         list.retain(|known| known.name != name);
         list.push(Instance {
@@ -212,8 +223,8 @@ impl Session {
         Ok(i18n::tf("home.instance_removed", &[("name", name.to_string())]))
     }
 
-    /// Starts an instance in its own game folder, as the offline name.
-    pub fn play_instance(&mut self, name: &str) -> Result<String, String> {
+    /// The command that would start an instance, without starting it.
+    pub fn plan_instance(&self, name: &str) -> Result<launch::Plan, String> {
         let Some(instance) = self.instances().into_iter().find(|known| known.name == name) else {
             return Err(i18n::tf("home.instance_missing", &[("name", name.to_string())]));
         };
@@ -224,12 +235,18 @@ impl Session {
             .or_else(|| versions.iter().find(|v| v.id == instance.version))
             .cloned()
             .ok_or_else(|| i18n::t("home.no_version"))?;
-        let name = self.player_name();
-        launch::plan(&instance.game, &version, &name)?.spawn()?;
-        self.portable.set("instance", &instance.name)?;
+        launch::plan(&instance.game, &version, &self.player_name())
+    }
+
+    /// Starts an instance in its own game folder, as the offline name.
+    pub fn play_instance(&mut self, name: &str) -> Result<String, String> {
+        let plan = self.plan_instance(name)?;
+        let player = self.player_name();
+        plan.spawn()?;
+        self.portable.set("instance", name)?;
         Ok(i18n::tf(
             "home.launched",
-            &[("version", version.id), ("name", name)],
+            &[("version", plan.id), ("name", player)],
         ))
     }
 

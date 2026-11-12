@@ -102,4 +102,5 @@
   <string key="home.instance_removed">“{name}” örneği kaldırıldı.</string>
   <string key="home.instance_missing">“{name}” adlı örnek yok.</string>
   <string key="home.name_required">Örneğe bir ad verin.</string>
+  <string key="home.version_not_there">{version}, {folder} içinde kurulu değil.</string>
 </strings>

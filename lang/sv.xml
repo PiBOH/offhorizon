@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Instansen ”{name}” borttagen.</string>
   <string key="home.instance_missing">Ingen instans med namnet ”{name}”.</string>
   <string key="home.name_required">Ge instansen ett namn.</string>
+  <string key="home.version_not_there">{version} är inte installerad i {folder}.</string>
 </strings>

@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Сборка «{name}» удалена.</string>
   <string key="home.instance_missing">Нет сборки с названием «{name}».</string>
   <string key="home.name_required">Дайте сборке название.</string>
+  <string key="home.version_not_there">{version} не установлена в {folder}.</string>
 </strings>

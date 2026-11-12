@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Instance “{name}” removed.</string>
   <string key="home.instance_missing">No instance named “{name}”.</string>
   <string key="home.name_required">Give the instance a name.</string>
+  <string key="home.version_not_there">{version} is not installed in {folder}.</string>
 </strings>

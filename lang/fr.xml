@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Instance « {name} » supprimée.</string>
   <string key="home.instance_missing">Aucune instance nommée « {name} ».</string>
   <string key="home.name_required">Donnez un nom à l'instance.</string>
+  <string key="home.version_not_there">{version} n'est pas installée dans {folder}.</string>
 </strings>

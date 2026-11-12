@@ -134,29 +134,21 @@ pub fn run(args: &[String]) -> i32 {
             _ => usage("instance list|new|remove"),
         },
         "play" => {
-            if let Some(name) = &instance {
-                return result(session.play_instance(name));
-            }
-            let id = word(1);
-            let id = (!id.is_empty()).then(|| id.to_string());
+            let id = (!word(1).is_empty()).then(|| word(1).to_string());
+            let planned = match &instance {
+                Some(name) => session.plan_instance(name),
+                None => session.plan(id.as_deref()),
+            };
             if dry_run {
-                return match session.plan(id.as_deref()) {
-                    Ok(plan) => {
-                        // shortcut: this is a debug dump, so its labels stay English.
-                        let mut lines = vec![
-                            format!("version: {}", plan.id),
-                            format!("java: {}", plan.java.display()),
-                            format!("main: {}", plan.main_class),
-                            format!("jvm: {}", plan.jvm.join(" ")),
-                            format!("args: {}", plan.game_args.join(" ")),
-                        ];
-                        lines.push(format!("cwd: {}", plan.cwd.display()));
-                        done(lines)
-                    }
+                return match planned {
+                    Ok(plan) => done(dump(plan)),
                     Err(why) => fail(why),
                 };
             }
-            result(session.play(id.as_deref()))
+            match &instance {
+                Some(name) => result(session.play_instance(name)),
+                None => result(session.play(id.as_deref())),
+            }
         }
         "status" => done(session.status()),
         "worlds" => {
@@ -356,6 +348,19 @@ pub fn run(args: &[String]) -> i32 {
         },
         other => usage(other),
     }
+}
+
+/// What `play --dry-run` prints: the command, and nothing started.
+fn dump(plan: crate::launch::Plan) -> Vec<String> {
+    // shortcut: this is a debug dump, so its labels stay English.
+    vec![
+        format!("version: {}", plan.id),
+        format!("java: {}", plan.java.display()),
+        format!("main: {}", plan.main_class),
+        format!("jvm: {}", plan.jvm.join(" ")),
+        format!("args: {}", plan.game_args.join(" ")),
+        format!("cwd: {}", plan.cwd.display()),
+    ]
 }
 
 fn short(id: &str) -> &str {

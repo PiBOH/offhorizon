@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Istanza «{name}» rimossa.</string>
   <string key="home.instance_missing">Nessuna istanza chiamata «{name}».</string>
   <string key="home.name_required">Dai un nome all'istanza.</string>
+  <string key="home.version_not_there">{version} non è installata in {folder}.</string>
 </strings>

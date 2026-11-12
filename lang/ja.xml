@@ -102,4 +102,5 @@
   <string key="home.instance_removed">インスタンス「{name}」を削除しました。</string>
   <string key="home.instance_missing">「{name}」というインスタンスはありません。</string>
   <string key="home.name_required">インスタンスに名前を付けてください。</string>
+  <string key="home.version_not_there">{version} は {folder} にインストールされていません。</string>
 </strings>

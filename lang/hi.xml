@@ -102,4 +102,5 @@
   <string key="home.instance_removed">इंस्टेंस “{name}” हटाया गया।</string>
   <string key="home.instance_missing">“{name}” नाम का कोई इंस्टेंस नहीं।</string>
   <string key="home.name_required">इंस्टेंस को नाम दें।</string>
+  <string key="home.version_not_there">{version} {folder} में इंस्टॉल नहीं है।</string>
 </strings>

@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Збірку «{name}» видалено.</string>
   <string key="home.instance_missing">Немає збірки з назвою «{name}».</string>
   <string key="home.name_required">Дайте збірці назву.</string>
+  <string key="home.version_not_there">{version} не встановлена у {folder}.</string>
 </strings>

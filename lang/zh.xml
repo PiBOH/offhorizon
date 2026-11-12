@@ -102,4 +102,5 @@
   <string key="home.instance_removed">已删除实例“{name}”。</string>
   <string key="home.instance_missing">没有名为“{name}”的实例。</string>
   <string key="home.name_required">请给实例起个名字。</string>
+  <string key="home.version_not_there">{version} 未安装在 {folder} 中。</string>
 </strings>

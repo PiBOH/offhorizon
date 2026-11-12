@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Instantie ‘{name}’ verwijderd.</string>
   <string key="home.instance_missing">Geen instantie met de naam ‘{name}’.</string>
   <string key="home.name_required">Geef de instantie een naam.</string>
+  <string key="home.version_not_there">{version} is niet geïnstalleerd in {folder}.</string>
 </strings>

@@ -102,4 +102,5 @@
   <string key="home.instance_removed">Instance „{name}“ odstraněna.</string>
   <string key="home.instance_missing">Žádná instance s názvem „{name}“.</string>
   <string key="home.name_required">Dejte instanci název.</string>
+  <string key="home.version_not_there">{version} není nainstalována v {folder}.</string>
 </strings>

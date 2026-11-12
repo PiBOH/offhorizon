@@ -102,4 +102,5 @@
   <string key="home.instance_removed">تم حذف النسخة «{name}».</string>
   <string key="home.instance_missing">لا توجد نسخة باسم «{name}».</string>
   <string key="home.name_required">أعطِ النسخة اسمًا.</string>
+  <string key="home.version_not_there">{version} غير مثبّتة في {folder}.</string>
 </strings>
