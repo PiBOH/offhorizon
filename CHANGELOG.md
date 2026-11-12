@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.1-nightly]
+
+The window is a launcher now.
+
+- **Home**: it opens on the versions found on this computer and on a big *Play*, which builds the
+  command from the version's JSON and starts the game as the offline name (`versions`, `play`).
+- **Instances**: a version in a folder of its own. At creation you choose the folder: beside this
+  executable (portable, the default) or any install already here (`instance new|list|remove`).
+- **Release notes**: the release body is the changelog section of the released version, no longer
+  the whole file.
+
 ## [0.2.0-nightly]
 
 OffHorizon, portable, and the same from the terminal as from the window.
