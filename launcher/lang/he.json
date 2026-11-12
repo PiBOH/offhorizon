@@ -870,7 +870,7 @@
   "Stay on {version}": "הישאר על {version}",
   "You haven't played this one yet. Press Play to start.": "עוד לא שיחקת בזה. לחץ על הפעל כדי להתחיל.",
   "You've played for {time}! Last played {when}.": "שיחקת עבור {time}! שיחק לאחרונה {when}.",
-  "Rust Edition": "מהדורת חלודה",
+  "Rust Edition": "מהדורת Rust",
   "Java Edition": "Java Edition",
   "All notes": "כל ההערות",
   "No notes yet": "עדיין אין הערות",

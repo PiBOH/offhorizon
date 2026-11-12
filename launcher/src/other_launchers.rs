@@ -35,9 +35,17 @@
 //!   whose type is none of the four copies without a loader. A user's guide shows the instances
 //!   in a folder named `instances` (<https://github.com/Griefed/ServerPackCreator>, README).
 //!   Every other field is ignored.
+//! - SKLauncher 4.0 (Next): its storage folder keeps each instance in `instances/`
+//!   (`%APPDATA%\.sklauncher\instances` on Windows, `~/Library/Application Support/sklauncher/instances`
+//!   on macOS, `~/.sklauncher/instances` on Linux; Settings → Storage → Location moves it),
+//!   and each folder there is an instance whose game folder it is. SKLauncher 3.2 kept its profiles
+//!   in the official launcher's `launcher_profiles.json`, so those are found as the official
+//!   launcher's.
+//!   <https://docs.skmedix.pl/4.0/getting-started/migrating>,
+//!   <https://docs.skmedix.pl/faq/launcher-related>
 //!
-//! Neither the CurseForge app nor the Modrinth App describes where it records an instance's
-//! Minecraft version, so the player names it when copying one.
+//! Neither the CurseForge app, the Modrinth App nor SKLauncher describes where it records an
+//! instance's Minecraft version, so the player names it when copying one.
 use crate::instances::{self, Instance};
 use crate::loaders;
 use crate::sources::{self, Folders, Os};
@@ -101,6 +109,7 @@ const SKIPPED: [&str; 7] = [
 const CURSEFORGE: &str = "the CurseForge app";
 const MODRINTH_APP: &str = "the Modrinth App";
 const ATLAUNCHER: &str = "ATLauncher";
+const SKLAUNCHER: &str = "SKlauncher";
 
 /// The name a launcher goes by on its own window, for a list: `launcher` as [`Found`] names it.
 pub fn app_name(launcher: &'static str) -> &'static str {
@@ -426,10 +435,67 @@ pub fn atlauncher_instances(root: &Path) -> Vec<Found> {
     found
 }
 
+/// One SKLauncher instance: the folder itself is its game folder.
+fn sklauncher_instance(dir: &Path) -> Option<Found> {
+    Some(Found {
+        launcher: SKLAUNCHER,
+        name: dir.file_name()?.to_string_lossy().into_owned(),
+        minecraft: None,
+        loader: None,
+        game: dir.to_path_buf(),
+        shared: false,
+    })
+}
+
+/// The SKLauncher instances in `root`: its storage folder's `instances/` when it has one, else
+/// `root` itself when it is that `instances/` folder.
+pub fn sklauncher_instances(root: &Path) -> Vec<Found> {
+    let instances = match root.file_name().is_some_and(|n| n == "instances") {
+        true => root.to_path_buf(),
+        false => root.join("instances"),
+    };
+    let mut found: Vec<Found> = fs::read_dir(&instances)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .filter_map(|game| sklauncher_instance(&game))
+        .collect();
+    found.sort_by_key(|f| f.name.to_lowercase());
+    found
+}
+
+/// SKLauncher's storage folder, its `instances/`, or one instance in it: what `dir` holds when it
+/// is inside SKLauncher's tree, else `None`.
+fn sklauncher_in(dir: &Path, launcher: Option<&'static str>) -> Option<Vec<Found>> {
+    let storage = |p: &Path| {
+        p.file_name().is_some_and(|n| {
+            let n = n.to_string_lossy();
+            n.eq_ignore_ascii_case(".sklauncher") || n.eq_ignore_ascii_case("sklauncher")
+        })
+    };
+    if launcher == Some(SKLAUNCHER) || storage(dir) {
+        return Some(sklauncher_instances(dir));
+    }
+    if dir.file_name().is_some_and(|n| n == "instances") && dir.parent().is_some_and(storage) {
+        return Some(sklauncher_instances(dir));
+    }
+    if dir.parent().and_then(Path::parent).is_some_and(storage) {
+        return sklauncher_instance(dir).map(|one| vec![one]);
+    }
+    None
+}
+
 /// What one folder holds: an official launcher's profiles, a Prism or MultiMC root (or its
 /// `instances/`), the CurseForge app's modding folder (or its `Instances/`), the Modrinth App's
-/// folder, or a single instance folder.
+/// folder, SKLauncher's storage folder (or its `instances/`), or a single instance folder.
 pub fn in_folder(dir: &Path, launcher: Option<&'static str>) -> Vec<Found> {
+    // Before the CurseForge app's `Instances/`: on a system whose names ignore case, SKLauncher's
+    // `instances/` is that same folder name.
+    if let Some(found) = sklauncher_in(dir, launcher) {
+        return found;
+    }
     if dir.join("launcher_profiles.json").is_file() {
         return official_profiles(dir);
     }
@@ -506,6 +572,7 @@ pub fn scan(os: Os, folders: &Folders) -> Vec<Found> {
             "Prism Launcher" | "MultiMC" => found.extend(prism_instances(&dir, launcher)),
             "Modrinth App" => found.extend(modrinth_app_profiles(&dir)),
             ATLAUNCHER => found.extend(atlauncher_instances(&dir)),
+            SKLAUNCHER => found.extend(sklauncher_instances(&dir)),
             _ => {}
         }
     }

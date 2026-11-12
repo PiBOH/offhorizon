@@ -870,7 +870,7 @@
   "Stay on {version}": "Tiếp tục {version}",
   "You haven't played this one yet. Press Play to start.": "Bạn chưa chơi trò này. Nhấn Play để bắt đầu.",
   "You've played for {time}! Last played {when}.": "Bạn đã chơi được {time}! Chơi lần cuối {when}.",
-  "Rust Edition": "Phiên bản rỉ sét",
+  "Rust Edition": "Phiên bản Rust",
   "Java Edition": "Phiên bản Java",
   "All notes": "Tất cả ghi chú",
   "No notes yet": "Chưa có ghi chú nào",

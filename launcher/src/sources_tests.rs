@@ -414,7 +414,8 @@ fn the_not_found_message_names_the_launcher_that_was_chosen() {
     let error = resolve_with(&other, &[], &s.0.join("linked"), &Mojang::new(MANIFEST)).unwrap_err();
     assert!(
         error.contains(
-            "Prism Launcher, MultiMC, the Modrinth App, ATLauncher, GDLauncher or Dawn Client"
+            "Prism Launcher, MultiMC, the Modrinth App, ATLauncher, GDLauncher, Dawn Client or \
+             SKlauncher"
         ),
         "{error}"
     );
@@ -507,7 +508,8 @@ fn nothing_found_lists_every_folder_and_what_it_lacks() {
     );
     assert!(error.starts_with(&expected), "{error}");
     assert!(error.contains(
-        "Prism Launcher, MultiMC, the Modrinth App, ATLauncher, GDLauncher or Dawn Client"
+        "Prism Launcher, MultiMC, the Modrinth App, ATLauncher, GDLauncher, Dawn Client or \
+         SKlauncher"
     ));
     // A launcher that isn't installed isn't listed.
     assert!(!error.contains("atlauncher"));
@@ -574,6 +576,7 @@ fn each_system_has_its_launcher_folders() {
         "GDLauncher: /home/r/.local/share/gdlauncher_carbon",
         "GDLauncher: /home/r/.config/gdlauncher_next",
         "Dawn Client: /home/r/.dawn",
+        "SKlauncher: /home/r/.sklauncher",
     ] {
         assert!(got.iter().any(|g| g == expected), "{expected} in {got:#?}");
     }
@@ -592,6 +595,7 @@ fn each_system_has_its_launcher_folders() {
         got.contains(&"Prism Launcher: /Users/r/Library/Application Support/PrismLauncher".into())
     );
     assert!(got.contains(&"Dawn Client: /Users/r/Library/Application Support/.dawn".into()));
+    assert!(got.contains(&"SKlauncher: /Users/r/Library/Application Support/sklauncher".into()));
     let windows = Folders {
         home: "C:/Users/r".into(),
         data: "C:/Users/r/AppData/Roaming".into(),
@@ -604,4 +608,5 @@ fn each_system_has_its_launcher_folders() {
     );
     assert!(got.contains(&"ATLauncher: C:/Users/r/AppData/Roaming/ATLauncher".into()));
     assert!(got.contains(&"Dawn Client: C:/Users/r/AppData/Roaming/.dawn".into()));
+    assert!(got.contains(&"SKlauncher: C:/Users/r/AppData/Roaming/.sklauncher".into()));
 }

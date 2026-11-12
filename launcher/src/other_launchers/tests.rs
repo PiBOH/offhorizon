@@ -325,6 +325,53 @@ fn atlauncher_instances_are_read_from_their_instance_json() {
 }
 
 #[test]
+fn sklauncher_instances_are_the_folders_in_its_instances_folder() {
+    let root = scratch("sklauncher");
+    let storage = root.join(".sklauncher");
+    let modded = storage.join("instances/Modded");
+    write(&modded.join("mods/a.jar"), "jar");
+    write(&modded.join("saves/World/level.dat"), "dat");
+    write(&modded.join("options.txt"), "fov:0\n");
+    fs::create_dir_all(storage.join("instances/Vanilla")).unwrap();
+    // SKLauncher's own game files sit above the instances, not in them.
+    write(
+        &storage.join("libraries/com/mojang/minecraft/1.21.1.jar"),
+        "jar",
+    );
+    let folders = Folders {
+        home: root.clone(),
+        data: root.clone(),
+        config: root.clone(),
+    };
+    // The launcher's default scan looks in SKLauncher's storage folder.
+    let found = scan(Os::Linux, &folders);
+    let names: Vec<_> = found
+        .iter()
+        .map(|f| (f.launcher, f.name.as_str()))
+        .collect();
+    assert_eq!(names, [(SKLAUNCHER, "Modded"), (SKLAUNCHER, "Vanilla")]);
+    assert!(found.iter().all(|f| f.minecraft.is_none() && !f.shared));
+    assert_eq!(found[0].game, modded);
+    // Its storage folder, its instances folder, and one instance in it all find the same ones,
+    // never the CurseForge app's `Instances/` (one name where case is ignored).
+    assert_eq!(in_folder(&storage, None), found);
+    assert_eq!(in_folder(&storage.join("instances"), None), found);
+    assert_eq!(in_folder(&modded, None), [found[0].clone()]);
+    // SKLauncher records no version where Horizon reads it, so the player names it.
+    let err = import(&found[0], "x", None).unwrap_err();
+    assert!(
+        err.contains("SKlauncher doesn't say which Minecraft version Modded plays here"),
+        "{err}"
+    );
+    // Its worlds and settings come along, and nothing in the other launcher's folder changes.
+    let to = root.join("copy");
+    copy_game(&found[0], &to).unwrap();
+    assert!(to.join("saves/World/level.dat").is_file() && to.join("options.txt").is_file());
+    assert!(modded.join("mods/a.jar").is_file());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn atlauncher_loader_types_match_whatever_the_case() {
     for (kind, want) in [
         ("fabric", "fabric"),

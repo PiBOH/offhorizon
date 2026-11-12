@@ -1,6 +1,6 @@
 //! Where the player's own Minecraft files are: the folder they chose, the official launcher's,
 //! or another launcher's (Prism Launcher, MultiMC, Modrinth App, ATLauncher, GDLauncher, Dawn
-//! Client), #434.
+//! Client, SKLauncher), #434.
 //! horizon-prepare reads the official launcher's layout and pins the version JSON's own sha1, so
 //! files found elsewhere are linked into that layout in the launcher's data folder, with the
 //! pinned version JSON from Mojang when the other launcher keeps its own rewrite of it.
@@ -134,6 +134,7 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
                 flatpak("com.atlauncher.ATLauncher", "data/atlauncher"),
             ),
             ("Dawn Client", f.home.join(".dawn")),
+            ("SKlauncher", f.home.join(".sklauncher")),
         ],
         Os::MacOs => vec![
             (OFFICIAL, f.data.join("minecraft")),
@@ -142,6 +143,7 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
             ("Modrinth App", f.data.join("ModrinthApp")),
             ("ATLauncher", f.data.join("ATLauncher")),
             ("Dawn Client", f.data.join(".dawn")),
+            ("SKlauncher", f.data.join("sklauncher")),
         ],
         Os::Windows => vec![
             (OFFICIAL, f.data.join(".minecraft")),
@@ -149,6 +151,7 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
             ("Modrinth App", f.data.join("ModrinthApp")),
             ("ATLauncher", f.data.join("ATLauncher")),
             ("Dawn Client", f.data.join(".dawn")),
+            ("SKlauncher", f.data.join(".sklauncher")),
         ],
     };
     // Names every system shares: the Modrinth App before its rename, GDLauncher and its
@@ -271,6 +274,7 @@ fn launcher_of(path: &Path) -> Option<&'static str> {
             "atlauncher" | "ATLauncher" => Some("ATLauncher"),
             "gdlauncher_carbon" | "gdlauncher_next" => Some("GDLauncher"),
             ".dawn" | "dawn" => Some("Dawn Client"),
+            ".sklauncher" | "sklauncher" => Some("SKlauncher"),
             _ => None,
         })
 }
@@ -349,7 +353,8 @@ pub fn not_found(version: &str, checked: &[(PathBuf, String)], chosen: &Path) ->
         ),
         None => format!(
             "\n  • Play {version} once in the official Minecraft launcher, or in Prism Launcher, \
-             MultiMC, the Modrinth App, ATLauncher, GDLauncher or Dawn Client, then prepare again.\n  \
+             MultiMC, the Modrinth App, ATLauncher, GDLauncher, Dawn Client or SKlauncher, then \
+             prepare again.\n  \
              • Or choose the folder where your launcher keeps Minecraft {version} (Minecraft \
              folder › Choose… in the launcher, --minecraft on the command line)."
         ),

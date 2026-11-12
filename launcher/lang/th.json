@@ -870,7 +870,7 @@
   "Stay on {version}": "ใช้ {version} ต่อไป",
   "You haven't played this one yet. Press Play to start.": "ยังไม่เคยเล่นอันนี้ กดเล่นเพื่อเริ่ม",
   "You've played for {time}! Last played {when}.": "คุณเล่นไปแล้ว {time}! เล่นล่าสุด {when}",
-  "Rust Edition": "ฉบับสนิม",
+  "Rust Edition": "ฉบับ Rust",
   "Java Edition": "รุ่นจาวา",
   "All notes": "บันทึกทั้งหมด",
   "No notes yet": "ยังไม่มีบันทึก",
