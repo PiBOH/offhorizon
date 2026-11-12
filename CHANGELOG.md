@@ -4,6 +4,11 @@
 
 OffHorizon, portable, and the same from the terminal as from the window.
 
+- **Launcher home**: the window opens on the versions found here and on a big *Play*, which builds
+  the command from the version's JSON and starts the game as the offline name (`versions`, `play`).
+- **Instances**: a version in a folder of its own, made where you choose the folder — beside this
+  executable (portable, the default) or any install already on the computer (`instance new|list|remove`).
+
 - **Renamed** to OffHorizon: binary `offhorizon`, branch `offhorizon`, assets
   `offhorizon-windows-x64.exe` and `offhorizon-linux-x64`.
 - **Portable**: the game folder is `./.minecraft` and everything else is `./.offhorizon`, both beside
