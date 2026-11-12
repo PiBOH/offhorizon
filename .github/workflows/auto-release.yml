@@ -1,0 +1,122 @@
+name: Auto Release
+
+# One release per `v` commit on the default branch, and on demand.
+# The version comes from version.txt, the single version source: a release commit changes that
+# file, and the tag, the title and every asset name follow it.
+
+on:
+  push:
+    branches: [offline-patch]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (leave empty for version.txt)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Read version
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'v'))
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      prerelease: ${{ steps.read.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version.txt
+        id: read
+        env:
+          MANUAL: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANUAL}" ]; then
+            VERSION="$(printf '%s' "${MANUAL}" | tr -d '\r\n' | xargs)"
+          else
+            VERSION="$(tr -d '\r\n' < version.txt | xargs)"
+          fi
+          if [ -z "${VERSION}" ]; then
+            echo 'version.txt is empty.' >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if echo "${VERSION}" | grep -qiE -- '-stable$'; then
+            echo 'prerelease=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'prerelease=true' >> "$GITHUB_OUTPUT"
+          fi
+          echo "Releasing ${VERSION}"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            asset: offline-patch-windows-x64.exe
+          - name: linux-x64
+            os: ubuntu-latest
+            asset: offline-patch-linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux window libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libwayland-dev libx11-dev libxi-dev \
+            libxcursor-dev libxrandr-dev libgl1-mesa-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Name the binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp target/release/offline-patch.exe "${{ matrix.asset }}"
+          else
+            cp target/release/offline-patch "${{ matrix.asset }}"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          if-no-files-found: error
+
+  release:
+    name: Publish
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.version }}
+          name: Offline Patch ${{ needs.version.outputs.version }}
+          prerelease: ${{ needs.version.outputs.prerelease }}
+          body_path: CHANGELOG.md
+          files: assets/*
+          fail_on_unmatched_files: true
