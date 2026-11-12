@@ -91,8 +91,8 @@ pub fn page_head(ui: &mut egui::Ui, title: &str, description: &str) {
 }
 
 /// The heading of a group inside a page ("Instances", "Versions").
-pub fn group_title(ui: &mut egui::Ui, label: &str) {
-    ui.label(RichText::new(label).size(13.0).color(DIM).strong());
+pub fn group_title(ui: &mut egui::Ui, label: impl Into<String>) {
+    ui.label(RichText::new(label.into()).size(13.0).color(DIM).strong());
     ui.add_space(4.0);
 }
 
@@ -156,7 +156,8 @@ pub fn list_row(ui: &mut egui::Ui, name: &str, sub: &str, active: bool) -> Respo
 }
 
 /// A row of a settings plate: the name on the left, the control on the right.
-pub fn field_row(ui: &mut egui::Ui, label: &str, control: impl FnOnce(&mut egui::Ui)) {
+pub fn field_row(ui: &mut egui::Ui, label: impl Into<String>, control: impl FnOnce(&mut egui::Ui)) {
+    let label = label.into();
     ui.horizontal(|ui| {
         ui.set_min_height(34.0);
         ui.label(RichText::new(label).size(14.0).color(TEXT).strong());
