@@ -223,10 +223,9 @@ mod tests {
     #[test]
     fn the_offline_name_is_read_and_written_with_a_backup() {
         let dir = scratch("name");
-        std::env::set_var("OFFLINE_PATCH_HOME", dir.join("tool"));
         std::fs::write(dir.join("horizon-player.txt"), "name:Steve\n").unwrap();
         assert_eq!(offline_name(&dir).as_deref(), Some("Steve"));
-        let mut store = Store::open();
+        let mut store = Store::at(dir.join("tool"));
         set_offline_name(&mut store, &dir, "Alex").unwrap();
         assert_eq!(offline_name(&dir).as_deref(), Some("Alex"));
         assert_eq!(store.entries.len(), 1);
@@ -235,8 +234,7 @@ mod tests {
     #[test]
     fn a_name_minecraft_would_refuse_is_refused() {
         let dir = scratch("badname");
-        std::env::set_var("OFFLINE_PATCH_HOME", dir.join("tool"));
-        let mut store = Store::open();
+        let mut store = Store::at(dir.join("tool"));
         for bad in ["", " ", "a name", "thisnameiswaytoolong"] {
             assert!(set_offline_name(&mut store, &dir, bad).is_err(), "{bad:?}");
         }

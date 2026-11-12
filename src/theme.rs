@@ -44,7 +44,7 @@ pub fn title(text: &str) -> RichText {
 }
 
 /// A caption above a field or a list.
-pub fn label(text: &str) -> RichText {
+pub fn label(text: impl Into<String>) -> RichText {
     RichText::new(text).size(12.5).color(DIM)
 }
 

@@ -1718,6 +1718,7 @@ name = "offline-patch"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "egui",
  "flate2",
  "image",
  "serde_json",

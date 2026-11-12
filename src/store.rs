@@ -46,8 +46,13 @@ impl Store {
     }
 
     pub fn open() -> Self {
+        Self::at(Self::folder())
+    }
+
+    /// The same, in a folder of the caller's choosing (the tests keep theirs in the temp folder).
+    pub fn at(root: PathBuf) -> Self {
         let mut store = Self {
-            root: Self::folder(),
+            root,
             entries: Vec::new(),
         };
         store.reload();
@@ -157,34 +162,25 @@ mod tests {
     #[test]
     fn a_backup_holds_the_bytes_the_file_had() {
         let dir = scratch("backup");
-        std::env::set_var("OFFLINE_PATCH_HOME", dir.join("home"));
         let file = dir.join("level.dat");
         std::fs::write(&file, b"before").unwrap();
-        let mut store = Store::open();
+        let mut store = Store::at(dir.join("home"));
         store.backup(&file, "heal").unwrap();
         std::fs::write(&file, b"after").unwrap();
         assert_eq!(std::fs::read(&file).unwrap(), b"after");
-        store.entries[0].string_of_copy();
         assert_eq!(std::fs::read(&store.entries[0].copy).unwrap(), b"before");
     }
 
     #[test]
     fn restoring_puts_the_old_bytes_back() {
         let dir = scratch("restore");
-        std::env::set_var("OFFLINE_PATCH_HOME", dir.join("home"));
         let file = dir.join("horizon-player.txt");
         std::fs::write(&file, "name:Steve\n").unwrap();
-        let mut store = Store::open();
+        let mut store = Store::at(dir.join("home"));
         store.backup(&file, "offline name").unwrap();
         std::fs::write(&file, "name:Alex\n").unwrap();
         let id = store.entries[0].id.clone();
         store.restore(&id).unwrap();
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "name:Steve\n");
     }
-}
-
-impl Backup {
-    /// Only used by the tests above to read a copy without repeating its path.
-    #[cfg(test)]
-    fn string_of_copy(&self) {}
 }
