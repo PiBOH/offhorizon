@@ -195,6 +195,13 @@ impl Launcher {
                 ".mrpack (Modrinth), .zip (CurseForge), or a Prism, MultiMC or CurseForge instance. \
                  Horizon ports what it can on this computer, from your own downloads, and plays \
                  the pack as its own profile. Nothing is uploaded or shared.",
+            )))
+            // No account comes across: a launcher's sign-in is its own, and Horizon plays only
+            // with a Microsoft account that owns the game (docs/microsoft-account.md). Said with
+            // the sentence every table already carries, so it reads in the player's language.
+            .child(text(theme::CAPTION).w_full().text_color(t.muted).child(tr(
+                "Horizon needs a Microsoft account that owns Minecraft: Java Edition, like other \
+                 launchers. It also plays online servers with your name and skin.",
             )));
         let mut page = div().flex().flex_col().gap(px(16.));
         if !self.found_packs.is_empty() {
