@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java não encontrado: instale-o ou deixe outro launcher baixar um runtime.</string>
   <string key="home.launched">{version} iniciado como {name}.</string>
   <string key="home.last_world">Último mundo</string>
+  <string key="home.instances">Instâncias</string>
+  <string key="home.new_instance">Nova instância</string>
+  <string key="home.instance_name">Nome</string>
+  <string key="home.portable">Pasta portátil (ao lado deste executável)</string>
+  <string key="home.folder">Pasta</string>
+  <string key="home.create">Criar</string>
+  <string key="home.no_instances">Nenhuma instância ainda: uma instância joga uma versão numa pasta própria.</string>
+  <string key="home.instance_created">Instância «{name}» criada.</string>
+  <string key="home.instance_removed">Instância «{name}» removida.</string>
+  <string key="home.instance_missing">Nenhuma instância chamada «{name}».</string>
+  <string key="home.name_required">Dê um nome à instância.</string>
 </strings>

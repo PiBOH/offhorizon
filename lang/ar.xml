@@ -91,4 +91,15 @@
   <string key="home.java_missing">لم يُعثر على Java: ثبّتها أو دع مشغّلًا آخر ينزّل بيئة التشغيل.</string>
   <string key="home.launched">تم تشغيل {version} باسم {name}.</string>
   <string key="home.last_world">آخر عالم</string>
+  <string key="home.instances">النسخ</string>
+  <string key="home.new_instance">نسخة جديدة</string>
+  <string key="home.instance_name">الاسم</string>
+  <string key="home.portable">مجلد محمول (بجانب هذا الملف)</string>
+  <string key="home.folder">المجلد</string>
+  <string key="home.create">إنشاء</string>
+  <string key="home.no_instances">لا توجد نسخة بعد: النسخة تشغّل إصدارًا واحدًا في مجلدها الخاص.</string>
+  <string key="home.instance_created">تم إنشاء النسخة «{name}».</string>
+  <string key="home.instance_removed">تم حذف النسخة «{name}».</string>
+  <string key="home.instance_missing">لا توجد نسخة باسم «{name}».</string>
+  <string key="home.name_required">أعطِ النسخة اسمًا.</string>
 </strings>

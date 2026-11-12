@@ -91,4 +91,15 @@
   <string key="home.java_missing">No Java found: install one, or let another launcher download a runtime.</string>
   <string key="home.launched">{version} started as {name}.</string>
   <string key="home.last_world">Last world</string>
+  <string key="home.instances">Instances</string>
+  <string key="home.new_instance">New instance</string>
+  <string key="home.instance_name">Name</string>
+  <string key="home.portable">Portable folder (beside this executable)</string>
+  <string key="home.folder">Folder</string>
+  <string key="home.create">Create</string>
+  <string key="home.no_instances">No instance yet: an instance plays one version in a folder of its own.</string>
+  <string key="home.instance_created">Instance “{name}” created.</string>
+  <string key="home.instance_removed">Instance “{name}” removed.</string>
+  <string key="home.instance_missing">No instance named “{name}”.</string>
+  <string key="home.name_required">Give the instance a name.</string>
 </strings>

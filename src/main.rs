@@ -8,6 +8,7 @@ mod actions;
 mod app;
 mod cli;
 mod i18n;
+mod instances;
 mod launch;
 mod launcher;
 mod logo;

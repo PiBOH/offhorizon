@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java bulunamadı: kurun ya da başka bir başlatıcının çalışma zamanı indirmesine izin verin.</string>
   <string key="home.launched">{version}, {name} olarak başlatıldı.</string>
   <string key="home.last_world">Son dünya</string>
+  <string key="home.instances">Örnekler</string>
+  <string key="home.new_instance">Yeni örnek</string>
+  <string key="home.instance_name">Ad</string>
+  <string key="home.portable">Taşınabilir klasör (bu dosyanın yanında)</string>
+  <string key="home.folder">Klasör</string>
+  <string key="home.create">Oluştur</string>
+  <string key="home.no_instances">Henüz örnek yok: bir örnek tek sürümü kendi klasöründe oynatır.</string>
+  <string key="home.instance_created">“{name}” örneği oluşturuldu.</string>
+  <string key="home.instance_removed">“{name}” örneği kaldırıldı.</string>
+  <string key="home.instance_missing">“{name}” adlı örnek yok.</string>
+  <string key="home.name_required">Örneğe bir ad verin.</string>
 </strings>

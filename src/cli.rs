@@ -12,8 +12,13 @@ OffHorizon — portable companion for Horizon
   offhorizon                       open the window
   offhorizon status                where everything is, what it found
   offhorizon versions              the game versions found here
+  offhorizon instance list         the instances on this stick
+  offhorizon instance new <NAME> <VERSION> [--dir PATH]
+                                   one version in a game folder of its own
+                                   (no --dir: the folder beside this file)
+  offhorizon instance remove <NAME>
   offhorizon play [VERSION]        start the game as the offline name
-                                   with --dry-run: print the command instead
+                                   --instance <NAME>, --dry-run: print the command instead
   offhorizon worlds                the saves, with health and inventory
   offhorizon name <NAME>           the offline player name
   offhorizon heal                  full health, air, fire out
@@ -38,6 +43,8 @@ Every world command takes --world <NAME>; without it, the world played last.";
 pub fn run(args: &[String]) -> i32 {
     let mut session = Session::open();
     let mut world_name: Option<String> = None;
+    let mut instance: Option<String> = None;
+    let mut dir: Option<String> = None;
     let mut dry_run = false;
     let mut words: Vec<String> = Vec::new();
     let mut index = 0;
@@ -45,6 +52,14 @@ pub fn run(args: &[String]) -> i32 {
         match args[index].as_str() {
             "--world" | "-w" => {
                 world_name = args.get(index + 1).cloned();
+                index += 2;
+            }
+            "--instance" | "-i" => {
+                instance = args.get(index + 1).cloned();
+                index += 2;
+            }
+            "--dir" | "-d" => {
+                dir = args.get(index + 1).cloned();
                 index += 2;
             }
             "--dry-run" => {
@@ -89,7 +104,39 @@ pub fn run(args: &[String]) -> i32 {
                 })
                 .collect())
         }
+        "instance" => match word(1) {
+            "" | "list" => {
+                let list = session.instances();
+                if list.is_empty() {
+                    return done(vec![i18n::t("home.no_instances")]);
+                }
+                done(list
+                    .iter()
+                    .map(|i| format!("{:<20} {:<26} {}", i.name, i.version, i.game.display()))
+                    .collect())
+            }
+            "new" => {
+                if word(2).is_empty() || word(3).is_empty() {
+                    return usage("instance new <NAME> <VERSION> [--dir PATH]");
+                }
+                let name = word(2).to_string();
+                let version = word(3).to_string();
+                let game = dir.clone().map(std::path::PathBuf::from);
+                result(session.create_instance(&name, &version, game))
+            }
+            "remove" => {
+                if word(2).is_empty() {
+                    return usage("instance remove <NAME>");
+                }
+                let name = word(2).to_string();
+                result(session.remove_instance(&name))
+            }
+            _ => usage("instance list|new|remove"),
+        },
         "play" => {
+            if let Some(name) = &instance {
+                return result(session.play_instance(name));
+            }
             let id = word(1);
             let id = (!id.is_empty()).then(|| id.to_string());
             if dry_run {

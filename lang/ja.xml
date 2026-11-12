@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java が見つかりません。インストールするか、他のランチャーにランタイムをダウンロードさせてください。</string>
   <string key="home.launched">{version} を {name} として起動しました。</string>
   <string key="home.last_world">最後のワールド</string>
+  <string key="home.instances">インスタンス</string>
+  <string key="home.new_instance">新規インスタンス</string>
+  <string key="home.instance_name">名前</string>
+  <string key="home.portable">ポータブルフォルダー（この実行ファイルの隣）</string>
+  <string key="home.folder">フォルダー</string>
+  <string key="home.create">作成</string>
+  <string key="home.no_instances">インスタンスはまだありません。インスタンスは 1 つのバージョンを独自のフォルダーで動かします。</string>
+  <string key="home.instance_created">インスタンス「{name}」を作成しました。</string>
+  <string key="home.instance_removed">インスタンス「{name}」を削除しました。</string>
+  <string key="home.instance_missing">「{name}」というインスタンスはありません。</string>
+  <string key="home.name_required">インスタンスに名前を付けてください。</string>
 </strings>

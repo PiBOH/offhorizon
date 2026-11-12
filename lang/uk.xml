@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java не знайдено: встановіть її або дозвольте іншому лаунчеру завантажити середовище.</string>
   <string key="home.launched">{version} запущено як {name}.</string>
   <string key="home.last_world">Останній світ</string>
+  <string key="home.instances">Збірки</string>
+  <string key="home.new_instance">Нова збірка</string>
+  <string key="home.instance_name">Назва</string>
+  <string key="home.portable">Портативна папка (поруч із цим файлом)</string>
+  <string key="home.folder">Папка</string>
+  <string key="home.create">Створити</string>
+  <string key="home.no_instances">Збірок ще немає: збірка запускає одну версію у власній папці.</string>
+  <string key="home.instance_created">Збірку «{name}» створено.</string>
+  <string key="home.instance_removed">Збірку «{name}» видалено.</string>
+  <string key="home.instance_missing">Немає збірки з назвою «{name}».</string>
+  <string key="home.name_required">Дайте збірці назву.</string>
 </strings>

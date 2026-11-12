@@ -1,6 +1,7 @@
 //! Every action the window and the terminal can take. Both front ends call the same functions, so
 //! anything the window does the terminal does, and the other way round.
 
+use crate::instances::{self, Instance};
 use crate::launch;
 use crate::launcher::{self, LauncherChange, Layout};
 use crate::nbt::Root;
@@ -163,6 +164,73 @@ impl Session {
     /// The name the game plays under: the file on the stick, or `Player` until one is set.
     pub fn player_name(&self) -> String {
         launcher::offline_name(&self.home()).unwrap_or_else(|| "Player".to_string())
+    }
+
+    /// The instances kept with this stick.
+    pub fn instances(&self) -> Vec<Instance> {
+        instances::load(&self.portable.tool())
+    }
+
+    /// A new instance: one version, and a game folder of its own. With no folder it plays beside
+    /// this executable; with one it plays wherever that folder is.
+    pub fn create_instance(
+        &mut self,
+        name: &str,
+        version: &str,
+        game: Option<PathBuf>,
+    ) -> Result<String, String> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(i18n::t("home.name_required"));
+        }
+        let Some(found) = self.versions().into_iter().find(|v| v.id == version) else {
+            return Err(i18n::t("home.no_version"));
+        };
+        let game = game.unwrap_or_else(|| self.home());
+        std::fs::create_dir_all(&game).map_err(|e| format!("{}: {e}", game.display()))?;
+        let mut list = self.instances();
+        list.retain(|known| known.name != name);
+        list.push(Instance {
+            name: name.to_string(),
+            version: found.id,
+            game,
+        });
+        instances::save(&self.portable.tool(), &list)?;
+        self.portable.set("instance", name)?;
+        Ok(i18n::tf("home.instance_created", &[("name", name.to_string())]))
+    }
+
+    /// Forgets an instance. Nothing on disk is deleted: the folder stays where it is.
+    pub fn remove_instance(&mut self, name: &str) -> Result<String, String> {
+        let mut list = self.instances();
+        let before = list.len();
+        list.retain(|known| known.name != name);
+        if list.len() == before {
+            return Err(i18n::tf("home.instance_missing", &[("name", name.to_string())]));
+        }
+        instances::save(&self.portable.tool(), &list)?;
+        Ok(i18n::tf("home.instance_removed", &[("name", name.to_string())]))
+    }
+
+    /// Starts an instance in its own game folder, as the offline name.
+    pub fn play_instance(&mut self, name: &str) -> Result<String, String> {
+        let Some(instance) = self.instances().into_iter().find(|known| known.name == name) else {
+            return Err(i18n::tf("home.instance_missing", &[("name", name.to_string())]));
+        };
+        let versions = self.versions();
+        let version = versions
+            .iter()
+            .find(|v| v.id == instance.version && v.game == instance.game)
+            .or_else(|| versions.iter().find(|v| v.id == instance.version))
+            .cloned()
+            .ok_or_else(|| i18n::t("home.no_version"))?;
+        let name = self.player_name();
+        launch::plan(&instance.game, &version, &name)?.spawn()?;
+        self.portable.set("instance", &instance.name)?;
+        Ok(i18n::tf(
+            "home.launched",
+            &[("version", version.id), ("name", name)],
+        ))
     }
 
     /// The command that would start a version, without starting it.

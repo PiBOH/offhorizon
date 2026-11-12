@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java nenalezena: nainstalujte ji nebo nechte jiný launcher stáhnout runtime.</string>
   <string key="home.launched">{version} spuštěna jako {name}.</string>
   <string key="home.last_world">Poslední svět</string>
+  <string key="home.instances">Instance</string>
+  <string key="home.new_instance">Nová instance</string>
+  <string key="home.instance_name">Název</string>
+  <string key="home.portable">Přenosná složka (vedle tohoto souboru)</string>
+  <string key="home.folder">Složka</string>
+  <string key="home.create">Vytvořit</string>
+  <string key="home.no_instances">Zatím žádná instance: instance hraje jednu verzi ve vlastní složce.</string>
+  <string key="home.instance_created">Instance „{name}“ vytvořena.</string>
+  <string key="home.instance_removed">Instance „{name}“ odstraněna.</string>
+  <string key="home.instance_missing">Žádná instance s názvem „{name}“.</string>
+  <string key="home.name_required">Dejte instanci název.</string>
 </strings>

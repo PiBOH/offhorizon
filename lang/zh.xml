@@ -91,4 +91,15 @@
   <string key="home.java_missing">未找到 Java：请安装，或让其他启动器下载运行时。</string>
   <string key="home.launched">{version} 已以 {name} 启动。</string>
   <string key="home.last_world">最近的存档</string>
+  <string key="home.instances">实例</string>
+  <string key="home.new_instance">新实例</string>
+  <string key="home.instance_name">名称</string>
+  <string key="home.portable">便携文件夹（程序旁边）</string>
+  <string key="home.folder">文件夹</string>
+  <string key="home.create">创建</string>
+  <string key="home.no_instances">还没有实例：实例在自己的文件夹里运行一个版本。</string>
+  <string key="home.instance_created">已创建实例“{name}”。</string>
+  <string key="home.instance_removed">已删除实例“{name}”。</string>
+  <string key="home.instance_missing">没有名为“{name}”的实例。</string>
+  <string key="home.name_required">请给实例起个名字。</string>
 </strings>

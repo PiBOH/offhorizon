@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java niet gevonden: installeer het, of laat een andere launcher een runtime downloaden.</string>
   <string key="home.launched">{version} gestart als {name}.</string>
   <string key="home.last_world">Laatste wereld</string>
+  <string key="home.instances">Instanties</string>
+  <string key="home.new_instance">Nieuwe instantie</string>
+  <string key="home.instance_name">Naam</string>
+  <string key="home.portable">Draagbare map (naast dit programma)</string>
+  <string key="home.folder">Map</string>
+  <string key="home.create">Aanmaken</string>
+  <string key="home.no_instances">Nog geen instantie: een instantie speelt één versie in een eigen map.</string>
+  <string key="home.instance_created">Instantie ‘{name}’ aangemaakt.</string>
+  <string key="home.instance_removed">Instantie ‘{name}’ verwijderd.</string>
+  <string key="home.instance_missing">Geen instantie met de naam ‘{name}’.</string>
+  <string key="home.name_required">Geef de instantie een naam.</string>
 </strings>

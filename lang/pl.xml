@@ -91,4 +91,15 @@
   <string key="home.java_missing">Nie znaleziono Javy: zainstaluj ją lub pozwól innemu launcherowi pobrać środowisko.</string>
   <string key="home.launched">{version} uruchomiona jako {name}.</string>
   <string key="home.last_world">Ostatni świat</string>
+  <string key="home.instances">Instancje</string>
+  <string key="home.new_instance">Nowa instancja</string>
+  <string key="home.instance_name">Nazwa</string>
+  <string key="home.portable">Folder przenośny (obok tego pliku)</string>
+  <string key="home.folder">Folder</string>
+  <string key="home.create">Utwórz</string>
+  <string key="home.no_instances">Brak instancji: instancja uruchamia jedną wersję we własnym folderze.</string>
+  <string key="home.instance_created">Utworzono instancję „{name}”.</string>
+  <string key="home.instance_removed">Usunięto instancję „{name}”.</string>
+  <string key="home.instance_missing">Brak instancji o nazwie „{name}”.</string>
+  <string key="home.name_required">Nadaj instancji nazwę.</string>
 </strings>

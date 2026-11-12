@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java не найдена: установите её или позвольте другому лаунчеру скачать среду выполнения.</string>
   <string key="home.launched">{version} запущена как {name}.</string>
   <string key="home.last_world">Последний мир</string>
+  <string key="home.instances">Сборки</string>
+  <string key="home.new_instance">Новая сборка</string>
+  <string key="home.instance_name">Название</string>
+  <string key="home.portable">Портативная папка (рядом с этим файлом)</string>
+  <string key="home.folder">Папка</string>
+  <string key="home.create">Создать</string>
+  <string key="home.no_instances">Сборок пока нет: сборка запускает одну версию в своей папке.</string>
+  <string key="home.instance_created">Сборка «{name}» создана.</string>
+  <string key="home.instance_removed">Сборка «{name}» удалена.</string>
+  <string key="home.instance_missing">Нет сборки с названием «{name}».</string>
+  <string key="home.name_required">Дайте сборке название.</string>
 </strings>

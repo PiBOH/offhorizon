@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java hittades inte: installera det eller låt en annan launcher ladda ner en runtime.</string>
   <string key="home.launched">{version} startad som {name}.</string>
   <string key="home.last_world">Senaste världen</string>
+  <string key="home.instances">Instanser</string>
+  <string key="home.new_instance">Ny instans</string>
+  <string key="home.instance_name">Namn</string>
+  <string key="home.portable">Portabel mapp (bredvid den här filen)</string>
+  <string key="home.folder">Mapp</string>
+  <string key="home.create">Skapa</string>
+  <string key="home.no_instances">Ingen instans än: en instans spelar en version i en egen mapp.</string>
+  <string key="home.instance_created">Instansen ”{name}” skapad.</string>
+  <string key="home.instance_removed">Instansen ”{name}” borttagen.</string>
+  <string key="home.instance_missing">Ingen instans med namnet ”{name}”.</string>
+  <string key="home.name_required">Ge instansen ett namn.</string>
 </strings>

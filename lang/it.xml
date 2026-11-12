@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java non trovato: installalo, oppure lascia che un altro launcher scarichi un runtime.</string>
   <string key="home.launched">{version} avviato come {name}.</string>
   <string key="home.last_world">Ultimo mondo</string>
+  <string key="home.instances">Istanze</string>
+  <string key="home.new_instance">Nuova istanza</string>
+  <string key="home.instance_name">Nome</string>
+  <string key="home.portable">Cartella portatile (accanto a questo eseguibile)</string>
+  <string key="home.folder">Cartella</string>
+  <string key="home.create">Crea</string>
+  <string key="home.no_instances">Nessuna istanza: un'istanza fa girare una versione in una cartella sua.</string>
+  <string key="home.instance_created">Istanza «{name}» creata.</string>
+  <string key="home.instance_removed">Istanza «{name}» rimossa.</string>
+  <string key="home.instance_missing">Nessuna istanza chiamata «{name}».</string>
+  <string key="home.name_required">Dai un nome all'istanza.</string>
 </strings>

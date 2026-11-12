@@ -91,4 +91,15 @@
   <string key="home.java_missing">Java नहीं मिला: इसे इंस्टॉल करें या किसी दूसरे लॉन्चर को रनटाइम डाउनलोड करने दें।</string>
   <string key="home.launched">{version} {name} के रूप में शुरू हुआ।</string>
   <string key="home.last_world">अंतिम विश्व</string>
+  <string key="home.instances">इंस्टेंस</string>
+  <string key="home.new_instance">नया इंस्टेंस</string>
+  <string key="home.instance_name">नाम</string>
+  <string key="home.portable">पोर्टेबल फ़ोल्डर (इस फ़ाइल के पास)</string>
+  <string key="home.folder">फ़ोल्डर</string>
+  <string key="home.create">बनाएँ</string>
+  <string key="home.no_instances">अभी कोई इंस्टेंस नहीं: इंस्टेंस एक संस्करण को अपने फ़ोल्डर में चलाता है।</string>
+  <string key="home.instance_created">इंस्टेंस “{name}” बनाया गया।</string>
+  <string key="home.instance_removed">इंस्टेंस “{name}” हटाया गया।</string>
+  <string key="home.instance_missing">“{name}” नाम का कोई इंस्टेंस नहीं।</string>
+  <string key="home.name_required">इंस्टेंस को नाम दें।</string>
 </strings>
