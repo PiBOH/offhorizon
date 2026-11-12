@@ -478,6 +478,7 @@ mod tests {
                 "assetIndex": { "id": "5" },
                 "libraries": [
                     { "name": "com.example:lib:1.0" },
+                    { "name": "com.example:other:2.0" },
                     { "name": "com.example:elsewhere:2.0",
                       "rules": [ { "action": "allow", "os": { "name": "plan9" } } ] }
                 ],
