@@ -31,6 +31,18 @@ impl Page {
         Page::Backups,
     ];
 
+    /// The pages the top bar shows. Profile takes the place Settings has in the official
+    /// launcher: its own tab on the right.
+    const TABS: [Page; 7] = [
+        Page::Home,
+        Page::Worlds,
+        Page::Player,
+        Page::Inventory,
+        Page::Time,
+        Page::Launchers,
+        Page::Backups,
+    ];
+
     fn name(self) -> String {
         i18n::t(match self {
             Page::Home => "nav.home",
@@ -75,6 +87,8 @@ pub struct App {
     instance_name: String,
     instance_dir: String,
     instance_portable: bool,
+    /// The instance the sidebar picked: Home plays it.
+    instance: Option<String>,
     log: Vec<String>,
 }
 
@@ -90,6 +104,7 @@ impl App {
             instance_name: String::new(),
             instance_dir: String::new(),
             instance_portable: true,
+            instance: None,
             page: Page::Home,
             index: 0,
             name_input: String::new(),
@@ -192,32 +207,28 @@ fn bytes(size: u64) -> String {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("head")
+        // The top bar, from the official launcher: the pages as tabs over the page, then who
+        // plays and Settings. No plate: the page shows through, under a 1 px rule.
+        egui::TopBottomPanel::top("top_bar")
+            .exact_height(theme::TOP_BAR)
             .frame(
                 egui::Frame::none()
-                    .fill(theme::PANEL)
-                    .inner_margin(egui::Margin::symmetric(16.0, 10.0)),
+                    .fill(theme::BG)
+                    .inner_margin(egui::Margin::symmetric(theme::INSET, 8.0)),
             )
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    crate::logo::draw(ui, 26.0);
-                    ui.label(
-                        egui::RichText::new(i18n::t("app.name"))
-                            .size(20.0)
-                            .color(theme::ACCENT)
-                            .strong(),
-                    );
-                    ui.label(theme::label(crate::VERSION));
-                    ui.separator();
-                    match &self.session.layout.launcher {
-                        Some(path) => {
-                            ui.label(theme::label(path.display().to_string()));
-                        }
-                        None => {
-                            ui.label(theme::note(i18n::t("status.no_launcher"), false));
+                ui.horizontal_centered(|ui| {
+                    for page in Page::TABS {
+                        if theme::tab(ui, &page.name(), self.page == page).clicked() {
+                            self.page = page;
                         }
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if theme::tab(ui, &Page::Profile.name(), self.page == Page::Profile)
+                            .clicked()
+                        {
+                            self.page = Page::Profile;
+                        }
                         let native = i18n::LANGUAGES
                             .iter()
                             .find(|(code, _)| *code == self.session.lang.as_str())
@@ -225,7 +236,7 @@ impl eframe::App for App {
                             .unwrap_or("English");
                         egui::ComboBox::from_id_salt("lang")
                             .selected_text(native)
-                            .width(130.0)
+                            .width(120.0)
                             .show_ui(ui, |ui| {
                                 for (code, name) in i18n::LANGUAGES {
                                     let picked = self.session.lang == *code;
@@ -247,60 +258,96 @@ impl eframe::App for App {
                 });
             });
 
-        egui::SidePanel::left("nav")
+        egui::TopBottomPanel::top("top_rule")
+            .exact_height(1.0)
+            .frame(egui::Frame::none().fill(theme::LINE))
+            .show(ctx, |_| {});
+
+        // The sidebar, from the official launcher: the wordmark, then the instances, each a row
+        // that picks it; Home's own Play button starts the one picked.
+        egui::SidePanel::left("sidebar")
             .resizable(false)
-            .exact_width(240.0)
+            .exact_width(theme::SIDEBAR)
             .frame(
                 egui::Frame::none()
                     .fill(theme::PANEL)
-                    .inner_margin(egui::Margin::same(12.0)),
+                    .inner_margin(egui::Margin::symmetric(12.0, 14.0)),
             )
             .show(ctx, |ui| {
-                ui.add_space(4.0);
-                for page in Page::ALL {
-                    let picked = self.page == page;
-                    let (rect, response) = ui.allocate_exact_size(
-                        egui::vec2(216.0, 34.0),
-                        egui::Sense::click(),
+                ui.horizontal(|ui| {
+                    crate::logo::draw(ui, 24.0);
+                    ui.add_space(2.0);
+                    ui.label(
+                        egui::RichText::new(i18n::t("app.name"))
+                            .size(16.0)
+                            .color(theme::TEXT)
+                            .strong(),
                     );
-                    let painter = ui.painter();
-                    painter.rect_filled(
-                        rect,
-                        8.0,
-                        if picked { theme::PANEL_HI } else { theme::PANEL },
-                    );
-                    painter.rect_stroke(
-                        rect,
-                        8.0,
-                        egui::Stroke::new(
-                            1.0,
-                            if picked { theme::ACCENT } else { theme::LINE },
-                        ),
-                    );
-                    let color = if picked { theme::ACCENT } else { theme::TEXT };
-                    theme::paint_icon(painter, page.icon(), rect.left_center() + egui::vec2(16.0, 0.0), color);
-                    painter.text(
-                        rect.left_center() + egui::vec2(36.0, 0.0),
-                        egui::Align2::LEFT_CENTER,
-                        page.name(),
-                        egui::FontId::proportional(14.0),
-                        color,
-                    );
-                    if response.clicked() {
-                        self.page = page;
-                    }
-                }
-
+                });
+                ui.label(
+                    egui::RichText::new(crate::VERSION)
+                        .size(11.5)
+                        .color(theme::FAINT),
+                );
                 ui.add_space(16.0);
-                ui.separator();
-                ui.add_space(8.0);
-                ui.label(theme::label(i18n::t("portable.minecraft")));
-                ui.label(theme::value(self.session.home().display().to_string()));
-                ui.label(theme::label(i18n::t("portable.tool")));
-                ui.label(theme::value(self.session.portable.tool().display().to_string()));
-                ui.add_space(8.0);
-                ui.label(theme::label(i18n::t("portable.telemetry")));
-                ui.label(theme::note(i18n::t("portable.telemetry_off"), true));
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(i18n::t("home.instances"))
+                            .size(12.0)
+                            .color(theme::DIM)
+                            .strong(),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if theme::icon_button(ui, Icon::Play, theme::ACCENT).clicked() {
+                            self.page = Page::Home;
+                        }
+                    });
+                });
+                ui.add_space(6.0);
+                let instances = self.session.instances();
+                let portable_home = self.session.home();
+                if instances.is_empty() {
+                    ui.label(
+                        egui::RichText::new(i18n::t("home.no_instances"))
+                            .size(12.5)
+                            .color(theme::DIM),
+                    );
+                    ui.add_space(6.0);
+                }
+                let mut picked: Option<String> = None;
+                for instance in &instances {
+                    let sub = if instance.game == portable_home {
+                        instance.version.clone()
+                    } else {
+                        format!("{} · {}", instance.version, instance.game.display())
+                    };
+                    let current = self.instance.as_deref() == Some(instance.name.as_str());
+                    if theme::sidebar_row(ui, &instance.name, &sub, current).clicked() {
+                        picked = Some(instance.name.clone());
+                    }
+                    ui.add_space(2.0);
+                }
+                if let Some(name) = picked {
+                    self.instance = Some(name);
+                    self.page = Page::Home;
+                }
+                ui.add_space(14.0);
+                ui.label(
+                    egui::RichText::new(i18n::t("portable.minecraft"))
+                        .size(11.5)
+                        .color(theme::FAINT),
+                );
+                ui.label(
+                    egui::RichText::new(self.session.home().display().to_string())
+                        .size(11.5)
+                        .color(theme::DIM),
+                );
+                ui.add_space(6.0);
+                ui.label(
+                    egui::RichText::new(i18n::t("portable.telemetry_off"))
+                        .size(11.5)
+                        .color(theme::GREEN),
+                );
             });
 
         egui::TopBottomPanel::bottom("log")
@@ -344,7 +391,7 @@ impl eframe::App for App {
             .frame(
                 egui::Frame::none()
                     .fill(theme::BG)
-                    .inner_margin(egui::Margin::same(18.0)),
+                    .inner_margin(egui::Margin::same(theme::INSET)),
             )
             .show(ctx, |ui| match self.page {
                 Page::Home => self.home_page(ui),
@@ -360,439 +407,294 @@ impl eframe::App for App {
 }
 
 impl App {
-    /// The launcher's own front page: the versions found here, the name the game plays under, and
-    /// the button that starts it.
+    /// Home, from the official launcher: the instance picked on the left, its name and Play,
+    /// then the player, a new instance, the versions and the last world.
     fn home_page(&mut self, ui: &mut egui::Ui) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                egui::Frame::none()
-                    .fill(theme::PANEL)
-                    .stroke(egui::Stroke::new(1.0, theme::LINE))
-                    .rounding(12.0)
-                    .inner_margin(egui::Margin::same(18.0))
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            crate::logo::draw(ui, 54.0);
-                            ui.add_space(8.0);
-                            ui.vertical(|ui| {
-                                ui.label(
-                                    egui::RichText::new(i18n::t("app.name"))
-                                        .size(26.0)
-                                        .color(theme::TEXT)
-                                        .strong(),
-                                );
-                                ui.label(theme::label(i18n::t("home.tagline")));
-                            });
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    ui.label(theme::note(i18n::t("portable.telemetry_off"), true));
-                                    ui.label(theme::label(crate::VERSION));
-                                },
-                            );
-                        });
-                    });
-
-                ui.add_space(16.0);
-                let instances = self.session.instances();
-                let portable_home = self.session.home();
-                ui.label(theme::title(&i18n::t("home.instances")));
-                ui.add_space(6.0);
-                if instances.is_empty() {
-                    ui.label(theme::label(i18n::t("home.no_instances")));
-                }
-                for instance in &instances {
-                    let portable = instance.game == portable_home;
-                    egui::Frame::none()
-                        .fill(theme::PANEL)
-                        .stroke(egui::Stroke::new(1.0, theme::LINE))
-                        .rounding(10.0)
-                        .inner_margin(egui::Margin::same(12.0))
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                theme::icon(ui, Icon::Play, theme::ACCENT);
-                                ui.label(theme::value(instance.name.clone()));
-                                ui.label(theme::label(format!(
-                                    "{} · {}",
-                                    instance.version,
-                                    if portable {
-                                        i18n::t("home.portable")
-                                    } else {
-                                        instance.game.display().to_string()
-                                    }
-                                )));
-                                ui.with_layout(
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        if ui.small_button(i18n::t("common.remove")).clicked() {
-                                            let name = instance.name.clone();
-                                            let result = self.session.remove_instance(&name);
-                                            self.carry(result);
-                                        }
-                                        let play = egui::Button::new(
-                                            egui::RichText::new(i18n::t("home.play"))
-                                                .size(13.5)
-                                                .color(theme::ON_ACCENT)
-                                                .strong(),
-                                        )
-                                        .fill(theme::ACCENT);
-                                        if ui.add(play).clicked() {
-                                            let name = instance.name.clone();
-                                            let result = self.session.play_instance(&name);
-                                            self.carry(result);
-                                        }
-                                    },
-                                );
-                            });
-                        });
-                    ui.add_space(6.0);
-                }
-
-                ui.add_space(8.0);
-                egui::Frame::none()
-                    .fill(theme::PANEL)
-                    .stroke(egui::Stroke::new(1.0, theme::LINE))
-                    .rounding(10.0)
-                    .inner_margin(egui::Margin::same(12.0))
-                    .show(ui, |ui| {
-                        ui.label(theme::label(i18n::t("home.new_instance")));
-                        let picked = self
-                            .versions
-                            .get(self.version_index)
-                            .map(|v| v.id.clone())
-                            .unwrap_or_default();
-                        ui.horizontal(|ui| {
-                            ui.add(
-                                egui::TextEdit::singleline(&mut self.instance_name)
-                                    .hint_text(picked.clone())
-                                    .desired_width(170.0),
-                            );
-                            let selected = self
-                                .versions
-                                .get(self.version_index)
-                                .map(|v| format!("{} · {}", v.id, v.loader))
-                                .unwrap_or_else(|| "—".into());
-                            let mut chosen = self.version_index;
-                            egui::ComboBox::from_id_salt("new_instance_version")
-                                .selected_text(selected)
-                                .width(220.0)
-                                .show_ui(ui, |ui| {
-                                    for (index, version) in self.versions.iter().enumerate() {
-                                        if ui
-                                            .selectable_label(
-                                                chosen == index,
-                                                format!("{} · {}", version.id, version.loader),
-                                            )
-                                            .clicked()
-                                        {
-                                            chosen = index;
-                                        }
-                                    }
-                                });
-                            self.version_index = chosen;
-                            ui.checkbox(&mut self.instance_portable, i18n::t("home.portable"));
-                            if !self.instance_portable {
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut self.instance_dir)
-                                        .hint_text(i18n::t("home.folder"))
-                                        .desired_width(230.0),
-                                );
-                            }
-                            if ui
-                                .button(theme::action(&i18n::t("home.create")))
-                                .clicked()
-                            {
-                                let version = picked.clone();
-                                if !version.is_empty() {
-                                    let name = if self.instance_name.trim().is_empty() {
-                                        version.clone()
-                                    } else {
-                                        self.instance_name.clone()
-                                    };
-                                    let dir = (!self.instance_portable
-                                        && !self.instance_dir.trim().is_empty())
-                                        .then(|| {
-                                            std::path::PathBuf::from(self.instance_dir.trim())
-                                        });
-                                    let result =
-                                        self.session.create_instance(&name, &version, dir);
-                                    self.carry(result);
-                                }
-                            }
-                        });
-                    });
-
-                ui.add_space(16.0);
-                let instances = self.session.instances();
-                let portable_home = self.session.home();
-                ui.label(theme::title(&i18n::t("home.instances")));
-                ui.add_space(6.0);
-                if instances.is_empty() {
-                    ui.label(theme::label(i18n::t("home.no_instances")));
-                }
-                for instance in &instances {
-                    let portable = instance.game == portable_home;
-                    egui::Frame::none()
-                        .fill(theme::PANEL)
-                        .stroke(egui::Stroke::new(1.0, theme::LINE))
-                        .rounding(10.0)
-                        .inner_margin(egui::Margin::same(12.0))
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                theme::icon(ui, Icon::Play, theme::ACCENT);
-                                ui.label(theme::value(instance.name.clone()));
-                                ui.label(theme::label(format!(
-                                    "{} · {}",
-                                    instance.version,
-                                    if portable {
-                                        i18n::t("home.portable")
-                                    } else {
-                                        instance.game.display().to_string()
-                                    }
-                                )));
-                                ui.with_layout(
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        if ui.small_button(i18n::t("common.remove")).clicked() {
-                                            let name = instance.name.clone();
-                                            let result = self.session.remove_instance(&name);
-                                            self.carry(result);
-                                        }
-                                        let play = egui::Button::new(
-                                            egui::RichText::new(i18n::t("home.play"))
-                                                .size(13.5)
-                                                .color(theme::ON_ACCENT)
-                                                .strong(),
-                                        )
-                                        .fill(theme::ACCENT);
-                                        if ui.add(play).clicked() {
-                                            let name = instance.name.clone();
-                                            let result = self.session.play_instance(&name);
-                                            self.carry(result);
-                                        }
-                                    },
-                                );
-                            });
-                        });
-                    ui.add_space(6.0);
-                }
-
-                ui.add_space(8.0);
                 let versions = self.versions.clone();
-                egui::Frame::none()
-                    .fill(theme::PANEL)
-                    .stroke(egui::Stroke::new(1.0, theme::LINE))
-                    .rounding(10.0)
-                    .inner_margin(egui::Margin::same(12.0))
-                    .show(ui, |ui| {
-                        ui.label(theme::label(i18n::t("home.new_instance")));
-                        ui.horizontal(|ui| {
-                            let placeholder = versions
-                                .get(self.version_index)
-                                .map(|v| v.id.clone())
-                                .unwrap_or_default();
-                            ui.add(
-                                egui::TextEdit::singleline(&mut self.instance_name)
-                                    .hint_text(placeholder)
-                                    .desired_width(170.0),
+                let instances = self.session.instances();
+                let portable_home = self.session.home();
+                let chosen = self
+                    .instance
+                    .as_deref()
+                    .and_then(|name| instances.iter().find(|known| known.name == name))
+                    .cloned()
+                    .or_else(|| instances.first().cloned());
+                if let Some(instance) = &chosen {
+                    self.instance = Some(instance.name.clone());
+                }
+
+                // The head: the instance's name, what it plays, and who plays it.
+                let head = chosen
+                    .as_ref()
+                    .map(|instance| instance.name.clone())
+                    .unwrap_or_else(|| i18n::t("app.name"));
+                ui.label(
+                    egui::RichText::new(head)
+                        .size(30.0)
+                        .color(theme::TEXT)
+                        .strong(),
+                );
+                ui.add_space(4.0);
+                let sub = match &chosen {
+                    Some(instance) => format!(
+                        "{} · {}",
+                        instance.version,
+                        if instance.game == portable_home {
+                            i18n::t("home.portable")
+                        } else {
+                            instance.game.display().to_string()
+                        }
+                    ),
+                    None => i18n::t("home.tagline"),
+                };
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(sub).size(13.5).color(theme::DIM));
+                    ui.label(egui::RichText::new("·").size(13.5).color(theme::FAINT));
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "{} {}",
+                            i18n::t("home.player"),
+                            self.session.player_name()
+                        ))
+                        .size(13.5)
+                        .color(theme::DIM),
+                    );
+                });
+
+                // The play group: Play, and the version it starts.
+                ui.add_space(18.0);
+                ui.horizontal(|ui| {
+                    if theme::play_button(ui, &i18n::t("home.play")).clicked() {
+                        match &chosen {
+                            Some(instance) => {
+                                let name = instance.name.clone();
+                                let result = self.session.play_instance(&name);
+                                self.carry(result);
+                            }
+                            None => self.play(),
+                        }
+                    }
+                    ui.add_space(10.0);
+                    egui::Frame::none()
+                        .fill(theme::PANEL)
+                        .rounding(theme::RADIUS_CONTROL)
+                        .inner_margin(egui::Margin::symmetric(16.0, 11.0))
+                        .show(ui, |ui| {
+                            ui.label(theme::label(i18n::t("home.versions")));
+                            ui.label(
+                                egui::RichText::new(
+                                    versions
+                                        .get(self.version_index)
+                                        .map(|version| version.id.clone())
+                                        .unwrap_or_else(|| "—".into()),
+                                )
+                                .size(14.0)
+                                .color(theme::TEXT),
                             );
-                            let selected = versions
-                                .get(self.version_index)
-                                .map(|v| format!("{} · {}", v.id, v.loader))
-                                .unwrap_or_else(|| "—".to_string());
-                            egui::ComboBox::from_id_salt("new_instance_version")
-                                .selected_text(selected)
-                                .width(220.0)
-                                .show_ui(ui, |ui| {
-                                    for (index, version) in versions.iter().enumerate() {
-                                        if ui
-                                            .selectable_label(
-                                                self.version_index == index,
-                                                format!("{} · {}", version.id, version.loader),
-                                            )
-                                            .clicked()
-                                        {
-                                            self.version_index = index;
-                                        }
-                                    }
-                                });
-                            ui.checkbox(&mut self.instance_portable, i18n::t("home.portable"));
-                            if !self.instance_portable {
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut self.instance_dir)
-                                        .hint_text(i18n::t("home.folder"))
-                                        .desired_width(240.0),
-                                );
-                            }
-                            if ui
-                                .button(theme::action(&i18n::t("home.create")))
-                                .clicked()
-                            {
-                                if let Some(version) =
-                                    self.versions.get(self.version_index).map(|v| v.id.clone())
-                                {
-                                    let name = if self.instance_name.trim().is_empty() {
-                                        version.clone()
-                                    } else {
-                                        self.instance_name.clone()
-                                    };
-                                    let dir = (!self.instance_portable
-                                        && !self.instance_dir.trim().is_empty())
-                                        .then(|| {
-                                            std::path::PathBuf::from(self.instance_dir.trim())
-                                        });
-                                    let result =
-                                        self.session.create_instance(&name, &version, dir);
-                                    self.carry(result);
-                                }
-                            }
                         });
-                    });
+                });
 
-                ui.add_space(16.0);
-                ui.horizontal_top(|ui| {
-                    let versions = self.versions.clone();
-                    let width = (ui.available_width() - 340.0).max(380.0);
-                    ui.vertical(|ui| {
-                        ui.set_width(width);
-                        ui.label(theme::title(&i18n::t("home.versions")));
-                        ui.add_space(6.0);
-                        if versions.is_empty() {
-                            ui.label(theme::note(i18n::t("home.no_version"), false));
-                            ui.add_space(6.0);
-                            if ui.button(i18n::t("nav.launchers")).clicked() {
-                                self.page = Page::Launchers;
-                            }
-                            return;
-                        }
-                        for (index, version) in versions.iter().enumerate() {
-                            let picked = index == self.version_index;
-                            let (rect, response) = ui
-                                .allocate_exact_size(egui::vec2(width, 48.0), egui::Sense::click());
-                            let painter = ui.painter();
-                            painter.rect_filled(
-                                rect,
-                                8.0,
-                                if picked { theme::PANEL_HI } else { theme::PANEL },
-                            );
-                            painter.rect_stroke(
-                                rect,
-                                8.0,
-                                egui::Stroke::new(
-                                    1.0,
-                                    if picked { theme::ACCENT } else { theme::LINE },
-                                ),
-                            );
-                            painter.text(
-                                rect.left_center() + egui::vec2(14.0, -8.0),
-                                egui::Align2::LEFT_CENTER,
-                                &version.id,
-                                egui::FontId::proportional(15.0),
-                                theme::TEXT,
-                            );
-                            painter.text(
-                                rect.left_center() + egui::vec2(14.0, 10.0),
-                                egui::Align2::LEFT_CENTER,
-                                format!("{} · {}", version.loader, version.release_time),
-                                egui::FontId::proportional(11.5),
-                                theme::DIM,
-                            );
-                            painter.text(
-                                rect.right_center() + egui::vec2(-14.0, 0.0),
-                                egui::Align2::RIGHT_CENTER,
-                                version.game.display().to_string(),
-                                egui::FontId::proportional(11.0),
-                                theme::DIM,
-                            );
-                            if response.clicked() {
-                                self.version_index = index;
-                            }
-                            ui.add_space(6.0);
-                        }
-                    });
-
-                    ui.add_space(16.0);
-                    ui.vertical(|ui| {
-                        ui.set_width(300.0);
-                        egui::Frame::none()
-                            .fill(theme::PANEL)
-                            .stroke(egui::Stroke::new(1.0, theme::LINE))
-                            .rounding(10.0)
-                            .inner_margin(egui::Margin::same(14.0))
-                            .show(ui, |ui| {
-                                ui.horizontal(|ui| {
-                                    theme::icon(ui, Icon::Person, theme::ACCENT);
-                                    ui.label(theme::label(i18n::t("home.player")));
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.add(
-                                        egui::TextEdit::singleline(&mut self.name_input)
-                                            .hint_text("Steve")
-                                            .desired_width(150.0),
-                                    );
-                                    if ui
-                                        .button(theme::action(&i18n::t("profile.set_name")))
-                                        .clicked()
-                                    {
-                                        let name = self.name_input.clone();
-                                        let result = self.session.set_name(&name);
-                                        self.carry(result);
-                                    }
-                                });
-                            });
-
-                        ui.add_space(12.0);
-                        let play = egui::Button::new(
-                            egui::RichText::new(format!("▶  {}", i18n::t("home.play")))
-                                .size(20.0)
-                                .color(theme::ON_ACCENT)
-                                .strong(),
-                        )
-                        .fill(theme::ACCENT)
-                        .min_size(egui::vec2(300.0, 54.0));
-                        if ui.add(play).clicked() {
-                            self.play();
-                        }
-
-                        ui.add_space(12.0);
-                        let last = self.snapshot.previews.first().cloned();
-                        if let Some(preview) = last {
-                            egui::Frame::none()
-                                .fill(theme::PANEL)
-                                .stroke(egui::Stroke::new(1.0, theme::LINE))
-                                .rounding(10.0)
-                                .inner_margin(egui::Margin::same(14.0))
-                                .show(ui, |ui| {
-                                    ui.label(theme::label(i18n::t("home.last_world")));
-                                    ui.horizontal(|ui| {
-                                        theme::icon(ui, Icon::World, theme::ACCENT);
-                                        ui.label(theme::value(preview.label.clone()));
-                                    });
-                                    ui.add(
-                                        egui::ProgressBar::new(preview.health_fraction())
-                                            .desired_width(220.0)
-                                            .text(format!(
-                                                "{:.0}/20",
-                                                preview.health.unwrap_or(0.0)
-                                            )),
-                                    );
-                                    ui.label(theme::label(format!(
-                                        "{} x{} · {} {} · {} {}",
-                                        i18n::t("worlds.food"),
-                                        preview.food.unwrap_or(0),
-                                        i18n::t("worlds.items"),
-                                        preview.items.len(),
-                                        i18n::t("worlds.level"),
-                                        preview.xp_level.unwrap_or(0)
-                                    )));
-                                    if ui.button(i18n::t("nav.worlds")).clicked() {
-                                        self.page = Page::Worlds;
-                                    }
-                                });
+                // The player's name: every launch hands it to the game.
+                ui.add_space(20.0);
+                theme::plate().show(ui, |ui| {
+                    theme::group_title(ui, i18n::t("home.player"));
+                    ui.horizontal(|ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.name_input)
+                                .hint_text("Steve")
+                                .desired_width(200.0),
+                        );
+                        if ui
+                            .button(theme::action(&i18n::t("profile.set_name")))
+                            .clicked()
+                        {
+                            let name = self.name_input.clone();
+                            let result = self.session.set_name(&name);
+                            self.carry(result);
                         }
                     });
                 });
+
+                // A new instance: a version, a name, and where it plays.
+                ui.add_space(12.0);
+                theme::plate().show(ui, |ui| {
+                    theme::group_title(ui, i18n::t("home.new_instance"));
+                    ui.add_space(6.0);
+                    let selected = versions
+                        .get(self.version_index)
+                        .map(|version| format!("{} · {}", version.id, version.loader))
+                        .unwrap_or_else(|| "—".into());
+                    theme::field_row(ui, i18n::t("home.versions"), |ui| {
+                        egui::ComboBox::from_id_salt("new_instance_version")
+                            .selected_text(selected)
+                            .width(240.0)
+                            .show_ui(ui, |ui| {
+                                for (index, version) in versions.iter().enumerate() {
+                                    if ui
+                                        .selectable_label(
+                                            self.version_index == index,
+                                            format!("{} · {}", version.id, version.loader),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.version_index = index;
+                                    }
+                                }
+                            });
+                    });
+                    theme::field_row(ui, i18n::t("home.instance_name"), |ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.instance_name)
+                                .hint_text(
+                                    versions
+                                        .get(self.version_index)
+                                        .map(|version| version.id.clone())
+                                        .unwrap_or_default(),
+                                )
+                                .desired_width(200.0),
+                        );
+                    });
+                    theme::field_row(ui, i18n::t("home.portable"), |ui| {
+                        ui.checkbox(&mut self.instance_portable, "");
+                        if !self.instance_portable {
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.instance_dir)
+                                    .hint_text(i18n::t("home.folder"))
+                                    .desired_width(260.0),
+                            );
+                        }
+                    });
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        if ui.button(theme::action(&i18n::t("home.create"))).clicked() {
+                            if let Some(version) =
+                                versions.get(self.version_index).map(|known| known.id.clone())
+                            {
+                                let name = if self.instance_name.trim().is_empty() {
+                                    version.clone()
+                                } else {
+                                    self.instance_name.clone()
+                                };
+                                let dir = (!self.instance_portable
+                                    && !self.instance_dir.trim().is_empty())
+                                .then(|| std::path::PathBuf::from(self.instance_dir.trim()));
+                                let result = self.session.create_instance(&name, &version, dir);
+                                self.carry(result);
+                            }
+                        }
+                    });
+                });
+
+                // The instances, the one picked first.
+                ui.add_space(12.0);
+                theme::plate().show(ui, |ui| {
+                    theme::group_title(ui, i18n::t("home.instances"));
+                    ui.add_space(6.0);
+                    if instances.is_empty() {
+                        ui.label(theme::label(i18n::t("home.no_instances")));
+                    }
+                    let mut start: Option<String> = None;
+                    let mut remove: Option<String> = None;
+                    for instance in &instances {
+                        let sub = if instance.game == portable_home {
+                            instance.version.clone()
+                        } else {
+                            format!("{} · {}", instance.version, instance.game.display())
+                        };
+                        let current = self.instance.as_deref() == Some(instance.name.as_str());
+                        if theme::list_row(ui, &instance.name, &sub, current).clicked() {
+                            self.instance = Some(instance.name.clone());
+                        }
+                        ui.add_space(2.0);
+                    }
+                    if let Some(instance) = &chosen {
+                        ui.add_space(6.0);
+                        ui.horizontal(|ui| {
+                            if ui
+                                .button(theme::action(&i18n::t("home.play")))
+                                .clicked()
+                            {
+                                start = Some(instance.name.clone());
+                            }
+                            if ui.small_button(i18n::t("common.remove")).clicked() {
+                                remove = Some(instance.name.clone());
+                            }
+                        });
+                    }
+                    if let Some(name) = start {
+                        let result = self.session.play_instance(&name);
+                        self.carry(result);
+                    }
+                    if let Some(name) = remove {
+                        let result = self.session.remove_instance(&name);
+                        self.carry(result);
+                    }
+                });
+
+                // Every version installed in the folders this tool reads.
+                ui.add_space(12.0);
+                theme::plate().show(ui, |ui| {
+                    theme::group_title(ui, i18n::t("home.versions"));
+                    ui.add_space(6.0);
+                    if versions.is_empty() {
+                        ui.label(theme::note(i18n::t("home.no_version"), false));
+                        if ui.button(theme::action(&i18n::t("nav.launchers"))).clicked() {
+                            self.page = Page::Launchers;
+                        }
+                    }
+                    let mut pick: Option<usize> = None;
+                    for (index, version) in versions.iter().enumerate() {
+                        let sub = format!(
+                            "{} · {} · {}",
+                            version.loader,
+                            version.release_time,
+                            version.game.display()
+                        );
+                        if theme::list_row(ui, &version.id, &sub, index == self.version_index)
+                            .clicked()
+                        {
+                            pick = Some(index);
+                        }
+                        ui.add_space(2.0);
+                    }
+                    if let Some(index) = pick {
+                        self.version_index = index;
+                    }
+                });
+
+                // The world played last, with what the player has in it.
+                if let Some(preview) = self.snapshot.previews.first().cloned() {
+                    ui.add_space(12.0);
+                    theme::plate().show(ui, |ui| {
+                        theme::group_title(ui, i18n::t("home.last_world"));
+                        ui.horizontal(|ui| {
+                            theme::icon(ui, Icon::World, theme::ACCENT);
+                            ui.label(theme::value(preview.label.clone()));
+                        });
+                        ui.add_space(4.0);
+                        ui.add(
+                            egui::ProgressBar::new(preview.health_fraction())
+                                .desired_width(240.0)
+                                .text(format!("{:.0}/20", preview.health.unwrap_or(0.0))),
+                        );
+                        ui.label(theme::label(format!(
+                            "{} x{} · {} {} · {} {}",
+                            i18n::t("worlds.food"),
+                            preview.food.unwrap_or(0),
+                            i18n::t("worlds.items"),
+                            preview.items.len(),
+                            i18n::t("worlds.level"),
+                            preview.xp_level.unwrap_or(0)
+                        )));
+                        ui.add_space(6.0);
+                        if ui.button(theme::action(&i18n::t("nav.worlds"))).clicked() {
+                            self.page = Page::Worlds;
+                        }
+                    });
+                }
             });
     }
 
