@@ -446,9 +446,7 @@ mod tests {
     #[test]
     fn a_change_keeps_every_other_tag_in_order() {
         let mut root = sample();
-        root.path_mut(&["Data", "Player", "Health"])
-            .unwrap()
-            .clone_from(&Tag::Float(20.0));
+        *root.path_mut(&["Data", "Player", "Health"]).unwrap() = Tag::Float(20.0);
         let read_back = read(&write(&root)).unwrap();
         assert_eq!(
             read_back.get("Data").and_then(|d| d.get("LevelName")),
@@ -456,9 +454,11 @@ mod tests {
         );
         assert_eq!(
             read_back
-                .path_mut(&["Data", "Player", "Health"])
-                .map(|t| t.as_f32()),
-            Some(Some(20.0))
+                .get("Data")
+                .and_then(|d| d.get("Player"))
+                .and_then(|p| p.get("Health"))
+                .and_then(Tag::as_f32),
+            Some(20.0)
         );
     }
 

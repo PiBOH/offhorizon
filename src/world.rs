@@ -261,7 +261,12 @@ mod tests {
     use super::*;
 
     fn world(names: &[(&str, Tag)]) -> Root {
-        let player = Tag::Compound(names.to_vec());
+        let player = Tag::Compound(
+            names
+                .iter()
+                .map(|(name, value)| ((*name).to_string(), value.clone()))
+                .collect(),
+        );
         Root {
             name: String::new(),
             tag: Tag::Compound(vec![(
@@ -342,7 +347,7 @@ mod tests {
         set_level(&mut root, 30).unwrap();
         let stats = stats(&root).unwrap();
         assert_eq!(stats.xp_level, 30);
-        assert_eq!(stats.xp_total, 825);
+        assert_eq!(stats.xp_total, 1395);
     }
 
     #[test]
