@@ -5,6 +5,7 @@ use crate::actions::Session;
 use crate::world::{self, Weather};
 use crate::i18n;
 
+// shortcut: the help text is English only, translate it when the commands grow.
 const USAGE: &str = "\
 OffHorizon — portable companion for Horizon
 

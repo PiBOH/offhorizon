@@ -81,4 +81,5 @@
   <string key="status.lang_set">Taal ingesteld op {lang}.</string>
   <string key="status.error">Fout: {why}</string>
   <string key="status.no_launcher">Geen gegevensmap van de Horizon-launcher gevonden.</string>
+  <string key="portable.telemetry_off">uit — er wordt nooit iets verzonden</string>
 </strings>

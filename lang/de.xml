@@ -81,4 +81,5 @@
   <string key="status.lang_set">Sprache auf {lang} gesetzt.</string>
   <string key="status.error">Fehler: {why}</string>
   <string key="status.no_launcher">Kein Datenordner des Horizon-Launchers gefunden.</string>
+  <string key="portable.telemetry_off">aus — es wird nie etwas gesendet</string>
 </strings>

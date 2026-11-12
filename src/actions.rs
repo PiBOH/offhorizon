@@ -99,11 +99,18 @@ impl Session {
                 .ok_or_else(|| {
                     i18n::tf("status.world_missing", &[("name", name.to_string())])
                 }),
-            None => snapshot
-                .worlds
-                .first()
-                .cloned()
-                .ok_or_else(|| i18n::t("status.no_world")),
+            // A world on the stick first: the system install is only read, and only when the
+            // stick has nothing to play.
+            None => {
+                let home = self.home();
+                snapshot
+                    .worlds
+                    .iter()
+                    .find(|w| w.level.starts_with(&home))
+                    .or_else(|| snapshot.worlds.first())
+                    .cloned()
+                    .ok_or_else(|| i18n::t("status.no_world"))
+            }
         }
     }
 
@@ -253,7 +260,7 @@ impl Session {
             format!(
                 "{}: {}",
                 i18n::t("portable.telemetry"),
-                "off — this tool sends nothing, ever"
+                i18n::t("portable.telemetry_off")
             ),
             format!(
                 "{}: {}",

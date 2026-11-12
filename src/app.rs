@@ -279,7 +279,7 @@ impl eframe::App for App {
                 ui.label(theme::value(self.session.portable.tool().display().to_string()));
                 ui.add_space(8.0);
                 ui.label(theme::label(i18n::t("portable.telemetry")));
-                ui.label(theme::note("off — nothing is ever sent", true));
+                ui.label(theme::note(i18n::t("portable.telemetry_off"), true));
             });
 
         egui::TopBottomPanel::bottom("log")

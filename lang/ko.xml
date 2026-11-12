@@ -81,4 +81,5 @@
   <string key="status.lang_set">언어를 {lang}(으)로 설정했습니다.</string>
   <string key="status.error">오류: {why}</string>
   <string key="status.no_launcher">Horizon 런처 데이터 폴더를 찾지 못했습니다.</string>
+  <string key="portable.telemetry_off">꺼짐 — 아무것도 전송하지 않습니다</string>
 </strings>

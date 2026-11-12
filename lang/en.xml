@@ -81,4 +81,5 @@
   <string key="status.lang_set">Language set to {lang}.</string>
   <string key="status.error">Error: {why}</string>
   <string key="status.no_launcher">No Horizon launcher data folder found.</string>
+  <string key="portable.telemetry_off">off — nothing is ever sent</string>
 </strings>

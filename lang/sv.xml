@@ -81,4 +81,5 @@
   <string key="status.lang_set">Språk satt till {lang}.</string>
   <string key="status.error">Fel: {why}</string>
   <string key="status.no_launcher">Ingen datamapp för Horizon-launchern hittades.</string>
+  <string key="portable.telemetry_off">av — inget skickas någonsin</string>
 </strings>

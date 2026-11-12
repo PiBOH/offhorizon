@@ -81,4 +81,5 @@
   <string key="status.lang_set">भाषा {lang} सेट हुई।</string>
   <string key="status.error">त्रुटि: {why}</string>
   <string key="status.no_launcher">Horizon लॉन्चर का डेटा फ़ोल्डर नहीं मिला।</string>
+  <string key="portable.telemetry_off">बंद — कुछ भी नहीं भेजा जाता</string>
 </strings>

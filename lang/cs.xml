@@ -81,4 +81,5 @@
   <string key="status.lang_set">Jazyk nastaven na {lang}.</string>
   <string key="status.error">Chyba: {why}</string>
   <string key="status.no_launcher">Složka dat launcheru Horizon nebyla nalezena.</string>
+  <string key="portable.telemetry_off">vypnuta — nic se neodesílá</string>
 </strings>

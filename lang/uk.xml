@@ -81,4 +81,5 @@
   <string key="status.lang_set">Мову встановлено: {lang}.</string>
   <string key="status.error">Помилка: {why}</string>
   <string key="status.no_launcher">Теку даних лаунчера Horizon не знайдено.</string>
+  <string key="portable.telemetry_off">вимкнена — нічого не надсилається</string>
 </strings>

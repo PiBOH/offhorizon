@@ -81,4 +81,5 @@
   <string key="status.lang_set">Язык: {lang}.</string>
   <string key="status.error">Ошибка: {why}</string>
   <string key="status.no_launcher">Папка данных лаунчера Horizon не найдена.</string>
+  <string key="portable.telemetry_off">выключена — ничего не отправляется</string>
 </strings>

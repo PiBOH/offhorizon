@@ -81,4 +81,5 @@
   <string key="status.lang_set">Lingua impostata su {lang}.</string>
   <string key="status.error">Errore: {why}</string>
   <string key="status.no_launcher">Nessuna cartella dati del launcher Horizon trovata.</string>
+  <string key="portable.telemetry_off">disattivata — non viene inviato nulla</string>
 </strings>

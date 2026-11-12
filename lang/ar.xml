@@ -81,4 +81,5 @@
   <string key="status.lang_set">تم تعيين اللغة إلى {lang}.</string>
   <string key="status.error">خطأ: {why}</string>
   <string key="status.no_launcher">لم يُعثر على مجلد بيانات مشغّل Horizon.</string>
+  <string key="portable.telemetry_off">متوقفة — لا يُرسل شيء أبدًا</string>
 </strings>

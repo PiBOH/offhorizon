@@ -81,4 +81,5 @@
   <string key="status.lang_set">Dil {lang} olarak ayarlandı.</string>
   <string key="status.error">Hata: {why}</string>
   <string key="status.no_launcher">Horizon başlatıcısının veri klasörü bulunamadı.</string>
+  <string key="portable.telemetry_off">kapalı — hiçbir şey gönderilmez</string>
 </strings>

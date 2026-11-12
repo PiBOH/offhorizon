@@ -81,4 +81,5 @@
   <string key="status.lang_set">言語を {lang} に設定しました。</string>
   <string key="status.error">エラー: {why}</string>
   <string key="status.no_launcher">Horizon ランチャーのデータフォルダーが見つかりません。</string>
+  <string key="portable.telemetry_off">オフ — 何も送信しません</string>
 </strings>

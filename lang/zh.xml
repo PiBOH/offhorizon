@@ -81,4 +81,5 @@
   <string key="status.lang_set">语言已设为 {lang}。</string>
   <string key="status.error">错误：{why}</string>
   <string key="status.no_launcher">未找到 Horizon 启动器的数据文件夹。</string>
+  <string key="portable.telemetry_off">已关闭 — 从不发送任何内容</string>
 </strings>
