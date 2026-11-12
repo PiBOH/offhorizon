@@ -8,6 +8,9 @@ The window is a launcher now.
   command from the version's JSON and starts the game as the offline name (`versions`, `play`).
 - **Instances**: a version in a folder of its own. At creation you choose the folder: beside this
   executable (portable, the default) or any install already here (`instance new|list|remove`).
+- **The official look**: the window is now the official Horizon launcher's shell — the pages as
+  tabs in the top bar, the instances in the sidebar, the glass plates, corners and type steps from
+  `crates/horizon-theme`, no background picture and no telemetry. OffHorizon keeps its accent."
 - **Release notes**: the release body is the changelog section of the released version, no longer
   the whole file.
 
