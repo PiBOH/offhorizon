@@ -3,6 +3,7 @@ name: Auto Release
 # One release per `v` commit on the default branch, and on demand.
 # The version comes from version.txt, the single version source: a release commit changes that
 # file, and the tag, the title and every asset name follow it.
+# The notes are the changelog section for that one version, never the whole file.
 
 on:
   push:
@@ -114,12 +115,36 @@ jobs:
           path: assets
           merge-multiple: true
 
+      - name: Notes for this version only
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - "$VERSION" <<'PY'
+          import re, sys
+
+          version = sys.argv[1]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          heading = re.compile(
+              r"^##\s*\[?" + re.escape(version) + r"\]?\s*$(.*?)(?=^##\s|\Z)",
+              re.MULTILINE | re.DOTALL,
+          )
+          match = heading.search(text)
+          if not match:
+              sys.exit(f"CHANGELOG.md has no section for {version}")
+          notes = match.group(1).strip()
+          if not notes:
+              sys.exit(f"the changelog section for {version} is empty")
+          open("NOTES.md", "w", encoding="utf-8").write(notes + "\n")
+          print(f"Notes for {version}: {len(notes)} characters")
+          PY
+
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.version }}
           name: OffHorizon ${{ needs.version.outputs.version }}
           prerelease: ${{ needs.version.outputs.prerelease }}
-          body_path: CHANGELOG.md
+          body_path: NOTES.md
           files: assets/*
           fail_on_unmatched_files: true

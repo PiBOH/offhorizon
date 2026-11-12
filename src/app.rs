@@ -524,6 +524,133 @@ impl App {
                     });
 
                 ui.add_space(16.0);
+                let instances = self.session.instances();
+                let portable_home = self.session.home();
+                ui.label(theme::title(&i18n::t("home.instances")));
+                ui.add_space(6.0);
+                if instances.is_empty() {
+                    ui.label(theme::label(i18n::t("home.no_instances")));
+                }
+                for instance in &instances {
+                    let portable = instance.game == portable_home;
+                    egui::Frame::none()
+                        .fill(theme::PANEL)
+                        .stroke(egui::Stroke::new(1.0, theme::LINE))
+                        .rounding(10.0)
+                        .inner_margin(egui::Margin::same(12.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                theme::icon(ui, Icon::Play, theme::ACCENT);
+                                ui.label(theme::value(instance.name.clone()));
+                                ui.label(theme::label(format!(
+                                    "{} · {}",
+                                    instance.version,
+                                    if portable {
+                                        i18n::t("home.portable")
+                                    } else {
+                                        instance.game.display().to_string()
+                                    }
+                                )));
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui.small_button(i18n::t("common.remove")).clicked() {
+                                            let name = instance.name.clone();
+                                            let result = self.session.remove_instance(&name);
+                                            self.carry(result);
+                                        }
+                                        let play = egui::Button::new(
+                                            egui::RichText::new(i18n::t("home.play"))
+                                                .size(13.5)
+                                                .color(theme::ON_ACCENT)
+                                                .strong(),
+                                        )
+                                        .fill(theme::ACCENT);
+                                        if ui.add(play).clicked() {
+                                            let name = instance.name.clone();
+                                            let result = self.session.play_instance(&name);
+                                            self.carry(result);
+                                        }
+                                    },
+                                );
+                            });
+                        });
+                    ui.add_space(6.0);
+                }
+
+                ui.add_space(8.0);
+                let versions = self.versions.clone();
+                egui::Frame::none()
+                    .fill(theme::PANEL)
+                    .stroke(egui::Stroke::new(1.0, theme::LINE))
+                    .rounding(10.0)
+                    .inner_margin(egui::Margin::same(12.0))
+                    .show(ui, |ui| {
+                        ui.label(theme::label(i18n::t("home.new_instance")));
+                        ui.horizontal(|ui| {
+                            let placeholder = versions
+                                .get(self.version_index)
+                                .map(|v| v.id.clone())
+                                .unwrap_or_default();
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.instance_name)
+                                    .hint_text(placeholder)
+                                    .desired_width(170.0),
+                            );
+                            let selected = versions
+                                .get(self.version_index)
+                                .map(|v| format!("{} · {}", v.id, v.loader))
+                                .unwrap_or_else(|| "—".to_string());
+                            egui::ComboBox::from_id_salt("new_instance_version")
+                                .selected_text(selected)
+                                .width(220.0)
+                                .show_ui(ui, |ui| {
+                                    for (index, version) in versions.iter().enumerate() {
+                                        if ui
+                                            .selectable_label(
+                                                self.version_index == index,
+                                                format!("{} · {}", version.id, version.loader),
+                                            )
+                                            .clicked()
+                                        {
+                                            self.version_index = index;
+                                        }
+                                    }
+                                });
+                            ui.checkbox(&mut self.instance_portable, i18n::t("home.portable"));
+                            if !self.instance_portable {
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.instance_dir)
+                                        .hint_text(i18n::t("home.folder"))
+                                        .desired_width(240.0),
+                                );
+                            }
+                            if ui
+                                .button(theme::action(&i18n::t("home.create")))
+                                .clicked()
+                            {
+                                if let Some(version) =
+                                    self.versions.get(self.version_index).map(|v| v.id.clone())
+                                {
+                                    let name = if self.instance_name.trim().is_empty() {
+                                        version.clone()
+                                    } else {
+                                        self.instance_name.clone()
+                                    };
+                                    let dir = (!self.instance_portable
+                                        && !self.instance_dir.trim().is_empty())
+                                        .then(|| {
+                                            std::path::PathBuf::from(self.instance_dir.trim())
+                                        });
+                                    let result =
+                                        self.session.create_instance(&name, &version, dir);
+                                    self.carry(result);
+                                }
+                            }
+                        });
+                    });
+
+                ui.add_space(16.0);
                 ui.horizontal_top(|ui| {
                     let versions = self.versions.clone();
                     let width = (ui.available_width() - 340.0).max(380.0);
