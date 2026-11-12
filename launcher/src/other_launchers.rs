@@ -38,9 +38,12 @@
 //! - SKLauncher 4.0 (Next): its storage folder keeps each instance in `instances/`
 //!   (`%APPDATA%\.sklauncher\instances` on Windows, `~/Library/Application Support/sklauncher/instances`
 //!   on macOS, `~/.sklauncher/instances` on Linux; Settings → Storage → Location moves it),
-//!   and each folder there is an instance whose game folder it is. SKLauncher 3.2 kept its profiles
-//!   in the official launcher's `launcher_profiles.json`, so those are found as the official
-//!   launcher's.
+//!   and each folder there is an instance whose game folder it is. Pointed at a game folder of its
+//!   own (`--workDir`, or an installation's Game Directory), SKLauncher keeps its `sklauncher/`
+//!   folder there, with the instances beside it in `skprofiles/<name>/` (3.2, and 3.2's "Use
+//!   separate instance folder") and `instances/<name>/` (4.0); with no Game Directory they all
+//!   share that one folder. 3.2 also kept its profiles in the official launcher's
+//!   `launcher_profiles.json`, so those are found as the official launcher's.
 //!   <https://docs.skmedix.pl/4.0/getting-started/migrating>,
 //!   <https://docs.skmedix.pl/faq/launcher-related>
 //!
@@ -454,13 +457,34 @@ pub fn sklauncher_instances(root: &Path) -> Vec<Found> {
         true => root.to_path_buf(),
         false => root.join("instances"),
     };
-    let mut found: Vec<Found> = fs::read_dir(&instances)
+    instance_folders(&instances)
+}
+
+/// The folders in `dir`, each a SKLauncher instance whose game folder it is, by name.
+fn instance_folders(dir: &Path) -> Vec<Found> {
+    let mut found: Vec<Found> = fs::read_dir(dir)
         .into_iter()
         .flatten()
         .flatten()
         .map(|e| e.path())
         .filter(|p| p.is_dir())
         .filter_map(|game| sklauncher_instance(&game))
+        .collect();
+    found.sort_by_key(|f| f.name.to_lowercase());
+    found
+}
+
+/// The instances SKLauncher keeps in a game folder it was pointed at (`--workDir`, an
+/// installation's Game Directory, or the official launcher's own folder it uses by default):
+/// `skprofiles/<name>/` and `instances/<name>/`, each an instance's game folder. Only where
+/// SKLauncher's own `sklauncher/` folder says it was there.
+pub fn sklauncher_game_instances(game: &Path) -> Vec<Found> {
+    if !game.join("sklauncher").is_dir() {
+        return Vec::new();
+    }
+    let mut found: Vec<Found> = ["skprofiles", "instances"]
+        .iter()
+        .flat_map(|dir| instance_folders(&game.join(dir)))
         .collect();
     found.sort_by_key(|f| f.name.to_lowercase());
     found
@@ -497,7 +521,25 @@ pub fn in_folder(dir: &Path, launcher: Option<&'static str>) -> Vec<Found> {
         return found;
     }
     if dir.join("launcher_profiles.json").is_file() {
-        return official_profiles(dir);
+        // SKLauncher uses the official launcher's folder by default, and writes its profiles
+        // there: the instances it keeps in that folder come with them.
+        let mut found = official_profiles(dir);
+        found.extend(sklauncher_game_instances(dir));
+        return found;
+    }
+    // The `skprofiles/` or `instances/` of a game folder SKLauncher was pointed at, chosen itself.
+    if dir
+        .file_name()
+        .is_some_and(|n| n == "skprofiles" || n == "instances")
+        && dir
+            .parent()
+            .is_some_and(|game| game.join("sklauncher").is_dir())
+    {
+        return instance_folders(dir);
+    }
+    // A game folder SKLauncher was pointed at (`--workDir`, an installation's Game Directory).
+    if dir.join("sklauncher").is_dir() {
+        return sklauncher_game_instances(dir);
     }
     if dir.join("minecraftinstance.json").is_file() {
         let parent = dir.parent().unwrap_or(dir);
@@ -575,6 +617,9 @@ pub fn scan(os: Os, folders: &Folders) -> Vec<Found> {
             SKLAUNCHER => found.extend(sklauncher_instances(&dir)),
             _ => {}
         }
+        // SKLauncher pointed at a game folder another launcher's path scans anyway (the official
+        // launcher's own, by default) keeps its instances there.
+        found.extend(sklauncher_game_instances(&dir));
     }
     found.extend(
         curseforge_folders(os, folders)

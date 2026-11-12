@@ -372,6 +372,64 @@ fn sklauncher_instances_are_the_folders_in_its_instances_folder() {
 }
 
 #[test]
+fn sklauncher_instances_in_the_minecraft_folder_it_was_pointed_at() {
+    // SKLauncher at the official launcher's folder (its default, or `--workDir` naming it): its
+    // own `sklauncher/` folder sits there, with the instances beside it.
+    let root = scratch("sklauncher-workdir");
+    let minecraft = root.join(".minecraft");
+    write(&minecraft.join("sklauncher/sklauncher_logs.txt"), "log");
+    write(
+        &minecraft.join("skprofiles/Vanilla 1.21.1/saves/World/level.dat"),
+        "dat",
+    );
+    write(&minecraft.join("instances/Fabric_1.21.1/mods/b.jar"), "jar");
+    write(
+        &minecraft.join("launcher_profiles.json"),
+        &json!({"profiles": {"p": {"type": "latest-release", "name": "Latest release"}}})
+            .to_string(),
+    );
+    let folders = Folders {
+        home: root.clone(),
+        data: root.clone(),
+        config: root.clone(),
+    };
+    let found = scan(Os::Linux, &folders);
+    let sklauncher: Vec<_> = found
+        .iter()
+        .filter(|f| f.launcher == SKLAUNCHER)
+        .map(|f| (f.name.as_str(), f.game.clone()))
+        .collect();
+    assert_eq!(
+        sklauncher,
+        [
+            ("Fabric_1.21.1", minecraft.join("instances/Fabric_1.21.1")),
+            (
+                "Vanilla 1.21.1",
+                minecraft.join("skprofiles/Vanilla 1.21.1")
+            ),
+        ]
+    );
+    // The folder's official launcher profiles stay, and its SKLauncher instances come with them.
+    let all = in_folder(&minecraft, None);
+    assert!(all
+        .iter()
+        .any(|f| f.launcher == OFFICIAL && f.name == "Latest release"));
+    assert_eq!(all.iter().filter(|f| f.launcher == SKLAUNCHER).count(), 2);
+    // Its `skprofiles/` and `instances/`, chosen themselves, find the same instances.
+    assert_eq!(in_folder(&minecraft.join("skprofiles"), None).len(), 1);
+    assert_eq!(
+        in_folder(&minecraft.join("instances"), None)[0].game,
+        minecraft.join("instances/Fabric_1.21.1")
+    );
+    // A Minecraft folder SKLauncher was never pointed at keeps none of its instances.
+    let plain = root.join("plain/.minecraft");
+    write(&plain.join("saves/World/level.dat"), "dat");
+    assert!(sklauncher_game_instances(&plain).is_empty());
+    assert!(in_folder(&plain, None).is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn atlauncher_loader_types_match_whatever_the_case() {
     for (kind, want) in [
         ("fabric", "fabric"),
