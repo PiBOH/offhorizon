@@ -80,6 +80,9 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Test
+        run: cargo test --locked
+
       - name: Build
         run: cargo build --release --locked
 
