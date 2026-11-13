@@ -229,13 +229,13 @@ impl Session {
             .map(PathBuf::from)
             .unwrap_or_else(|| versions.clone());
         let minecraft = native::minecraft_of(&client);
-        said(i18n::t("home.rust_preparing"));
+        log(i18n::t("home.rust_preparing"));
         progress(0.2);
         // Any copy of the game is enough: the stick's, the official launcher's, a Prism, MultiMC
         // or Modrinth instance. The first that prepares the resources wins.
         let mut why = String::new();
         for source in crate::minecraft::sources(&minecraft, &self.portable.base) {
-            said(i18n::tf("home.rust_from", &[("name", source.name.clone())]));
+            log(i18n::tf("home.rust_from", &[("name", source.name.clone())]));
             match download::prepare(&dir, &source, None, &mut log) {
                 Ok(()) => {
                     progress(1.0);
@@ -245,7 +245,7 @@ impl Session {
             }
         }
         // Nothing to read: the game itself comes from Mojang, which asks for no account.
-        said(i18n::tf(
+        log(i18n::tf(
             "home.rust_minecraft_download",
             &[("version", minecraft.clone())],
         ));
@@ -260,7 +260,7 @@ impl Session {
             name: "Mojang".to_string(),
         };
         let server = fetched.join("server").join(format!("{minecraft}.jar"));
-        said(i18n::tf("home.rust_from", &[("name", source.name.clone())]));
+        log(i18n::tf("home.rust_from", &[("name", source.name.clone())]));
         match download::prepare(
             &dir,
             &source,

@@ -146,11 +146,12 @@ pub fn from_mojang(
             dir.join("server").join(format!("{version}.jar")),
         ));
     }
-    for library in meta
+    let libraries: &[Value] = meta
         .get("libraries")
         .and_then(Value::as_array)
-        .unwrap_or(&[])
-    {
+        .map(|list| list.as_slice())
+        .unwrap_or(&[]);
+    for library in libraries {
         if !allowed(library) {
             continue;
         }
