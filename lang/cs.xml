@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">Klient je nainstalován, ale zdroje nejsou připravené: {why}</string>
   <string key="home.rust_no_minecraft">Žádná instalace Minecraft Java: spusťte hru jednou ze svého launcheru.</string>
   <string key="home.rust_unprepared">Horizon {version} zatím nemá zdroje: stáhněte ho jednou, aby se připravily z vašeho Minecraftu.</string>
+  <string key="home.rust_preparing">Připravuji zdroje klienta…</string>
+  <string key="home.rust_from">Připravuji z {name}.</string>
+  <string key="home.rust_minecraft_download">Na tomto počítači není Minecraft: stahuji {version} od Mojangu…</string>
+  <string key="home.rust_portable">složka na disku</string>
 </strings>

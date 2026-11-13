@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">O cliente está instalado, mas os recursos não estão prontos: {why}</string>
   <string key="home.rust_no_minecraft">Nenhuma instalação de Minecraft Java aqui: abra o jogo uma vez pelo seu launcher.</string>
   <string key="home.rust_unprepared">Horizon {version} ainda não tem recursos: baixe-o uma vez para que sejam preparados do seu Minecraft.</string>
+  <string key="home.rust_preparing">Preparando os recursos do cliente…</string>
+  <string key="home.rust_from">Preparando de {name}.</string>
+  <string key="home.rust_minecraft_download">Nenhum Minecraft neste computador: baixando {version} da Mojang…</string>
+  <string key="home.rust_portable">a pasta do pen drive</string>
 </strings>

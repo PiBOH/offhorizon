@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">客户端已安装，但资源尚未就绪：{why}</string>
   <string key="home.rust_no_minecraft">此处没有 Minecraft Java：请先从你的启动器运行一次游戏。</string>
   <string key="home.rust_unprepared">Horizon {version} 尚无资源：先下载一次，以便从你的 Minecraft 生成。</string>
+  <string key="home.rust_preparing">正在准备客户端资源…</string>
+  <string key="home.rust_from">正在从 {name} 准备。</string>
+  <string key="home.rust_minecraft_download">此电脑上没有 Minecraft：正在从 Mojang 下载 {version}…</string>
+  <string key="home.rust_portable">U 盘文件夹</string>
 </strings>

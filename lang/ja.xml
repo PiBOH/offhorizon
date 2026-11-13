@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">クライアントは入りましたが、リソースがまだ準備できていません: {why}</string>
   <string key="home.rust_no_minecraft">ここに Minecraft Java がありません: ランチャーから一度ゲームを起動してください。</string>
   <string key="home.rust_unprepared">Horizon {version} にはまだリソースがありません: 一度ダウンロードして、あなたの Minecraft から準備させてください。</string>
+  <string key="home.rust_preparing">クライアントのリソースを準備中…</string>
+  <string key="home.rust_from">{name} から準備しています。</string>
+  <string key="home.rust_minecraft_download">このパソコンに Minecraft がありません: {version} を Mojang からダウンロード中…</string>
+  <string key="home.rust_portable">USB メモリのフォルダ</string>
 </strings>

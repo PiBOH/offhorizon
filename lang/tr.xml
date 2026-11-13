@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">İstemci kuruldu ama kaynakları hazır değil: {why}</string>
   <string key="home.rust_no_minecraft">Burada Minecraft Java kurulumu yok: oyunu başlatıcınızdan bir kez açın.</string>
   <string key="home.rust_unprepared">Horizon {version} henüz kaynaklara sahip değil: bir kez indirin, Minecraft'ınızdan hazırlansın.</string>
+  <string key="home.rust_preparing">İstemcinin kaynakları hazırlanıyor…</string>
+  <string key="home.rust_from">{name} üzerinden hazırlanıyor.</string>
+  <string key="home.rust_minecraft_download">Bu bilgisayarda Minecraft yok: {version} Mojang'dan indiriliyor…</string>
+  <string key="home.rust_portable">bellek klasörü</string>
 </strings>

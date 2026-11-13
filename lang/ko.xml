@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">클라이언트는 설치되었지만 리소스가 아직 준비되지 않았습니다: {why}</string>
   <string key="home.rust_no_minecraft">여기에 Minecraft Java가 없습니다: 런처에서 게임을 한 번 실행하세요.</string>
   <string key="home.rust_unprepared">Horizon {version}에는 아직 리소스가 없습니다: 한 번 내려받으면 Minecraft에서 준비됩니다.</string>
+  <string key="home.rust_preparing">클라이언트 리소스를 준비하는 중…</string>
+  <string key="home.rust_from">{name}에서 준비 중입니다.</string>
+  <string key="home.rust_minecraft_download">이 컴퓨터에 Minecraft가 없습니다: {version}을(를) Mojang에서 내려받는 중…</string>
+  <string key="home.rust_portable">USB 폴더</string>
 </strings>

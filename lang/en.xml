@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">The client is installed, but its resources are not ready: {why}</string>
   <string key="home.rust_no_minecraft">No Minecraft Java installation here: play the game once from your launcher first.</string>
   <string key="home.rust_unprepared">Horizon {version} has no resources yet: download it once, so they can be prepared from your Minecraft.</string>
+  <string key="home.rust_preparing">Preparing the client's resources…</string>
+  <string key="home.rust_from">Preparing from {name}.</string>
+  <string key="home.rust_minecraft_download">No Minecraft on this computer: downloading {version} from Mojang…</string>
+  <string key="home.rust_portable">the stick's folder</string>
 </strings>

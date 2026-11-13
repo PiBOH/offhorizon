@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">De client is geïnstalleerd, maar de bronnen zijn nog niet klaar: {why}</string>
   <string key="home.rust_no_minecraft">Geen Minecraft Java-installatie hier: start het spel één keer vanuit je launcher.</string>
   <string key="home.rust_unprepared">Horizon {version} heeft nog geen bronnen: download het één keer, zodat ze uit je Minecraft worden klaargezet.</string>
+  <string key="home.rust_preparing">Bronnen van de client worden klaargezet…</string>
+  <string key="home.rust_from">Klaarzetten uit {name}.</string>
+  <string key="home.rust_minecraft_download">Geen Minecraft op deze computer: {version} wordt van Mojang gedownload…</string>
+  <string key="home.rust_portable">de map van de stick</string>
 </strings>

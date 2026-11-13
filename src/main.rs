@@ -13,6 +13,7 @@ mod instances;
 mod launch;
 mod launcher;
 mod logo;
+mod minecraft;
 mod native;
 mod nbt;
 mod others;

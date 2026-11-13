@@ -72,9 +72,11 @@ impl Page {
     }
 }
 
-/// What the download thread sends back: its lines as they come, then how it ended.
+/// What the download thread sends back: its lines as they come, how far it has got, then how it
+/// ended.
 enum Install {
     Line(String),
+    Progress(f32),
     Done(Result<String, String>),
 }
 
@@ -103,6 +105,8 @@ pub struct App {
     instance: Option<String>,
     /// The download running now, if one is.
     installing: Option<std::sync::mpsc::Receiver<Install>>,
+    /// How far that download has got, 0 to 1.
+    progress: f32,
     log: Vec<String>,
 }
 
@@ -131,6 +135,7 @@ impl App {
             time_input: world::TICKS_NOON,
             weather_ticks: 6_000,
             installing: None,
+            progress: 0.0,
             log: Vec::new(),
             session,
         };
@@ -750,7 +755,11 @@ impl App {
                             self.start_install();
                         }
                         if busy {
-                            ui.spinner();
+                            ui.add(
+                                egui::ProgressBar::new(self.progress.clamp(0.0, 1.0))
+                                    .desired_width(180.0)
+                                    .text(format!("{:.0}%", self.progress * 100.0)),
+                            );
                         }
                     });
                     ui.add_space(6.0);
@@ -853,12 +862,16 @@ impl App {
         }
         let (tx, rx) = std::sync::mpsc::channel();
         self.installing = Some(rx);
+        self.progress = 0.0;
         std::thread::spawn(move || {
             let mut session = Session::open();
             let mut said = |line: String| {
                 let _ = tx.send(Install::Line(line));
             };
-            let result = session.install_native(&mut said);
+            let mut progress = |fraction: f32| {
+                let _ = tx.send(Install::Progress(fraction));
+            };
+            let result = session.install_native(&mut said, &mut progress);
             let _ = tx.send(Install::Done(result));
         });
     }
@@ -872,6 +885,7 @@ impl App {
         loop {
             match rx.try_recv() {
                 Ok(Install::Line(line)) => self.say(line),
+                Ok(Install::Progress(fraction)) => self.progress = fraction,
                 Ok(Install::Done(result)) => {
                     self.carry(result);
                     running = false;

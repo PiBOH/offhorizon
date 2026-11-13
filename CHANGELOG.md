@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.5-nightly]
+
+OffHorizon stands on its own: no Horizon, no Minecraft, no account needed.
+
+- **Minecraft found wherever it is**: the preparation reads the stick's own folder, the official
+  launcher's, and the instances of Prism, MultiMC, PolyMC, Modrinth, GDLauncher and CurseForge
+  (those as `--prism-dir`). `OFFHORIZON_MINECRAFT` names one folder by hand.
+- **Minecraft fetched when there is none**: the client names the version it is built for in its
+  `research-lock.json`; that version's JSON, client and server jars, libraries and asset store come
+  from Mojang, and the resources are prepared from them. An interrupted download resumes: a file
+  already there is kept.
+- **A real percentage**: the window shows how far the download and the Minecraft fetch have got
+  (curl's output file is watched against the archive's size), and `install` prints 5 % steps.
+- **Offline throughout**: nothing here signs in, asks for an account, or reads Horizon's files.
+
 ## [0.2.4-nightly]
 
 The downloaded client is visible before it is ready.

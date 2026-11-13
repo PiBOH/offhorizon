@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">Клієнт встановлено, але ресурси не готові: {why}</string>
   <string key="home.rust_no_minecraft">Установку Minecraft Java не знайдено: запустіть гру один раз зі свого лаунчера.</string>
   <string key="home.rust_unprepared">У Horizon {version} ще немає ресурсів: завантажте його один раз, щоб їх підготували з вашого Minecraft.</string>
+  <string key="home.rust_preparing">Готую ресурси клієнта…</string>
+  <string key="home.rust_from">Готую з {name}.</string>
+  <string key="home.rust_minecraft_download">На цьому комп'ютері немає Minecraft: завантажую {version} з Mojang…</string>
+  <string key="home.rust_portable">тека на флешці</string>
 </strings>

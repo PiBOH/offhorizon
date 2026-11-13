@@ -113,4 +113,8 @@
   <string key="home.rust_no_resources">تم تثبيت العميل، لكن موارده غير جاهزة: {why}</string>
   <string key="home.rust_no_minecraft">لا يوجد تثبيت لـ Minecraft Java هنا: شغّل اللعبة مرة واحدة من مشغّلك.</string>
   <string key="home.rust_unprepared">لا يملك Horizon {version} موارد بعد: نزّله مرة واحدة لتُحضَّر من Minecraft لديك.</string>
+  <string key="home.rust_preparing">جارٍ تحضير موارد العميل…</string>
+  <string key="home.rust_from">يُحضَّر من {name}.</string>
+  <string key="home.rust_minecraft_download">لا يوجد Minecraft على هذا الجهاز: جارٍ تنزيل {version} من Mojang…</string>
+  <string key="home.rust_portable">مجلد وحدة التخزين</string>
 </strings>

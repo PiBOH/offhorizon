@@ -196,27 +196,31 @@ impl Session {
     }
 
     /// Downloads the Horizon client (Minecraft: Rust Edition) beside the stick and prepares its
-    /// resources from the game folder this tool plays from. `said` takes the progress lines.
+    /// resources from a Minecraft already here, or from one fetched from Mojang. `said` takes the
+    /// log lines, `progress` the fraction done.
     pub fn install_native(
         &mut self,
         said: &mut dyn FnMut(String),
+        progress: &mut dyn FnMut(f32),
     ) -> Result<String, String> {
         let versions = self.portable.base.join("versions");
         std::fs::create_dir_all(&versions).map_err(|e| format!("{}: {e}", versions.display()))?;
         let mut log = |line: String| said(line);
         // The newest build is not downloaded again when it is already here: only its resources
-        // may be missing, and those are made from the player's Minecraft.
+        // may be missing, and those are made from whatever Minecraft is here.
         let wanted = download::release()?.version;
         let here = self.native(Some(wanted.as_str()));
         if here.as_ref().is_some_and(native::prepared) {
+            progress(1.0);
             return Ok(i18n::tf("home.rust_installed", &[("version", wanted)]));
         }
         let version = match &here {
             Some(_) => wanted,
-            None => download::install(&versions, &mut log)?,
+            None => download::install(&versions, &mut log, progress)?,
         };
         self.rescan();
         let Some(client) = self.native(Some(version.as_str())) else {
+            progress(1.0);
             return Ok(i18n::tf("home.rust_installed", &[("version", version)]));
         };
         let dir = client
@@ -224,13 +228,52 @@ impl Session {
             .parent()
             .map(PathBuf::from)
             .unwrap_or_else(|| versions.clone());
-        // The client plays from prepared resources; without them it is installed but silent about
-        // why it can't start, so the preparation says what it needs instead.
-        match download::prepare(&dir, &self.home(), &mut log) {
-            Ok(()) => Ok(i18n::tf("home.rust_installed", &[("version", version)])),
-            Err(why) => Ok(i18n::tf(
+        let minecraft = native::minecraft_of(&client);
+        said(i18n::t("home.rust_preparing"));
+        progress(0.2);
+        // Any copy of the game is enough: the stick's, the official launcher's, a Prism, MultiMC
+        // or Modrinth instance. The first that prepares the resources wins.
+        let mut why = String::new();
+        for source in crate::minecraft::sources(&minecraft, &self.portable.base) {
+            said(i18n::tf("home.rust_from", &[("name", source.name.clone())]));
+            match download::prepare(&dir, &source, None, &mut log) {
+                Ok(()) => {
+                    progress(1.0);
+                    return Ok(i18n::tf("home.rust_installed", &[("version", version)]));
+                }
+                Err(problem) => why = problem,
+            }
+        }
+        // Nothing to read: the game itself comes from Mojang, which asks for no account.
+        said(i18n::tf(
+            "home.rust_minecraft_download",
+            &[("version", minecraft.clone())],
+        ));
+        let fetched = crate::minecraft::from_mojang(
+            &minecraft,
+            &self.portable.base.join("runtime").join("minecraft"),
+            &mut |fraction, _what| progress(0.2 + 0.75 * fraction),
+        )?;
+        let source = crate::minecraft::Source {
+            dir: fetched.clone(),
+            prism: false,
+            name: "Mojang".to_string(),
+        };
+        let server = fetched.join("server").join(format!("{minecraft}.jar"));
+        said(i18n::tf("home.rust_from", &[("name", source.name.clone())]));
+        match download::prepare(
+            &dir,
+            &source,
+            server.is_file().then_some(server.as_path()),
+            &mut log,
+        ) {
+            Ok(()) => {
+                progress(1.0);
+                Ok(i18n::tf("home.rust_installed", &[("version", version)]))
+            }
+            Err(problem) => Ok(i18n::tf(
                 "home.rust_no_resources",
-                &[("why", why)],
+                &[("why", if problem.is_empty() { why } else { problem })],
             )),
         }
     }

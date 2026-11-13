@@ -5,18 +5,24 @@
 //! build (`horizon-windows-x64.zip`, `horizon-linux-x86_64.tar.gz`, the macOS zips). The archive
 //! holds one folder with `horizon-client`, `horizon-prepare` and the game's pinned data; it lands
 //! as `versions/<version>/`, the layout this tool already reads. Its resources are then prepared
-//! from the player's own Minecraft Java Edition by the archive's `horizon-prepare`, the same
-//! command the official launcher runs.
+//! by the archive's `horizon-prepare`, from whatever Minecraft is here — or from the copy this
+//! tool fetches from Mojang when there is none.
 //!
 //! No new dependency: `curl` fetches and `tar` unpacks (bsdtar reads both formats on Windows and
 //! macOS, GNU tar reads the `.tar.gz` Linux gets).
 
 use crate::i18n;
+use crate::minecraft;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// The releases of the game, newest first.
 const RELEASES: &str = "https://api.github.com/repos/horizon-rust/horizon/releases?per_page=20";
+
+/// What part of a whole install the client archive takes: the rest is Minecraft and the
+/// preparation that reads it.
+pub const CLIENT_SHARE: f32 = 0.15;
 
 /// The archive this machine runs.
 pub fn asset() -> Result<&'static str, String> {
@@ -37,12 +43,14 @@ pub struct Release {
     pub version: String,
     pub asset: String,
     pub url: String,
+    /// The archive's size, for the progress the window shows.
+    pub size: u64,
 }
 
 /// The newest build for this machine.
 pub fn release() -> Result<Release, String> {
     let asset = asset()?;
-    let text = fetch_text(RELEASES)?;
+    let text = curl(&["-L", "--fail", "--silent", "--show-error", RELEASES])?;
     let list = serde_json::from_str::<Value>(&text).map_err(|e| format!("{e}"))?;
     let Some(list) = list.as_array() else {
         return Err(text.chars().take(200).collect());
@@ -71,6 +79,7 @@ pub fn release() -> Result<Release, String> {
             version: version_of(name, tag),
             asset: asset.to_string(),
             url: url.to_string(),
+            size: file.get("size").and_then(Value::as_u64).unwrap_or(0),
         });
     }
     Err(format!("{asset}"))
@@ -90,8 +99,13 @@ fn version_of(name: &str, tag: &str) -> String {
 }
 
 /// Downloads the newest client and unpacks it as `versions/<version>`, answering the version.
-/// `said` takes the progress lines. Nothing is left behind when the download or the unpack fails.
-pub fn install(versions: &Path, said: &mut dyn FnMut(String)) -> Result<String, String> {
+/// `said` takes the log lines, `progress` the fraction of the whole install the archive covers.
+/// Nothing is left behind when the download or the unpack fails.
+pub fn install(
+    versions: &Path,
+    said: &mut dyn FnMut(String),
+    progress: &mut dyn FnMut(f32),
+) -> Result<String, String> {
     let release = release()?;
     said(i18n::t("home.rust_downloading"));
     said(format!("{} · {}", release.version, release.asset));
@@ -100,23 +114,29 @@ pub fn install(versions: &Path, said: &mut dyn FnMut(String)) -> Result<String, 
     let unpacked = partial.join("unpacked");
     std::fs::create_dir_all(&unpacked).map_err(|e| format!("{}: {e}", unpacked.display()))?;
     let archive = partial.join("download");
-    fetch_file(&release.url, &archive)?;
+    progress(0.0);
+    fetch_file(&release.url, &archive, release.size, &mut |fraction| {
+        progress(CLIENT_SHARE * fraction)
+    })?;
     let (from, into) = (text(&archive), text(&unpacked));
     run("tar", &["-xf", from.as_str(), "-C", into.as_str()])?;
     let top = unpacked_folder(&unpacked)?;
     let target = versions.join(&release.version);
     let _ = std::fs::remove_dir_all(&target);
     std::fs::rename(&top, &target).map_err(|e| format!("{}: {e}", target.display()))?;
-    std::fs::write(target.join(".installed"), "").map_err(|e| format!("{}: {e}", target.display()))?;
+    std::fs::write(target.join(".installed"), "")
+        .map_err(|e| format!("{}: {e}", target.display()))?;
     let _ = std::fs::remove_dir_all(&partial);
+    progress(CLIENT_SHARE);
     Ok(release.version)
 }
 
-/// Prepares a client's resources from the player's own Minecraft Java Edition, as the official
-/// launcher does. The archive ships the preparer, so nothing else is needed.
+/// Prepares a client's resources from one Minecraft install, as the official launcher does. The
+/// archive ships the preparer, so nothing else is needed.
 pub fn prepare(
     version: &Path,
-    minecraft: &Path,
+    source: &minecraft::Source,
+    server_jar: Option<&Path>,
     said: &mut dyn FnMut(String),
 ) -> Result<(), String> {
     let program = version.join(if cfg!(windows) {
@@ -127,16 +147,21 @@ pub fn prepare(
     if !program.is_file() {
         return Err(format!("{}", program.display()));
     }
-    if !minecraft.is_dir() {
+    if !source.dir.is_dir() {
         return Err(i18n::t("home.rust_no_minecraft"));
     }
-    let output = std::process::Command::new(&program)
+    let mut command = std::process::Command::new(&program);
+    command
         .current_dir(version)
         .arg("--prepare")
         .arg("--root")
         .arg(version)
-        .arg("--minecraft-dir")
-        .arg(minecraft)
+        .arg(source.flag())
+        .arg(&source.dir);
+    if let Some(server) = server_jar {
+        command.arg("--server-jar").arg(server);
+    }
+    let output = command
         .output()
         .map_err(|e| format!("{}: {e}", program.display()))?;
     let text = String::from_utf8_lossy(&output.stdout);
@@ -149,7 +174,10 @@ pub fn prepare(
     }
     let why = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if why.is_empty() {
-        return Err(lines.last().map(|line| line.trim().to_string()).unwrap_or_default());
+        return Err(lines
+            .last()
+            .map(|line| line.trim().to_string())
+            .unwrap_or_default());
     }
     Err(why)
 }
@@ -193,29 +221,57 @@ fn run(program: &str, args: &[&str]) -> Result<(), String> {
     Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
 }
 
-fn fetch_text(url: &str) -> Result<String, String> {
-    let output = std::process::Command::new("curl")
-        .args(["-L", "--fail", "--silent", "--show-error"])
+/// Fetches one file, watching how much of it is on disk: the window shows a percentage, not a
+/// spinner that says nothing.
+fn fetch_file(
+    url: &str,
+    to: &Path,
+    size: u64,
+    progress: &mut dyn FnMut(f32),
+) -> Result<(), String> {
+    let mut child = std::process::Command::new("curl")
+        .args([
+            "-L",
+            "--fail",
+            "--silent",
+            "--show-error",
+            "--retry",
+            "2",
+            "-o",
+        ])
+        .arg(to)
         .arg(url)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("curl: {e}"))?;
+    loop {
+        std::thread::sleep(Duration::from_millis(200));
+        if size > 0 {
+            let done = std::fs::metadata(to).map(|meta| meta.len()).unwrap_or(0);
+            progress((done as f32 / size as f32).min(1.0));
+        }
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => {
+                progress(1.0);
+                return Ok(());
+            }
+            Ok(Some(_)) => return Err(format!("curl: {url}")),
+            Ok(None) => {}
+            Err(e) => return Err(format!("curl: {e}")),
+        }
+    }
+}
+
+fn curl(args: &[&str]) -> Result<String, String> {
+    let output = std::process::Command::new("curl")
+        .args(args)
         .output()
         .map_err(|e| format!("curl: {e}"))?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
-}
-
-fn fetch_file(url: &str, to: &Path) -> Result<(), String> {
-    let output = std::process::Command::new("curl")
-        .args(["-L", "--fail", "--silent", "--show-error", "--retry", "2", "-o"])
-        .arg(to)
-        .arg(url)
-        .output()
-        .map_err(|e| format!("curl: {e}"))?;
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
-    }
-    Ok(())
 }
 
 #[cfg(test)]

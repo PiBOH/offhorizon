@@ -191,9 +191,18 @@ pub fn run(args: &[String]) -> i32 {
             }
         }
         "install" => {
-            // Every line the preparation prints goes out as it comes: a first install takes a while.
+            // Every line the preparation prints goes out as it comes, and so does how far the
+            // download has got: a first install takes a while.
             let mut said = |line: String| println!("{line}");
-            result(session.install_native(&mut said))
+            let mut shown = -1_i32;
+            let mut progress = |fraction: f32| {
+                let percent = (fraction * 100.0).round() as i32;
+                if percent != shown && percent % 5 == 0 {
+                    shown = percent;
+                    println!("{percent}%");
+                }
+            };
+            result(session.install_native(&mut said, &mut progress))
         }
         "status" => done(session.status()),
         "worlds" => {
