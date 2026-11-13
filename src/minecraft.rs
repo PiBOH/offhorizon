@@ -116,6 +116,9 @@ pub fn from_mojang(
 ) -> Result<PathBuf, String> {
     progress(0.0, "version");
     let manifest = json(MANIFEST)?;
+    // The files are written as Mojang serves them, byte for byte: the preparer checks their sha1,
+    // and a re-serialised JSON is a different file.
+    let _ = &manifest;
     let url = manifest
         .get("versions")
         .and_then(Value::as_array)
@@ -125,15 +128,13 @@ pub fn from_mojang(
         })
         .and_then(|entry| entry.get("url").and_then(Value::as_str))
         .ok_or_else(|| format!("{version}"))?;
-    let meta = json(url)?;
+    let meta_text = text_of(url)?;
+    let meta: Value = serde_json::from_str(&meta_text).map_err(|e| format!("{url}: {e}"))?;
 
     let folder = dir.join("versions").join(version);
     std::fs::create_dir_all(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
-    std::fs::write(
-        folder.join(format!("{version}.json")),
-        serde_json::to_vec_pretty(&meta).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| format!("{}: {e}", folder.display()))?;
+    std::fs::write(folder.join(format!("{version}.json")), &meta_text)
+        .map_err(|e| format!("{}: {e}", folder.display()))?;
 
     // The jars and the libraries the preparer's import reads.
     let mut files: Vec<(String, PathBuf)> = Vec::new();
@@ -182,14 +183,12 @@ pub fn from_mojang(
         .or_else(|| meta.get("assets").and_then(Value::as_str))
         .unwrap_or(version)
         .to_string();
-    let index = json(index_url)?;
+    let index_text = text_of(index_url)?;
+    let index: Value = serde_json::from_str(&index_text).map_err(|e| format!("{index_url}: {e}"))?;
     let indexes = dir.join("assets").join("indexes");
     std::fs::create_dir_all(&indexes).map_err(|e| format!("{}: {e}", indexes.display()))?;
-    std::fs::write(
-        indexes.join(format!("{index_id}.json")),
-        serde_json::to_vec_pretty(&index).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| format!("{}: {e}", indexes.display()))?;
+    std::fs::write(indexes.join(format!("{index_id}.json")), &index_text)
+        .map_err(|e| format!("{}: {e}", indexes.display()))?;
 
     let mut objects: Vec<(String, PathBuf)> = Vec::new();
     for object in index
@@ -266,8 +265,13 @@ fn os_name() -> &'static str {
 }
 
 fn json(url: &str) -> Result<Value, String> {
-    let text = curl(&["-L", "--fail", "--silent", "--show-error", url])?;
+    let text = text_of(url)?;
     serde_json::from_str(&text).map_err(|e| format!("{url}: {e}"))
+}
+
+/// One document as it is served, unchanged: what the preparer's checksum sees.
+fn text_of(url: &str) -> Result<String, String> {
+    curl(&["-L", "--fail", "--silent", "--show-error", url])
 }
 
 fn fetch(url: &str, to: &Path) -> Result<(), String> {
