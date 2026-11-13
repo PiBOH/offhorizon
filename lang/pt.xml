@@ -103,4 +103,8 @@
   <string key="home.instance_missing">Nenhuma instância chamada «{name}».</string>
   <string key="home.name_required">Dê um nome à instância.</string>
   <string key="home.version_not_there">{version} não está instalada em {folder}.</string>
+  <string key="home.edition">Edição</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">Nenhum cliente Horizon aqui: coloque horizon-client ao lado deste launcher, ou na pasta .offhorizon/versions.</string>
 </strings>

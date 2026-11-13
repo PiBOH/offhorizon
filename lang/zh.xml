@@ -103,4 +103,8 @@
   <string key="home.instance_missing">没有名为“{name}”的实例。</string>
   <string key="home.name_required">请给实例起个名字。</string>
   <string key="home.version_not_there">{version} 未安装在 {folder} 中。</string>
+  <string key="home.edition">版本</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">此处没有 Horizon 客户端：请把 horizon-client 放在此启动器旁边，或放到 .offhorizon/versions 文件夹。</string>
 </strings>

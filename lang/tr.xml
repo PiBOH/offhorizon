@@ -103,4 +103,8 @@
   <string key="home.instance_missing">“{name}” adlı örnek yok.</string>
   <string key="home.name_required">Örneğe bir ad verin.</string>
   <string key="home.version_not_there">{version}, {folder} içinde kurulu değil.</string>
+  <string key="home.edition">Sürüm</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">Burada Horizon istemcisi yok: horizon-client'ı bu başlatıcının yanına veya .offhorizon/versions klasörüne koyun.</string>
 </strings>

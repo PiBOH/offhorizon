@@ -103,4 +103,8 @@
   <string key="home.instance_missing">‘{name}’ 인스턴스가 없습니다.</string>
   <string key="home.name_required">인스턴스에 이름을 주세요.</string>
   <string key="home.version_not_there">{version}이(가) {folder}에 설치되어 있지 않습니다.</string>
+  <string key="home.edition">에디션</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">여기에 Horizon 클라이언트가 없습니다: horizon-client를 이 런처 옆이나 .offhorizon/versions 폴더에 두세요.</string>
 </strings>

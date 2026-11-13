@@ -103,4 +103,8 @@
   <string key="home.instance_missing">Ingen instans med namnet ”{name}”.</string>
   <string key="home.name_required">Ge instansen ett namn.</string>
   <string key="home.version_not_there">{version} är inte installerad i {folder}.</string>
+  <string key="home.edition">Utgåva</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">Ingen Horizon-klient här: lägg horizon-client bredvid den här launchern eller i mappen .offhorizon/versions.</string>
 </strings>

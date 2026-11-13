@@ -12,6 +12,7 @@ mod instances;
 mod launch;
 mod launcher;
 mod logo;
+mod native;
 mod nbt;
 mod others;
 mod portable;

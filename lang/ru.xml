@@ -103,4 +103,8 @@
   <string key="home.instance_missing">Нет сборки с названием «{name}».</string>
   <string key="home.name_required">Дайте сборке название.</string>
   <string key="home.version_not_there">{version} не установлена в {folder}.</string>
+  <string key="home.edition">Издание</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">Клиента Horizon здесь нет: положите horizon-client рядом с этим лаунчером или в папку .offhorizon/versions.</string>
 </strings>

@@ -103,4 +103,8 @@
   <string key="home.instance_missing">Žádná instance s názvem „{name}“.</string>
   <string key="home.name_required">Dejte instanci název.</string>
   <string key="home.version_not_there">{version} není nainstalována v {folder}.</string>
+  <string key="home.edition">Edice</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">Klient Horizon tu není: umístěte horizon-client vedle tohoto launcheru nebo do složky .offhorizon/versions.</string>
 </strings>

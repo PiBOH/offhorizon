@@ -2,6 +2,7 @@
 //! command here: both front ends call [`crate::actions::Session`].
 
 use crate::actions::Session;
+use crate::instances::Edition;
 use crate::world::{self, Weather};
 use crate::i18n;
 
@@ -11,13 +12,14 @@ OffHorizon — portable companion for Horizon
 
   offhorizon                       open the window
   offhorizon status                where everything is, what it found
-  offhorizon versions              the game versions found here
+  offhorizon versions              the Horizon clients and Java versions found here
   offhorizon instance list         the instances on this stick
-  offhorizon instance new <NAME> <VERSION> [--dir PATH]
+  offhorizon instance new <NAME> <VERSION> [--dir PATH] [--rust|--java]
                                    one version in a game folder of its own
                                    (no --dir: the folder beside this file)
   offhorizon instance remove <NAME>
   offhorizon play [VERSION]        start the game as the offline name
+                                   Rust first: --rust and --java pick the edition,
                                    --instance <NAME>, --dry-run: print the command instead
   offhorizon worlds                the saves, with health and inventory
   offhorizon name <NAME>           the offline player name
@@ -45,6 +47,7 @@ pub fn run(args: &[String]) -> i32 {
     let mut world_name: Option<String> = None;
     let mut instance: Option<String> = None;
     let mut dir: Option<String> = None;
+    let mut edition: Option<Edition> = None;
     let mut dry_run = false;
     let mut words: Vec<String> = Vec::new();
     let mut index = 0;
@@ -61,6 +64,14 @@ pub fn run(args: &[String]) -> i32 {
             "--dir" | "-d" => {
                 dir = args.get(index + 1).cloned();
                 index += 2;
+            }
+            "--rust" => {
+                edition = Some(Edition::Rust);
+                index += 1;
+            }
+            "--java" => {
+                edition = Some(Edition::Java);
+                index += 1;
             }
             "--dry-run" => {
                 dry_run = true;
@@ -87,22 +98,30 @@ pub fn run(args: &[String]) -> i32 {
             0
         }
         "versions" => {
-            let versions = session.versions();
-            if versions.is_empty() {
+            let mut lines: Vec<String> = Vec::new();
+            // The Rust clients first: that is the edition this tool plays when it can.
+            for client in session.natives() {
+                lines.push(format!(
+                    "{:<24} {:<16} {:<12} {}",
+                    client.tag,
+                    i18n::t("home.rust"),
+                    crate::native::minecraft_of(&client),
+                    client.program.display()
+                ));
+            }
+            for version in session.versions() {
+                lines.push(format!(
+                    "{:<24} {:<16} {:<12} {}",
+                    version.id,
+                    version.loader,
+                    version.release_time,
+                    version.game.display()
+                ));
+            }
+            if lines.is_empty() {
                 return done(vec![i18n::t("home.no_version")]);
             }
-            done(versions
-                .iter()
-                .map(|v| {
-                    format!(
-                        "{:<24} {:<10} {:<12} {}",
-                        v.id,
-                        v.loader,
-                        v.release_time,
-                        v.game.display()
-                    )
-                })
-                .collect())
+            done(lines)
         }
         "instance" => match word(1) {
             "" | "list" => {
@@ -112,17 +131,34 @@ pub fn run(args: &[String]) -> i32 {
                 }
                 done(list
                     .iter()
-                    .map(|i| format!("{:<20} {:<26} {}", i.name, i.version, i.game.display()))
+                    .map(|i| {
+                        format!(
+                            "{:<20} {:<16} {:<26} {}",
+                            i.name,
+                            i.edition.name(),
+                            i.version,
+                            i.game.display()
+                        )
+                    })
                     .collect())
             }
             "new" => {
                 if word(2).is_empty() || word(3).is_empty() {
-                    return usage("instance new <NAME> <VERSION> [--dir PATH]");
+                    return usage("instance new <NAME> <VERSION> [--dir PATH] [--rust|--java]");
                 }
                 let name = word(2).to_string();
                 let version = word(3).to_string();
                 let game = dir.clone().map(std::path::PathBuf::from);
-                result(session.create_instance(&name, &version, game))
+                // Rust first: a version the Rust clients carry plays in Rust, unless --java says
+                // otherwise.
+                let edition = edition.unwrap_or_else(|| {
+                    if session.native(Some(version.as_str())).is_some() {
+                        Edition::Rust
+                    } else {
+                        Edition::Java
+                    }
+                });
+                result(session.create_instance(&name, &version, game, edition))
             }
             "remove" => {
                 if word(2).is_empty() {
@@ -137,17 +173,20 @@ pub fn run(args: &[String]) -> i32 {
             let id = (!word(1).is_empty()).then(|| word(1).to_string());
             let planned = match &instance {
                 Some(name) => session.plan_instance(name),
-                None => session.plan(id.as_deref()),
+                None => match edition {
+                    Some(edition) => session.plan_edition(id.as_deref(), edition),
+                    None => session.plan(id.as_deref()),
+                },
             };
             if dry_run {
                 return match planned {
-                    Ok(plan) => done(dump(plan)),
+                    Ok(plan) => done(plan.lines()),
                     Err(why) => fail(why),
                 };
             }
             match &instance {
                 Some(name) => result(session.play_instance(name)),
-                None => result(session.play(id.as_deref())),
+                None => result(session.play_edition(id.as_deref(), edition)),
             }
         }
         "status" => done(session.status()),
@@ -348,19 +387,6 @@ pub fn run(args: &[String]) -> i32 {
         },
         other => usage(other),
     }
-}
-
-/// What `play --dry-run` prints: the command, and nothing started.
-fn dump(plan: crate::launch::Plan) -> Vec<String> {
-    // shortcut: this is a debug dump, so its labels stay English.
-    vec![
-        format!("version: {}", plan.id),
-        format!("java: {}", plan.java.display()),
-        format!("main: {}", plan.main_class),
-        format!("jvm: {}", plan.jvm.join(" ")),
-        format!("args: {}", plan.game_args.join(" ")),
-        format!("cwd: {}", plan.cwd.display()),
-    ]
 }
 
 fn short(id: &str) -> &str {

@@ -1,9 +1,10 @@
 //! Every action the window and the terminal can take. Both front ends call the same functions, so
 //! anything the window does the terminal does, and the other way round.
 
-use crate::instances::{self, Instance};
+use crate::instances::{self, Edition, Instance};
 use crate::launch;
 use crate::launcher::{self, LauncherChange, Layout};
+use crate::native::{self, Native};
 use crate::nbt::Root;
 use crate::others::{self, Found};
 use crate::portable::Portable;
@@ -18,6 +19,55 @@ pub struct Session {
     pub store: Store,
     pub layout: Layout,
     pub lang: String,
+}
+
+/// A start worked out but not made yet: the Rust client when one is here, Java when that is what
+/// plays.
+pub enum Plan {
+    Rust(native::Plan),
+    Java(launch::Plan),
+}
+
+impl Plan {
+    /// The version this start would run.
+    pub fn version(&self) -> &str {
+        match self {
+            Plan::Rust(plan) => &plan.tag,
+            Plan::Java(plan) => &plan.id,
+        }
+    }
+
+    /// Starts the game and comes back at once: the window keeps running.
+    pub fn spawn(&self) -> Result<(), String> {
+        match self {
+            Plan::Rust(plan) => plan.spawn(),
+            Plan::Java(plan) => plan.spawn(),
+        }
+    }
+
+    /// The lines `play --dry-run` prints: what would run, and nothing started.
+    pub fn lines(&self) -> Vec<String> {
+        // shortcut: this is a debug dump, so its labels stay English.
+        match self {
+            Plan::Rust(plan) => vec![
+                "edition: rust".to_string(),
+                format!("version: {}", plan.tag),
+                format!("program: {}", plan.program.display()),
+                format!("args: {}", plan.args.join(" ")),
+                format!("cwd: {}", plan.cwd.display()),
+                format!("home: {}", plan.home.display()),
+            ],
+            Plan::Java(plan) => vec![
+                "edition: java".to_string(),
+                format!("version: {}", plan.id),
+                format!("java: {}", plan.java.display()),
+                format!("main: {}", plan.main_class),
+                format!("jvm: {}", plan.jvm.join(" ")),
+                format!("args: {}", plan.game_args.join(" ")),
+                format!("cwd: {}", plan.cwd.display()),
+            ],
+        }
+    }
 }
 
 /// The game folders, worlds and previews a page shows.
@@ -144,6 +194,31 @@ impl Session {
         Ok(format!("name:{}", name.trim()))
     }
 
+    /// Every Horizon client (Minecraft: Rust Edition) found beside this stick, the newest first.
+    pub fn natives(&self) -> Vec<Native> {
+        native::found(&self.portable.base)
+    }
+
+    /// The Rust client to play: the one named, the one played last, or the newest found.
+    pub fn native(&self, tag: Option<&str>) -> Option<Native> {
+        let found = self.natives();
+        match tag {
+            Some(tag) => found.into_iter().find(|client| client.tag == tag),
+            None => {
+                let saved = self.portable.get("native");
+                saved
+                    .as_deref()
+                    .and_then(|tag| found.iter().find(|client| client.tag == tag).cloned())
+                    .or_else(|| found.first().cloned())
+            }
+        }
+    }
+
+    /// Where the Rust game keeps its logs, its crash reports and its own settings: with the stick.
+    pub fn native_home(&self) -> PathBuf {
+        self.portable.tool().join("horizon")
+    }
+
     /// Every version installed in the game folders this tool reads, the stick's first.
     pub fn versions(&self) -> Vec<launch::Version> {
         let mut all: Vec<launch::Version> = Vec::new();
@@ -178,6 +253,7 @@ impl Session {
         name: &str,
         version: &str,
         game: Option<PathBuf>,
+        edition: Edition,
     ) -> Result<String, String> {
         let name = name.trim();
         if name.is_empty() {
@@ -185,12 +261,16 @@ impl Session {
         }
         let game = game.unwrap_or_else(|| self.home());
         std::fs::create_dir_all(&game).map_err(|e| format!("{}: {e}", game.display()))?;
-        // The version has to live in the folder the instance plays from: its jars are there.
-        let Some(found) = self
-            .versions()
-            .into_iter()
-            .find(|v| v.id == version && v.game == game)
-        else {
+        // The version has to be here to play: a Rust client beside the stick, or a Java version in
+        // the folder the instance plays from, where its jars are.
+        let there = match edition {
+            Edition::Rust => self.native(Some(version)).is_some(),
+            Edition::Java => self
+                .versions()
+                .into_iter()
+                .any(|v| v.id == version && v.game == game),
+        };
+        if !there {
             return Err(i18n::tf(
                 "home.version_not_there",
                 &[
@@ -198,13 +278,14 @@ impl Session {
                     ("folder", game.display().to_string()),
                 ],
             ));
-        };
+        }
         let mut list = self.instances();
         list.retain(|known| known.name != name);
         list.push(Instance {
             name: name.to_string(),
-            version: found.id,
+            version: version.to_string(),
             game,
+            edition,
         });
         instances::save(&self.portable.tool(), &list)?;
         self.portable.set("instance", name)?;
@@ -224,37 +305,78 @@ impl Session {
     }
 
     /// The command that would start an instance, without starting it.
-    pub fn plan_instance(&self, name: &str) -> Result<launch::Plan, String> {
+    pub fn plan_instance(&self, name: &str) -> Result<Plan, String> {
         let Some(instance) = self.instances().into_iter().find(|known| known.name == name) else {
             return Err(i18n::tf("home.instance_missing", &[("name", name.to_string())]));
         };
-        let versions = self.versions();
-        let version = versions
-            .iter()
-            .find(|v| v.id == instance.version && v.game == instance.game)
-            .or_else(|| versions.iter().find(|v| v.id == instance.version))
-            .cloned()
-            .ok_or_else(|| i18n::t("home.no_version"))?;
-        launch::plan(&instance.game, &version, &self.player_name())
+        match instance.edition {
+            Edition::Rust => {
+                let tag = instance.version.as_str();
+                self.plan_native(Some(tag), Some(instance.game.clone()))
+            }
+            Edition::Java => {
+                let versions = self.versions();
+                let version = versions
+                    .iter()
+                    .find(|v| v.id == instance.version && v.game == instance.game)
+                    .or_else(|| versions.iter().find(|v| v.id == instance.version))
+                    .cloned()
+                    .ok_or_else(|| i18n::t("home.no_version"))?;
+                Ok(Plan::Java(launch::plan(
+                    &instance.game,
+                    &version,
+                    &self.player_name(),
+                )?))
+            }
+        }
     }
 
     /// Starts an instance in its own game folder, as the offline name.
     pub fn play_instance(&mut self, name: &str) -> Result<String, String> {
         let plan = self.plan_instance(name)?;
         let player = self.player_name();
+        let version = plan.version().to_string();
         plan.spawn()?;
         self.portable.set("instance", name)?;
         Ok(i18n::tf(
             "home.launched",
-            &[("version", plan.id), ("name", player)],
+            &[("version", version), ("name", player)],
         ))
     }
 
-    /// The command that would start a version, without starting it.
-    pub fn plan(&self, id: Option<&str>) -> Result<launch::Plan, String> {
+    /// The command that would start the Rust game, without starting it. `game` is the folder it
+    /// plays in: the stick's when a caller has none of its own.
+    pub fn plan_native(&self, tag: Option<&str>, game: Option<PathBuf>) -> Result<Plan, String> {
+        let client = self.native(tag).ok_or_else(|| i18n::t("home.rust_missing"))?;
+        let game = game.unwrap_or_else(|| self.home());
+        Ok(Plan::Rust(native::plan(
+            &client,
+            &self.player_name(),
+            &game,
+            &self.native_home(),
+        )))
+    }
+
+    /// Starts the Rust game as the offline name, keeping the choice with the stick.
+    pub fn play_native(&mut self, tag: Option<&str>) -> Result<String, String> {
+        let plan = self.plan_native(tag, None)?;
+        let version = plan.version().to_string();
+        plan.spawn()?;
+        self.portable.set("native", &version)?;
+        Ok(i18n::tf(
+            "home.launched",
+            &[("version", version), ("name", self.player_name())],
+        ))
+    }
+
+    /// The command that would start a version in one edition, without starting it.
+    pub fn plan_edition(&self, id: Option<&str>, edition: Edition) -> Result<Plan, String> {
+        if edition == Edition::Rust {
+            return self.plan_native(id, None);
+        }
         let versions = self.versions();
         let picked = match id {
-            Some(id) => versions.iter().find(|v| v.id == id).cloned(),
+            Some(id) => versions.into_iter().find(|v| v.id == id),
             None => self
                 .portable
                 .get("version")
@@ -262,18 +384,45 @@ impl Session {
                 .or_else(|| versions.first().cloned()),
         };
         let picked = picked.ok_or_else(|| i18n::t("home.no_version"))?;
-        launch::plan(&picked.game, &picked, &self.player_name())
+        Ok(Plan::Java(launch::plan(
+            &picked.game,
+            &picked,
+            &self.player_name(),
+        )?))
     }
 
-    /// Starts a version, keeping the choice with the stick. With no name, the one played last.
-    pub fn play(&mut self, id: Option<&str>) -> Result<String, String> {
-        let plan = self.plan(id)?;
+    /// The command that would start a version, without starting it. Rust first: a name the Rust
+    /// clients know plays in Rust, and with no name the newest client plays when there is one.
+    pub fn plan(&self, id: Option<&str>) -> Result<Plan, String> {
+        match id {
+            Some(id) if self.native(Some(id)).is_some() => self.plan_native(Some(id), None),
+            Some(id) => self.plan_edition(Some(id), Edition::Java),
+            None if self.native(None).is_some() => self.plan_native(None, None),
+            None => self.plan_edition(None, Edition::Java),
+        }
+    }
+
+    /// Starts a version, keeping the choice with the stick. With no edition the one that fits plays;
+    /// with no version, the one played last.
+    pub fn play_edition(
+        &mut self,
+        id: Option<&str>,
+        edition: Option<Edition>,
+    ) -> Result<String, String> {
+        let plan = match edition {
+            Some(edition) => self.plan_edition(id, edition)?,
+            None => self.plan(id)?,
+        };
         let name = self.player_name();
+        let version = plan.version().to_string();
         plan.spawn()?;
-        self.portable.set("version", &plan.id)?;
+        match &plan {
+            Plan::Rust(_) => self.portable.set("native", &version)?,
+            Plan::Java(_) => self.portable.set("version", &version)?,
+        };
         Ok(i18n::tf(
             "home.launched",
-            &[("version", plan.id), ("name", name)],
+            &[("version", version), ("name", name)],
         ))
     }
 
@@ -407,6 +556,21 @@ impl Session {
                     .unwrap_or_else(|| "—".into())
             ),
         ];
+        let clients = self.natives();
+        lines.push(format!(
+            "{}: {}",
+            i18n::t("home.rust"),
+            clients.len()
+        ));
+        for client in &clients {
+            lines.push(format!(
+                "  {} — {} {} — {}",
+                client.tag,
+                native::minecraft_of(client),
+                i18n::t("home.versions"),
+                client.program.display()
+            ));
+        }
         let snapshot = self.snapshot();
         lines.push(format!(
             "{}: {}",

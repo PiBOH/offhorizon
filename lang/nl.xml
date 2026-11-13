@@ -103,4 +103,8 @@
   <string key="home.instance_missing">Geen instantie met de naam ‘{name}’.</string>
   <string key="home.name_required">Geef de instantie een naam.</string>
   <string key="home.version_not_there">{version} is niet geïnstalleerd in {folder}.</string>
+  <string key="home.edition">Editie</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">Geen Horizon-client hier: zet horizon-client naast deze launcher, of in de map .offhorizon/versions.</string>
 </strings>

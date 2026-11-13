@@ -103,4 +103,8 @@
   <string key="home.instance_missing">لا توجد نسخة باسم «{name}».</string>
   <string key="home.name_required">أعطِ النسخة اسمًا.</string>
   <string key="home.version_not_there">{version} غير مثبّتة في {folder}.</string>
+  <string key="home.edition">الإصدار</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">لا يوجد عميل Horizon هنا: ضع horizon-client بجانب هذا المشغّل أو في مجلد .offhorizon/versions.</string>
 </strings>

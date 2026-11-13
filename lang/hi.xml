@@ -103,4 +103,8 @@
   <string key="home.instance_missing">“{name}” नाम का कोई इंस्टेंस नहीं।</string>
   <string key="home.name_required">इंस्टेंस को नाम दें।</string>
   <string key="home.version_not_there">{version} {folder} में इंस्टॉल नहीं है।</string>
+  <string key="home.edition">संस्करण</string>
+  <string key="home.rust">Horizon (Rust)</string>
+  <string key="home.java">Minecraft Java</string>
+  <string key="home.rust_missing">यहाँ Horizon क्लाइंट नहीं है: horizon-client को इस लॉन्चर के पास या .offhorizon/versions फ़ोल्डर में रखें।</string>
 </strings>

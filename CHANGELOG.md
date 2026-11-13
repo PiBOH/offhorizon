@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.2-nightly]
+
+Minecraft: Rust Edition plays from here now, and it plays first.
+
+- **Rust first**: OffHorizon finds the Horizon client (`horizon-client`) beside the stick — in
+  `versions/<tag>/`, where the official launcher keeps it, or dropped next to the executable — and
+  starts it with `--resources`, `--game-dir` and `--name`, its logs and settings in
+  `.offhorizon/horizon`. Java stays: `--rust` and `--java` pick the edition, and with neither the
+  Rust client plays when there is one (`versions`, `play`).
+- **Instances carry their edition**: a new instance picks Rust or Java and its Play starts that
+  game; an instance made earlier plays Java, as it did.
+- **One home**: Play starts the Rust client when there is one, the edition switch and the client
+  list say which, and the sidebar shows each instance's edition.
+
 ## [0.2.1-nightly]
 
 The window is a launcher now.

@@ -3,6 +3,8 @@
 
 use crate::actions::{Session, Snapshot};
 use crate::i18n;
+use crate::instances::Edition;
+use crate::native::{self, Native};
 use crate::others::Found;
 use crate::theme::{self, Icon};
 use crate::world::{self, Preview, Weather};
@@ -83,10 +85,14 @@ pub struct App {
     weather_ticks: i32,
     launchers: Vec<Found>,
     versions: Vec<crate::launch::Version>,
+    natives: Vec<Native>,
     version_index: usize,
+    native_index: usize,
     instance_name: String,
     instance_dir: String,
     instance_portable: bool,
+    /// Which game a new instance plays: the Rust client, unless Java is picked.
+    edition: Edition,
     /// The instance the sidebar picked: Home plays it.
     instance: Option<String>,
     log: Vec<String>,
@@ -100,10 +106,13 @@ impl App {
             snapshot: Snapshot::default(),
             launchers: Vec::new(),
             versions: Vec::new(),
+            natives: Vec::new(),
             version_index: 0,
+            native_index: 0,
             instance_name: String::new(),
             instance_dir: String::new(),
             instance_portable: true,
+            edition: Edition::Rust,
             instance: None,
             page: Page::Home,
             index: 0,
@@ -141,6 +150,10 @@ impl App {
         self.snapshot = self.session.snapshot();
         self.launchers = self.session.launchers();
         self.versions = self.session.versions();
+        self.natives = self.session.natives();
+        if self.native_index >= self.natives.len() {
+            self.native_index = 0;
+        }
         if self.version_index >= self.versions.len() {
             let saved = self.session.portable.get("version");
             self.version_index = saved
@@ -193,6 +206,11 @@ fn clock() -> String {
         .unwrap_or(0);
     let day = secs % 86_400;
     format!("{:02}:{:02}:{:02}", day / 3600, (day / 60) % 60, day % 60)
+}
+
+/// A label when there is a value, the reason there is not when there is none.
+fn pinned(value: Option<String>, missing: String) -> String {
+    value.unwrap_or(missing)
 }
 
 fn bytes(size: u64) -> String {
@@ -317,9 +335,14 @@ impl eframe::App for App {
                 let mut picked: Option<String> = None;
                 for instance in &instances {
                     let sub = if instance.game == portable_home {
-                        instance.version.clone()
+                        format!("{} · {}", instance.edition.name(), instance.version)
                     } else {
-                        format!("{} · {}", instance.version, instance.game.display())
+                        format!(
+                            "{} · {} · {}",
+                            instance.edition.name(),
+                            instance.version,
+                            instance.game.display()
+                        )
                     };
                     let current = self.instance.as_deref() == Some(instance.name.as_str());
                     if theme::sidebar_row(ui, &instance.name, &sub, current).clicked() {
@@ -414,6 +437,7 @@ impl App {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 let versions = self.versions.clone();
+                let natives = self.natives.clone();
                 let instances = self.session.instances();
                 let portable_home = self.session.home();
                 let chosen = self
@@ -440,7 +464,8 @@ impl App {
                 ui.add_space(4.0);
                 let sub = match &chosen {
                     Some(instance) => format!(
-                        "{} · {}",
+                        "{} · {} · {}",
+                        instance.edition.name(),
                         instance.version,
                         if instance.game == portable_home {
                             i18n::t("home.portable")
@@ -484,15 +509,24 @@ impl App {
                         .inner_margin(egui::Margin::symmetric(16.0, 11.0))
                         .show(ui, |ui| {
                             ui.label(theme::label(i18n::t("home.versions")));
+                            let playing = match &chosen {
+                                Some(instance) => {
+                                    format!("{} · {}", instance.edition.name(), instance.version)
+                                }
+                                None => match self.edition {
+                                    Edition::Rust => natives.get(self.native_index).map(|client| {
+                                        format!("{} · {}", i18n::t("home.rust"), client.tag)
+                                    }),
+                                    Edition::Java => versions.get(self.version_index).map(|version| {
+                                        format!("{} · {}", i18n::t("home.java"), version.id)
+                                    }),
+                                }
+                                .unwrap_or_else(|| "—".into()),
+                            };
                             ui.label(
-                                egui::RichText::new(
-                                    versions
-                                        .get(self.version_index)
-                                        .map(|version| version.id.clone())
-                                        .unwrap_or_else(|| "—".into()),
-                                )
-                                .size(14.0)
-                                .color(theme::TEXT),
+                                egui::RichText::new(playing)
+                                    .size(14.0)
+                                    .color(theme::TEXT),
                             );
                         });
                 });
@@ -523,24 +557,67 @@ impl App {
                 theme::plate().show(ui, |ui| {
                     theme::group_title(ui, i18n::t("home.new_instance"));
                     ui.add_space(6.0);
-                    let selected = versions
-                        .get(self.version_index)
-                        .map(|version| format!("{} · {}", version.id, version.loader))
-                        .unwrap_or_else(|| "—".into());
+                    theme::field_row(ui, i18n::t("home.edition"), |ui| {
+                        for edition in [Edition::Rust, Edition::Java] {
+                            if ui
+                                .selectable_label(self.edition == edition, edition.name())
+                                .clicked()
+                            {
+                                self.edition = edition;
+                            }
+                        }
+                    });
+                    let picked = match self.edition {
+                        Edition::Rust => natives.get(self.native_index).map(|c| c.tag.clone()),
+                        Edition::Java => versions.get(self.version_index).map(|v| v.id.clone()),
+                    };
+                    let selected = match self.edition {
+                        Edition::Rust => pinned(
+                            natives
+                                .get(self.native_index)
+                                .map(|client| {
+                                    format!(
+                                        "{} · {}",
+                                        client.tag,
+                                        native::minecraft_of(client)
+                                    )
+                                }),
+                            i18n::t("home.rust_missing"),
+                        ),
+                        Edition::Java => versions
+                            .get(self.version_index)
+                            .map(|version| format!("{} · {}", version.id, version.loader))
+                            .unwrap_or_else(|| "—".into()),
+                    };
                     theme::field_row(ui, i18n::t("home.versions"), |ui| {
                         egui::ComboBox::from_id_salt("new_instance_version")
                             .selected_text(selected)
                             .width(240.0)
-                            .show_ui(ui, |ui| {
-                                for (index, version) in versions.iter().enumerate() {
-                                    if ui
-                                        .selectable_label(
-                                            self.version_index == index,
-                                            format!("{} · {}", version.id, version.loader),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.version_index = index;
+                            .show_ui(ui, |ui| match self.edition {
+                                Edition::Rust => {
+                                    for (index, client) in natives.iter().enumerate() {
+                                        let label = format!(
+                                            "{} · {}",
+                                            client.tag,
+                                            native::minecraft_of(client)
+                                        );
+                                        if ui
+                                            .selectable_label(self.native_index == index, label)
+                                            .clicked()
+                                        {
+                                            self.native_index = index;
+                                        }
+                                    }
+                                }
+                                Edition::Java => {
+                                    for (index, version) in versions.iter().enumerate() {
+                                        let label = format!("{} · {}", version.id, version.loader);
+                                        if ui
+                                            .selectable_label(self.version_index == index, label)
+                                            .clicked()
+                                        {
+                                            self.version_index = index;
+                                        }
                                     }
                                 }
                             });
@@ -548,12 +625,7 @@ impl App {
                     theme::field_row(ui, i18n::t("home.instance_name"), |ui| {
                         ui.add(
                             egui::TextEdit::singleline(&mut self.instance_name)
-                                .hint_text(
-                                    versions
-                                        .get(self.version_index)
-                                        .map(|version| version.id.clone())
-                                        .unwrap_or_default(),
-                                )
+                                .hint_text(picked.clone().unwrap_or_default())
                                 .desired_width(200.0),
                         );
                     });
@@ -570,9 +642,16 @@ impl App {
                     ui.add_space(8.0);
                     ui.horizontal(|ui| {
                         if ui.button(theme::action(&i18n::t("home.create"))).clicked() {
-                            if let Some(version) =
-                                versions.get(self.version_index).map(|known| known.id.clone())
-                            {
+                            let edition = self.edition;
+                            let version = match edition {
+                                Edition::Rust => {
+                                    natives.get(self.native_index).map(|client| client.tag.clone())
+                                }
+                                Edition::Java => {
+                                    versions.get(self.version_index).map(|known| known.id.clone())
+                                }
+                            };
+                            if let Some(version) = version {
                                 let name = if self.instance_name.trim().is_empty() {
                                     version.clone()
                                 } else {
@@ -581,7 +660,8 @@ impl App {
                                 let dir = (!self.instance_portable
                                     && !self.instance_dir.trim().is_empty())
                                 .then(|| std::path::PathBuf::from(self.instance_dir.trim()));
-                                let result = self.session.create_instance(&name, &version, dir);
+                                let result =
+                                    self.session.create_instance(&name, &version, dir, edition);
                                 self.carry(result);
                             }
                         }
@@ -600,9 +680,14 @@ impl App {
                     let mut remove: Option<String> = None;
                     for instance in &instances {
                         let sub = if instance.game == portable_home {
-                            instance.version.clone()
+                            format!("{} · {}", instance.edition.name(), instance.version)
                         } else {
-                            format!("{} · {}", instance.version, instance.game.display())
+                            format!(
+                                "{} · {} · {}",
+                                instance.edition.name(),
+                                instance.version,
+                                instance.game.display()
+                            )
                         };
                         let current = self.instance.as_deref() == Some(instance.name.as_str());
                         if theme::list_row(ui, &instance.name, &sub, current).clicked() {
@@ -634,10 +719,39 @@ impl App {
                     }
                 });
 
-                // Every version installed in the folders this tool reads.
+                // Every client and version found here, the Rust clients first.
                 ui.add_space(12.0);
                 theme::plate().show(ui, |ui| {
-                    theme::group_title(ui, i18n::t("home.versions"));
+                    theme::group_title(ui, i18n::t("home.rust"));
+                    ui.add_space(6.0);
+                    if natives.is_empty() {
+                        ui.label(theme::note(i18n::t("home.rust_missing"), false));
+                    }
+                    let mut pick_native: Option<usize> = None;
+                    for (index, client) in natives.iter().enumerate() {
+                        let sub = format!(
+                            "{} · {}",
+                            native::minecraft_of(client),
+                            client.resources.display()
+                        );
+                        if theme::list_row(
+                            ui,
+                            &client.tag,
+                            &sub,
+                            self.edition == Edition::Rust && index == self.native_index,
+                        )
+                        .clicked()
+                        {
+                            pick_native = Some(index);
+                        }
+                        ui.add_space(2.0);
+                    }
+                    if let Some(index) = pick_native {
+                        self.native_index = index;
+                        self.edition = Edition::Rust;
+                    }
+                    ui.add_space(10.0);
+                    theme::group_title(ui, i18n::t("home.java"));
                     ui.add_space(6.0);
                     if versions.is_empty() {
                         ui.label(theme::note(i18n::t("home.no_version"), false));
@@ -653,8 +767,13 @@ impl App {
                             version.release_time,
                             version.game.display()
                         );
-                        if theme::list_row(ui, &version.id, &sub, index == self.version_index)
-                            .clicked()
+                        if theme::list_row(
+                            ui,
+                            &version.id,
+                            &sub,
+                            self.edition == Edition::Java && index == self.version_index,
+                        )
+                        .clicked()
                         {
                             pick = Some(index);
                         }
@@ -662,6 +781,7 @@ impl App {
                     }
                     if let Some(index) = pick {
                         self.version_index = index;
+                        self.edition = Edition::Java;
                     }
                 });
 
@@ -698,10 +818,22 @@ impl App {
             });
     }
 
-    /// Starts the version picked on the home page, as the offline name.
+    /// Starts what the home page shows, as the offline name: the Rust client when there is one and
+    /// Rust is the edition picked, the Java version otherwise.
     fn play(&mut self) {
-        let id = self.versions.get(self.version_index).map(|v| v.id.clone());
-        let result = self.session.play(id.as_deref());
+        let result = match self.edition {
+            Edition::Rust => {
+                let tag = self.natives.get(self.native_index).map(|c| c.tag.clone());
+                match tag {
+                    Some(tag) => self.session.play_native(Some(tag.as_str())),
+                    None => Err(i18n::t("home.rust_missing")),
+                }
+            }
+            Edition::Java => {
+                let id = self.versions.get(self.version_index).map(|v| v.id.clone());
+                self.session.play_edition(id.as_deref(), Some(Edition::Java))
+            }
+        };
         self.carry(result);
     }
 
