@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} installerad.</string>
   <string key="home.rust_no_resources">Klienten är installerad, men resurserna är inte klara: {why}</string>
   <string key="home.rust_no_minecraft">Ingen Minecraft Java-installation här: starta spelet en gång från din launcher.</string>
+  <string key="home.rust_unprepared">Horizon {version} har inga resurser än: ladda ner det en gång så att de kan förberedas från ditt Minecraft.</string>
 </strings>

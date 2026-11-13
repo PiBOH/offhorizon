@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} 설치됨.</string>
   <string key="home.rust_no_resources">클라이언트는 설치되었지만 리소스가 아직 준비되지 않았습니다: {why}</string>
   <string key="home.rust_no_minecraft">여기에 Minecraft Java가 없습니다: 런처에서 게임을 한 번 실행하세요.</string>
+  <string key="home.rust_unprepared">Horizon {version}에는 아직 리소스가 없습니다: 한 번 내려받으면 Minecraft에서 준비됩니다.</string>
 </strings>

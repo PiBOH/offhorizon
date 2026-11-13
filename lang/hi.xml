@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} इंस्टॉल हो गया।</string>
   <string key="home.rust_no_resources">क्लाइंट इंस्टॉल है, पर उसके संसाधन तैयार नहीं: {why}</string>
   <string key="home.rust_no_minecraft">यहाँ Minecraft Java नहीं है: गेम को अपने लॉन्चर से एक बार चलाएँ।</string>
+  <string key="home.rust_unprepared">Horizon {version} में अभी संसाधन नहीं हैं: इसे एक बार डाउनलोड करें ताकि वे आपके Minecraft से तैयार हों।</string>
 </strings>

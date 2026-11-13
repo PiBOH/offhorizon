@@ -98,7 +98,8 @@ pub fn found(base: &Path) -> Vec<Native> {
     clients
 }
 
-/// The newest prepared resources folder that belongs to a client.
+/// The newest prepared resources folder that belongs to a client, or the folder the client
+/// prepares into when it has none yet: a client downloaded but not prepared is still a client.
 fn resources_for(dir: &Path, base: &Path) -> Option<PathBuf> {
     for parent in [
         dir.join(".local").join("horizon-client"),
@@ -122,7 +123,24 @@ fn resources_for(dir: &Path, base: &Path) -> Option<PathBuf> {
             return Some(newest);
         }
     }
-    None
+    let minecraft = pinned_minecraft(dir).or_else(|| pinned_minecraft(base))?;
+    Some(
+        dir.join(".local")
+            .join("horizon-client")
+            .join(minecraft),
+    )
+}
+
+/// The Minecraft version a client is built for, from the `research-lock.json` beside it.
+fn pinned_minecraft(dir: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(dir.join("research-lock.json")).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+    value.get("minecraft")?.get("version")?.as_str().map(str::to_string)
+}
+
+/// Whether a client's resources are ready to play: the manifest a preparation writes is there.
+pub fn prepared(client: &Native) -> bool {
+    client.resources.join("horizon-resources.json").is_file()
 }
 
 /// Orders `1.9` before `1.21` and `26.3` after both: the numbers, not the text.
@@ -217,6 +235,25 @@ mod tests {
         assert_eq!(clients[0].resources, resources);
         assert_eq!(minecraft_of(&clients[0]), "26.3");
         assert_eq!(clients[1].tag, "25.1");
+    }
+
+    #[test]
+    fn a_client_is_found_before_its_resources_are_ready() {
+        let base = scratch("bare");
+        let tag = base.join("versions").join("26.3");
+        std::fs::create_dir_all(&tag).unwrap();
+        std::fs::write(tag.join(program_name()), b"").unwrap();
+        std::fs::write(
+            tag.join("research-lock.json"),
+            r#"{"minecraft":{"version":"26.3"}}"#,
+        )
+        .unwrap();
+
+        let clients = found(&base);
+        assert_eq!(clients.len(), 1);
+        assert_eq!(clients[0].tag, "26.3");
+        assert_eq!(minecraft_of(&clients[0]), "26.3");
+        assert!(!prepared(&clients[0]));
     }
 
     #[test]

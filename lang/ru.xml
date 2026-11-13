@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} установлен.</string>
   <string key="home.rust_no_resources">Клиент установлен, но ресурсы не готовы: {why}</string>
   <string key="home.rust_no_minecraft">Установка Minecraft Java не найдена: запустите игру один раз из своего лаунчера.</string>
+  <string key="home.rust_unprepared">У Horizon {version} ещё нет ресурсов: скачайте его один раз, чтобы они подготовились из вашего Minecraft.</string>
 </strings>

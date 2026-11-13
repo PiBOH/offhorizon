@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.4-nightly]
+
+The downloaded client is visible before it is ready.
+
+- **Found, then prepared**: a client unpacked by the download shows in Versions and can be put in
+  an instance straight away; Play says its resources are not ready yet instead of failing in the
+  game's window. The version it prepares into comes from its `research-lock.json`.
+- **Download once**: `install` asks the releases which build is newest, and downloads only when it
+  is not here; otherwise it prepares the resources of the client already installed.
+
 ## [0.2.3-nightly]
 
 The Rust game installs itself now.

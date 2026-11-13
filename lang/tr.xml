@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} kuruldu.</string>
   <string key="home.rust_no_resources">İstemci kuruldu ama kaynakları hazır değil: {why}</string>
   <string key="home.rust_no_minecraft">Burada Minecraft Java kurulumu yok: oyunu başlatıcınızdan bir kez açın.</string>
+  <string key="home.rust_unprepared">Horizon {version} henüz kaynaklara sahip değil: bir kez indirin, Minecraft'ınızdan hazırlansın.</string>
 </strings>

@@ -112,4 +112,5 @@
   <string key="home.rust_installed">تم تثبيت Horizon {version}.</string>
   <string key="home.rust_no_resources">تم تثبيت العميل، لكن موارده غير جاهزة: {why}</string>
   <string key="home.rust_no_minecraft">لا يوجد تثبيت لـ Minecraft Java هنا: شغّل اللعبة مرة واحدة من مشغّلك.</string>
+  <string key="home.rust_unprepared">لا يملك Horizon {version} موارد بعد: نزّله مرة واحدة لتُحضَّر من Minecraft لديك.</string>
 </strings>

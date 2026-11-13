@@ -204,7 +204,17 @@ impl Session {
         let versions = self.portable.base.join("versions");
         std::fs::create_dir_all(&versions).map_err(|e| format!("{}: {e}", versions.display()))?;
         let mut log = |line: String| said(line);
-        let version = download::install(&versions, &mut log)?;
+        // The newest build is not downloaded again when it is already here: only its resources
+        // may be missing, and those are made from the player's Minecraft.
+        let wanted = download::release()?.version;
+        let here = self.native(Some(wanted.as_str()));
+        if here.as_ref().is_some_and(native::prepared) {
+            return Ok(i18n::tf("home.rust_installed", &[("version", wanted)]));
+        }
+        let version = match &here {
+            Some(_) => wanted,
+            None => download::install(&versions, &mut log)?,
+        };
         self.rescan();
         let Some(client) = self.native(Some(version.as_str())) else {
             return Ok(i18n::tf("home.rust_installed", &[("version", version)]));
@@ -379,6 +389,14 @@ impl Session {
     /// plays in: the stick's when a caller has none of its own.
     pub fn plan_native(&self, tag: Option<&str>, game: Option<PathBuf>) -> Result<Plan, String> {
         let client = self.native(tag).ok_or_else(|| i18n::t("home.rust_missing"))?;
+        // Without its resources the game can't start: say so here rather than in a window that
+        // closes on a loader error.
+        if !native::prepared(&client) {
+            return Err(i18n::tf(
+                "home.rust_unprepared",
+                &[("version", client.tag.clone())],
+            ));
+        }
         let game = game.unwrap_or_else(|| self.home());
         Ok(Plan::Rust(native::plan(
             &client,

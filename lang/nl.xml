@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} geïnstalleerd.</string>
   <string key="home.rust_no_resources">De client is geïnstalleerd, maar de bronnen zijn nog niet klaar: {why}</string>
   <string key="home.rust_no_minecraft">Geen Minecraft Java-installatie hier: start het spel één keer vanuit je launcher.</string>
+  <string key="home.rust_unprepared">Horizon {version} heeft nog geen bronnen: download het één keer, zodat ze uit je Minecraft worden klaargezet.</string>
 </strings>

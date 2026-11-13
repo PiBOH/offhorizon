@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} instalado.</string>
   <string key="home.rust_no_resources">El cliente está instalado, pero sus recursos no están listos: {why}</string>
   <string key="home.rust_no_minecraft">No hay ninguna instalación de Minecraft Java: abre el juego una vez desde tu launcher.</string>
+  <string key="home.rust_unprepared">Horizon {version} aún no tiene recursos: descárgalo una vez para que se preparen desde tu Minecraft.</string>
 </strings>

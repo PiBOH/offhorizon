@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} 已安装。</string>
   <string key="home.rust_no_resources">客户端已安装，但资源尚未就绪：{why}</string>
   <string key="home.rust_no_minecraft">此处没有 Minecraft Java：请先从你的启动器运行一次游戏。</string>
+  <string key="home.rust_unprepared">Horizon {version} 尚无资源：先下载一次，以便从你的 Minecraft 生成。</string>
 </strings>

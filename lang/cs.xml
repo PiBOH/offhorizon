@@ -112,4 +112,5 @@
   <string key="home.rust_installed">Horizon {version} nainstalován.</string>
   <string key="home.rust_no_resources">Klient je nainstalován, ale zdroje nejsou připravené: {why}</string>
   <string key="home.rust_no_minecraft">Žádná instalace Minecraft Java: spusťte hru jednou ze svého launcheru.</string>
+  <string key="home.rust_unprepared">Horizon {version} zatím nemá zdroje: stáhněte ho jednou, aby se připravily z vašeho Minecraftu.</string>
 </strings>
