@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">Клиента Horizon здесь нет: положите horizon-client рядом с этим лаунчером или в папку .offhorizon/versions.</string>
+  <string key="home.rust_download">Скачать клиент Horizon</string>
+  <string key="home.rust_downloading">Загрузка клиента Horizon…</string>
+  <string key="home.rust_installed">Horizon {version} установлен.</string>
+  <string key="home.rust_no_resources">Клиент установлен, но ресурсы не готовы: {why}</string>
+  <string key="home.rust_no_minecraft">Установка Minecraft Java не найдена: запустите игру один раз из своего лаунчера.</string>
 </strings>

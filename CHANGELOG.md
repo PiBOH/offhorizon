@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3-nightly]
+
+The Rust game installs itself now.
+
+- **Download**: *Download the Horizon client* in the window, or `offhorizon install`, fetches the
+  newest Horizon build for this machine — `horizon-windows-x64.zip`, `horizon-linux-x86_64.tar.gz`
+  or the macOS zip — from the game's releases and unpacks it as `versions/<version>/` beside the
+  executable, the layout Play already reads.
+- **Resources**: the same command then prepares the client's resources from your own Minecraft Java
+  Edition, with the `horizon-prepare` the archive ships, and says what is missing when it can't
+  (no Minecraft played once from a launcher, no Java). The client stays installed either way.
+- **No new dependency**: `curl` fetches, `tar` unpacks; the window downloads on a thread, so it
+  keeps answering, and the log shows the lines as they come.
+
 ## [0.2.2-nightly]
 
 Minecraft: Rust Edition plays from here now, and it plays first.

@@ -72,6 +72,12 @@ impl Page {
     }
 }
 
+/// What the download thread sends back: its lines as they come, then how it ended.
+enum Install {
+    Line(String),
+    Done(Result<String, String>),
+}
+
 pub struct App {
     session: Session,
     page: Page,
@@ -95,6 +101,8 @@ pub struct App {
     edition: Edition,
     /// The instance the sidebar picked: Home plays it.
     instance: Option<String>,
+    /// The download running now, if one is.
+    installing: Option<std::sync::mpsc::Receiver<Install>>,
     log: Vec<String>,
 }
 
@@ -122,6 +130,7 @@ impl App {
             level_input: 30,
             time_input: world::TICKS_NOON,
             weather_ticks: 6_000,
+            installing: None,
             log: Vec::new(),
             session,
         };
@@ -225,6 +234,7 @@ fn bytes(size: u64) -> String {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.poll_install(ctx);
         // The top bar, from the official launcher: the pages as tabs over the page, then who
         // plays and Settings. No plate: the page shows through, under a 1 px rule.
         egui::TopBottomPanel::top("top_bar")
@@ -727,6 +737,23 @@ impl App {
                     if natives.is_empty() {
                         ui.label(theme::note(i18n::t("home.rust_missing"), false));
                     }
+                    ui.add_space(6.0);
+                    ui.horizontal(|ui| {
+                        let busy = self.installing.is_some();
+                        if ui
+                            .add_enabled(
+                                !busy,
+                                egui::Button::new(theme::action(&i18n::t("home.rust_download"))),
+                            )
+                            .clicked()
+                        {
+                            self.start_install();
+                        }
+                        if busy {
+                            ui.spinner();
+                        }
+                    });
+                    ui.add_space(6.0);
                     let mut pick_native: Option<usize> = None;
                     for (index, client) in natives.iter().enumerate() {
                         let sub = format!(
@@ -816,6 +843,51 @@ impl App {
                     });
                 }
             });
+    }
+
+    /// Downloads the Horizon client in the background: the window keeps answering, and the log
+    /// fills with the download's lines as they come.
+    fn start_install(&mut self) {
+        if self.installing.is_some() {
+            return;
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.installing = Some(rx);
+        std::thread::spawn(move || {
+            let mut session = Session::open();
+            let mut said = |line: String| {
+                let _ = tx.send(Install::Line(line));
+            };
+            let result = session.install_native(&mut said);
+            let _ = tx.send(Install::Done(result));
+        });
+    }
+
+    /// Takes what the download thread sent: its lines into the log, its answer into the pages.
+    fn poll_install(&mut self, ctx: &egui::Context) {
+        let Some(rx) = self.installing.take() else {
+            return;
+        };
+        let mut running = true;
+        loop {
+            match rx.try_recv() {
+                Ok(Install::Line(line)) => self.say(line),
+                Ok(Install::Done(result)) => {
+                    self.carry(result);
+                    running = false;
+                    break;
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    running = false;
+                    break;
+                }
+            }
+        }
+        if running {
+            self.installing = Some(rx);
+            ctx.request_repaint();
+        }
     }
 
     /// Starts what the home page shows, as the offline name: the Rust client when there is one and

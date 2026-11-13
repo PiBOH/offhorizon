@@ -21,6 +21,7 @@ OffHorizon — portable companion for Horizon
   offhorizon play [VERSION]        start the game as the offline name
                                    Rust first: --rust and --java pick the edition,
                                    --instance <NAME>, --dry-run: print the command instead
+  offhorizon install              download the Horizon client and prepare its resources
   offhorizon worlds                the saves, with health and inventory
   offhorizon name <NAME>           the offline player name
   offhorizon heal                  full health, air, fire out
@@ -188,6 +189,11 @@ pub fn run(args: &[String]) -> i32 {
                 Some(name) => result(session.play_instance(name)),
                 None => result(session.play_edition(id.as_deref(), edition)),
             }
+        }
+        "install" => {
+            // Every line the preparation prints goes out as it comes: a first install takes a while.
+            let mut said = |line: String| println!("{line}");
+            result(session.install_native(&mut said))
         }
         "status" => done(session.status()),
         "worlds" => {

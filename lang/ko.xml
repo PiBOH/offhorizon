@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">여기에 Horizon 클라이언트가 없습니다: horizon-client를 이 런처 옆이나 .offhorizon/versions 폴더에 두세요.</string>
+  <string key="home.rust_download">Horizon 클라이언트 다운로드</string>
+  <string key="home.rust_downloading">Horizon 클라이언트를 내려받는 중…</string>
+  <string key="home.rust_installed">Horizon {version} 설치됨.</string>
+  <string key="home.rust_no_resources">클라이언트는 설치되었지만 리소스가 아직 준비되지 않았습니다: {why}</string>
+  <string key="home.rust_no_minecraft">여기에 Minecraft Java가 없습니다: 런처에서 게임을 한 번 실행하세요.</string>
 </strings>

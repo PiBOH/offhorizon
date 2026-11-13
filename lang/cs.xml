@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">Klient Horizon tu není: umístěte horizon-client vedle tohoto launcheru nebo do složky .offhorizon/versions.</string>
+  <string key="home.rust_download">Stáhnout klienta Horizon</string>
+  <string key="home.rust_downloading">Stahování klienta Horizon…</string>
+  <string key="home.rust_installed">Horizon {version} nainstalován.</string>
+  <string key="home.rust_no_resources">Klient je nainstalován, ale zdroje nejsou připravené: {why}</string>
+  <string key="home.rust_no_minecraft">Žádná instalace Minecraft Java: spusťte hru jednou ze svého launcheru.</string>
 </strings>

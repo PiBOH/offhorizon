@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">Burada Horizon istemcisi yok: horizon-client'ı bu başlatıcının yanına veya .offhorizon/versions klasörüne koyun.</string>
+  <string key="home.rust_download">Horizon istemcisini indir</string>
+  <string key="home.rust_downloading">Horizon istemcisi indiriliyor…</string>
+  <string key="home.rust_installed">Horizon {version} kuruldu.</string>
+  <string key="home.rust_no_resources">İstemci kuruldu ama kaynakları hazır değil: {why}</string>
+  <string key="home.rust_no_minecraft">Burada Minecraft Java kurulumu yok: oyunu başlatıcınızdan bir kez açın.</string>
 </strings>

@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">此处没有 Horizon 客户端：请把 horizon-client 放在此启动器旁边，或放到 .offhorizon/versions 文件夹。</string>
+  <string key="home.rust_download">下载 Horizon 客户端</string>
+  <string key="home.rust_downloading">正在下载 Horizon 客户端…</string>
+  <string key="home.rust_installed">Horizon {version} 已安装。</string>
+  <string key="home.rust_no_resources">客户端已安装，但资源尚未就绪：{why}</string>
+  <string key="home.rust_no_minecraft">此处没有 Minecraft Java：请先从你的启动器运行一次游戏。</string>
 </strings>

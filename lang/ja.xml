@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">ここに Horizon クライアントがありません: horizon-client をこのランチャーの隣か .offhorizon/versions フォルダに置いてください。</string>
+  <string key="home.rust_download">Horizon クライアントをダウンロード</string>
+  <string key="home.rust_downloading">Horizon クライアントをダウンロード中…</string>
+  <string key="home.rust_installed">Horizon {version} をインストールしました。</string>
+  <string key="home.rust_no_resources">クライアントは入りましたが、リソースがまだ準備できていません: {why}</string>
+  <string key="home.rust_no_minecraft">ここに Minecraft Java がありません: ランチャーから一度ゲームを起動してください。</string>
 </strings>

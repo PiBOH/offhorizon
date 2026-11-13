@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">لا يوجد عميل Horizon هنا: ضع horizon-client بجانب هذا المشغّل أو في مجلد .offhorizon/versions.</string>
+  <string key="home.rust_download">تنزيل عميل Horizon</string>
+  <string key="home.rust_downloading">جارٍ تنزيل عميل Horizon…</string>
+  <string key="home.rust_installed">تم تثبيت Horizon {version}.</string>
+  <string key="home.rust_no_resources">تم تثبيت العميل، لكن موارده غير جاهزة: {why}</string>
+  <string key="home.rust_no_minecraft">لا يوجد تثبيت لـ Minecraft Java هنا: شغّل اللعبة مرة واحدة من مشغّلك.</string>
 </strings>

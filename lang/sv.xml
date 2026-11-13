@@ -107,4 +107,9 @@
   <string key="home.rust">Horizon (Rust)</string>
   <string key="home.java">Minecraft Java</string>
   <string key="home.rust_missing">Ingen Horizon-klient här: lägg horizon-client bredvid den här launchern eller i mappen .offhorizon/versions.</string>
+  <string key="home.rust_download">Ladda ner Horizon-klienten</string>
+  <string key="home.rust_downloading">Laddar ner Horizon-klienten…</string>
+  <string key="home.rust_installed">Horizon {version} installerad.</string>
+  <string key="home.rust_no_resources">Klienten är installerad, men resurserna är inte klara: {why}</string>
+  <string key="home.rust_no_minecraft">Ingen Minecraft Java-installation här: starta spelet en gång från din launcher.</string>
 </strings>

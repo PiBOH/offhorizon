@@ -7,6 +7,7 @@
 mod actions;
 mod app;
 mod cli;
+mod download;
 mod i18n;
 mod instances;
 mod launch;

@@ -1,6 +1,7 @@
 //! Every action the window and the terminal can take. Both front ends call the same functions, so
 //! anything the window does the terminal does, and the other way round.
 
+use crate::download;
 use crate::instances::{self, Edition, Instance};
 use crate::launch;
 use crate::launcher::{self, LauncherChange, Layout};
@@ -192,6 +193,36 @@ impl Session {
         let home = self.home();
         launcher::set_offline_name(&mut self.store, &home, name)?;
         Ok(format!("name:{}", name.trim()))
+    }
+
+    /// Downloads the Horizon client (Minecraft: Rust Edition) beside the stick and prepares its
+    /// resources from the game folder this tool plays from. `said` takes the progress lines.
+    pub fn install_native(
+        &mut self,
+        said: &mut dyn FnMut(String),
+    ) -> Result<String, String> {
+        let versions = self.portable.base.join("versions");
+        std::fs::create_dir_all(&versions).map_err(|e| format!("{}: {e}", versions.display()))?;
+        let mut log = |line: String| said(line);
+        let version = download::install(&versions, &mut log)?;
+        self.rescan();
+        let Some(client) = self.native(Some(version.as_str())) else {
+            return Ok(i18n::tf("home.rust_installed", &[("version", version)]));
+        };
+        let dir = client
+            .program
+            .parent()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| versions.clone());
+        // The client plays from prepared resources; without them it is installed but silent about
+        // why it can't start, so the preparation says what it needs instead.
+        match download::prepare(&dir, &self.home(), &mut log) {
+            Ok(()) => Ok(i18n::tf("home.rust_installed", &[("version", version)])),
+            Err(why) => Ok(i18n::tf(
+                "home.rust_no_resources",
+                &[("why", why)],
+            )),
+        }
     }
 
     /// Every Horizon client (Minecraft: Rust Edition) found beside this stick, the newest first.
