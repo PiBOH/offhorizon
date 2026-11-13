@@ -195,13 +195,20 @@ mod tests {
     #[test]
     fn a_client_beside_the_stick_is_found_with_its_resources() {
         let base = scratch("found");
-        let tag = base.join("versions/26.3");
-        let resources = tag.join(".local/horizon-client/26.3");
+        let tag = base.join("versions").join("26.3");
+        let resources = tag
+            .join(".local")
+            .join("horizon-client")
+            .join("26.3");
         std::fs::create_dir_all(&resources).unwrap();
         std::fs::write(tag.join(program_name()), b"").unwrap();
         // An older client is found too, and listed after the newer one.
-        let older = base.join("versions/25.1");
-        std::fs::create_dir_all(older.join(".local/horizon-client/25.1")).unwrap();
+        let older = base.join("versions").join("25.1");
+        let older_resources = older
+            .join(".local")
+            .join("horizon-client")
+            .join("25.1");
+        std::fs::create_dir_all(&older_resources).unwrap();
         std::fs::write(older.join(program_name()), b"").unwrap();
 
         let clients = found(&base);
@@ -215,8 +222,11 @@ mod tests {
     #[test]
     fn the_plan_hands_the_game_the_resources_the_folder_and_the_name() {
         let base = scratch("plan");
-        let tag = base.join("versions/26.3");
-        let resources = tag.join(".local/horizon-client/26.3");
+        let tag = base.join("versions").join("26.3");
+        let resources = tag
+            .join(".local")
+            .join("horizon-client")
+            .join("26.3");
         std::fs::create_dir_all(&resources).unwrap();
         std::fs::write(tag.join(program_name()), b"").unwrap();
         let clients = found(&base);

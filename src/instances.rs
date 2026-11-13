@@ -94,7 +94,8 @@ pub fn save(tool: &Path, list: &[Instance]) -> Result<PathBuf, String> {
             })
         })
         .collect();
-    std::fs::write(&path, format!("{}\\n", Value::Array(value)))
+    std::fs::write(&path, format!("{}
+", Value::Array(value)))
         .map_err(|e| format!("{}: {e}", path.display()))?;
     Ok(path)
 }
