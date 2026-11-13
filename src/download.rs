@@ -102,7 +102,7 @@ pub fn install(versions: &Path, said: &mut dyn FnMut(String)) -> Result<String, 
     let archive = partial.join("download");
     fetch_file(&release.url, &archive)?;
     let (from, into) = (text(&archive), text(&unpacked));
-    run("tar", ["-xf", from.as_str(), "-C", into.as_str()])?;
+    run("tar", &["-xf", from.as_str(), "-C", into.as_str()])?;
     let top = unpacked_folder(&unpacked)?;
     let target = versions.join(&release.version);
     let _ = std::fs::remove_dir_all(&target);
@@ -182,7 +182,7 @@ fn text(path: &Path) -> String {
     path.display().to_string()
 }
 
-fn run(program: &str, args: [&str; 3]) -> Result<(), String> {
+fn run(program: &str, args: &[&str]) -> Result<(), String> {
     let output = std::process::Command::new(program)
         .args(args)
         .output()
