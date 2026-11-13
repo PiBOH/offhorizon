@@ -564,10 +564,9 @@ impl Session {
         ));
         for client in &clients {
             lines.push(format!(
-                "  {} — {} {} — {}",
+                "  {} — {} — {}",
                 client.tag,
                 native::minecraft_of(client),
-                i18n::t("home.versions"),
                 client.program.display()
             ));
         }
