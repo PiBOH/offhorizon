@@ -233,6 +233,7 @@ fn the_whole_chain() {
         Account {
             uuid: UUID.into(),
             name: "Notch".into(),
+            offline: false,
             skin: Some((
                 "http://textures.minecraft.net/texture/abc".into(),
                 "slim".into()
@@ -314,6 +315,7 @@ fn notch() -> Account {
     Account {
         uuid: UUID.into(),
         name: "Notch".into(),
+        offline: false,
         skin: None,
         cape: None,
     }
@@ -411,6 +413,7 @@ fn splitscreen_gets_the_other_accounts_that_still_hold() {
     let other = |name: &str, uuid: &str| Account {
         uuid: uuid.into(),
         name: name.into(),
+        offline: false,
         skin: None,
         cape: None,
     };
@@ -491,6 +494,7 @@ fn splitscreen_never_hands_over_an_account_sent_back_to_sign_in() {
     let eve = Account {
         uuid: "e".into(),
         name: "Eve".into(),
+        offline: false,
         skin: None,
         cape: None,
     };
@@ -669,6 +673,7 @@ fn any_owner_opens_the_gate_and_the_one_who_plays_brings_the_session() {
     accounts.accounts.push(Account {
         uuid: "other".into(),
         name: "Alex".into(),
+        offline: false,
         skin: None,
         cape: None,
     });
@@ -707,6 +712,7 @@ fn the_game_plays_only_as_an_account_that_owns_it() {
     accounts.accounts.push(Account {
         uuid: "other".into(),
         name: "Alex".into(),
+        offline: false,
         skin: None,
         cape: None,
     });
@@ -804,12 +810,41 @@ fn cancelling_stops_the_wait() {
 }
 
 #[test]
+fn an_offline_account_plays_without_a_microsoft_sign_in() {
+    let (_, ep) = mock(|_| {});
+    let store = MemoryStore::default();
+    let mut accounts = Accounts::default();
+    let account = accounts.add_offline("Steve").unwrap();
+    assert!(account.offline);
+    // Java's `OfflinePlayer:Steve` UUID, so vanilla worlds and LAN keep the player.
+    assert_eq!(account.uuid, "5627dd98e6be3c21b8a8e92344183641");
+    assert_eq!(accounts.selected.as_deref(), Some(account.uuid.as_str()));
+    assert!(accounts.has_owner(&store));
+    let pass = launch_for_game(&ep, Some("test-client"), &store, &mut accounts).unwrap();
+    assert!(pass.session.is_none());
+    assert!(pass.offline.unwrap().contains("offline account"));
+    let player = java_player_with(&ep, None, &store, &mut accounts).unwrap();
+    assert_eq!(
+        (
+            player.name.as_str(),
+            player.token.as_str(),
+            player.user_type
+        ),
+        ("Steve", "0", "legacy")
+    );
+    // The same name is the same player, and a bad name is refused.
+    assert_eq!(accounts.add_offline("STeve").unwrap().uuid, account.uuid);
+    assert!(accounts.add_offline("a").is_err());
+}
+
+#[test]
 fn accounts_keep_secrets_in_the_store_only() {
     let store = MemoryStore::default();
     let mut accounts = Accounts::default();
     let account = Account {
         uuid: UUID.into(),
         name: "Notch".into(),
+        offline: false,
         skin: None,
         cape: None,
     };
@@ -1046,6 +1081,7 @@ fn has_owner_asks_the_selected_account_first() {
             Account {
                 uuid: "other".into(),
                 name: "Other".into(),
+                offline: false,
                 skin: None,
                 cape: None,
             },
@@ -1112,6 +1148,7 @@ fn session_files_are_private_and_complete() {
     let account = Account {
         uuid: UUID.into(),
         name: "Notch".into(),
+        offline: false,
         skin: None,
         cape: None,
     };
@@ -1166,6 +1203,7 @@ fn play_as_picks_a_signed_in_account() {
         accounts: vec![Account {
             uuid: "abc".into(),
             name: "Ludo".into(),
+            offline: false,
             skin: None,
             cape: None,
         }],
@@ -2434,6 +2472,7 @@ fn a_launch_as_another_account_leaves_the_selected_one() {
     accounts.accounts.push(Account {
         uuid: alex.into(),
         name: "Alex".into(),
+        offline: false,
         skin: None,
         cape: None,
     });
@@ -2479,6 +2518,7 @@ fn splitscreen_stops_renewing_other_accounts_once_out_of_time() {
     let cal = Account {
         uuid: "c".into(),
         name: "Cal".into(),
+        offline: false,
         skin: None,
         cape: None,
     };
@@ -2552,6 +2592,7 @@ fn a_launch_saving_late_keeps_sign_ins_and_outs_made_meanwhile() {
     let other = |uuid: &str, name: &str| Account {
         uuid: uuid.into(),
         name: name.into(),
+        offline: false,
         skin: None,
         cape: None,
     };

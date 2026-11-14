@@ -1,0 +1,197 @@
+name: Auto Release
+
+# PiBOH's release convention: a push whose first line starts with "v" is a release.
+# The version comes from version.txt, the single source of truth (AGENTS.md). A suffix
+# (-nightly, -beta, -alpha, -rc) makes the GitHub release a pre-release. A changelog is
+# optional; when CHANGELOG.md has a `## [<version>]` section, it is used as the body.
+on:
+  push:
+    branches: [offhorizon]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (leave empty to use version.txt)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Read version.txt
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'v')
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        shell: bash
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          RAW="${VERSION_INPUT:-$(sed -n '1p' version.txt | tr -d '\r\n' | xargs)}"
+          VERSION="${RAW#v}"
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::version.txt is empty"
+            exit 1
+          fi
+          TAG="v${VERSION}"
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG (prerelease: $PRERELEASE)"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-22.04
+            asset: horizon-launcher-linux-x86_64.tar.gz
+            binary: horizon-launcher
+          - name: macos-arm64
+            os: macos-14
+            asset: horizon-launcher-macos-arm64.zip
+            binary: horizon-launcher
+          - name: windows-x64
+            os: windows-latest
+            asset: horizon-launcher-windows-x64.zip
+            binary: horizon-launcher.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: launcher
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: launcher
+          shared-key: auto-release-${{ matrix.name }}
+      - name: Linux libraries GPUI links to
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev \
+            libfontconfig-dev libvulkan-dev libasound2-dev patchelf
+      - name: Build
+        run: cargo build --release --locked
+      - name: The version is version.txt's
+        shell: bash
+        run: |
+          out=$(./target/release/${{ matrix.binary }} --version)
+          echo "$out"
+          [[ "$out" == "horizon-launcher ${{ needs.version.outputs.version }}" ]] || {
+            echo "::error::expected horizon-launcher ${{ needs.version.outputs.version }}"
+            exit 1
+          }
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p ../dist
+          tar -czf "../dist/${{ matrix.asset }}" -C target/release "${{ matrix.binary }}"
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p ../dist
+          zip -j "../dist/${{ matrix.asset }}" "target/release/${{ matrix.binary }}"
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ..\dist | Out-Null
+          Compress-Archive -Path "target\release\${{ matrix.binary }}" -DestinationPath "..\dist\${{ matrix.asset }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.name }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 3
+
+  release:
+    name: Publish GitHub Release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Source archive
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --prefix="offhorizon-${GITHUB_SHA:0:7}/" \
+            -o "artifacts/offhorizon-source.tar.gz" "$GITHUB_SHA"
+      - name: Release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version }}"
+          SECTION=""
+          if [[ -f CHANGELOG.md ]]; then
+            SECTION=$(awk -v v="$VERSION" '
+              index($0, "## [" v "]") == 1 { found = 1; next }
+              found && /^## / { exit }
+              found { print }
+            ' CHANGELOG.md)
+          fi
+          if [[ -z "$SECTION" ]]; then
+            PREV=$(git describe --tags --abbrev=0 2>/dev/null || true)
+            if [[ -n "$PREV" ]]; then
+              SECTION=$(git log "$PREV..HEAD" --pretty=format:'- %s' --no-merges)
+            else
+              SECTION=$(git log --pretty=format:'- %s' --no-merges | head -30)
+            fi
+          fi
+          if [[ "$VERSION" == *-* ]]; then CHANNEL=nightly; else CHANNEL=stable; fi
+          {
+            echo "## offhorizon $VERSION"
+            echo
+            echo "Release channel: \`$CHANNEL\`"
+            echo
+            echo "$SECTION"
+            echo
+            echo "---"
+            echo "The launcher starts the Rust game and Java instances with an offline account,"
+            echo "without a Microsoft sign-in. It installs Horizon game builds from"
+            echo "[horizon-rust/horizon](https://github.com/horizon-rust/horizon); online servers"
+            echo "still need a Microsoft account."
+            echo
+            echo "Built automatically from commit \`$GITHUB_SHA\`."
+          } > notes.md
+          cat notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: offhorizon ${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ needs.version.outputs.prerelease }}
+          files: artifacts/*
+          fail_on_unmatched_files: true
+          body_path: notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

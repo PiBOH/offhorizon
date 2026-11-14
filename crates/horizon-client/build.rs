@@ -35,5 +35,17 @@ fn main() {
     if let Some(found) = horizon_mod_api_gen::mob_turn(&root) {
         println!("cargo:rustc-env=HORIZON_MOB_TURN={found}");
     }
+    // version.txt in the repo root is the one version number (AGENTS.md).
+    let version_file = root.join("version.txt");
+    println!("cargo:rerun-if-changed={}", version_file.display());
+    if let Ok(text) = std::fs::read_to_string(&version_file) {
+        if let Some(version) = text
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty() && !line.starts_with('#'))
+        {
+            println!("cargo:rustc-env=HORIZON_VERSION={version}");
+        }
+    }
     windows_exe::resources("horizon-client");
 }

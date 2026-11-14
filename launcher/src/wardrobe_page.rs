@@ -819,6 +819,7 @@ impl Launcher {
         let account = account::Account {
             uuid: "00000000000000000000000000000001".into(),
             name: "Preview".into(),
+            offline: false,
             skin: None,
             cape: None,
         };

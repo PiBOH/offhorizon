@@ -126,6 +126,11 @@ enum AccountCmd {
         /// Its name or UUID
         who: String,
     },
+    /// Play without a Microsoft account: an offline name (singleplayer and LAN only)
+    Offline {
+        /// 3 to 16 letters, digits or underscores
+        name: String,
+    },
     /// Play as this account
     Select { who: String },
 }
@@ -815,7 +820,7 @@ enum Cmd {
     Notes { tag: Option<String> },
     /// Show the Discord, sponsor and website links
     Links,
-    /// Microsoft accounts: list them (the default), sign in, sign out, or pick the one that plays
+    /// Accounts: Microsoft sign-ins (list, sign in, sign out, pick one), or an offline name
     Account {
         #[command(subcommand)]
         action: Option<AccountCmd>,
@@ -1905,7 +1910,7 @@ fn account_command(action: AccountCmd, as_json: bool) -> Result<(), String> {
             if as_json {
                 json(serde_json::json!({
                     "accounts": accounts.accounts.iter().map(|a| serde_json::json!({
-                        "name": a.name, "uuid": a.uuid,
+                        "name": a.name, "uuid": a.uuid, "offline": a.offline,
                         "selected": accounts.selected.as_ref() == Some(&a.uuid),
                         "authentication": account::session::status(account::store(), &a.uuid),
                     })).collect::<Vec<_>>(),
@@ -1914,8 +1919,9 @@ fn account_command(action: AccountCmd, as_json: bool) -> Result<(), String> {
                 }));
             } else if accounts.accounts.is_empty() {
                 println!(
-                    "No Microsoft account signed in. Play needs one that owns Minecraft: Java \
-                     Edition: horizon-launcher account sign-in"
+                    "No account signed in. Sign in with one that owns Minecraft: Java Edition \
+                     (horizon-launcher account sign-in) or play without one \
+                     (horizon-launcher account offline <name>)"
                 );
             } else {
                 for a in &accounts.accounts {
@@ -1924,6 +1930,13 @@ fn account_command(action: AccountCmd, as_json: bool) -> Result<(), String> {
                     } else {
                         " "
                     };
+                    if a.offline {
+                        println!(
+                            "{mark} {}  {}  Offline account (no Microsoft sign-in)",
+                            a.name, a.uuid
+                        );
+                        continue;
+                    }
                     let status = account::session::status(account::store(), &a.uuid);
                     // Why it couldn't be checked (a keyring that didn't answer, #12179).
                     let why = match status.state {
@@ -2013,6 +2026,11 @@ fn account_command(action: AccountCmd, as_json: bool) -> Result<(), String> {
             accounts.remove(account::store(), &a.uuid)?;
             accounts.save()?;
             println!("Signed out {}.", a.name);
+        }
+        AccountCmd::Offline { name } => {
+            let account = accounts.add_offline(&name)?;
+            accounts.save()?;
+            println!("The game plays as {} (offline account).", account.name);
         }
         AccountCmd::Select { who } => {
             let a = find(&accounts, &who)?;

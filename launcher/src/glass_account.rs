@@ -37,7 +37,11 @@ impl Launcher {
             Some(a) => (
                 Some(a.uuid.clone()),
                 a.name.clone(),
-                (Tone::Live, tr("Microsoft account · online servers too")),
+                if a.offline {
+                    (Tone::Off, tr("Offline account · singleplayer and LAN"))
+                } else {
+                    (Tone::Live, tr("Microsoft account · online servers too"))
+                },
             ),
             None => (
                 None,
@@ -87,6 +91,24 @@ impl Launcher {
         );
 
         div().flex().flex_col().child(header)
+    }
+
+    /// Adds (or selects) an offline account and lets Play start: no Microsoft sign-in.
+    pub(super) fn play_offline(&mut self, cx: &mut Context<Self>) {
+        let mut accounts = crate::account::Accounts::load();
+        match accounts
+            .add_offline(&crate::account::offline_name())
+            .and_then(|a| accounts.save().map(|()| a))
+        {
+            Ok(a) => {
+                self.accounts = accounts;
+                self.owner = Some(true);
+                self.owner_screen_open = false;
+                self.client_error = Some(format!("Playing as {} (offline).", a.name));
+            }
+            Err(e) => self.client_error = Some(e),
+        }
+        cx.notify();
     }
 
     /// The Microsoft card: the accounts signed in here, then adding one (the mockup's card).
@@ -182,6 +204,20 @@ impl Launcher {
                     .child(note),
             )
             .children(button)
+            .child(
+                div().flex().justify_center().mt(px(12.)).child(
+                    ui::button(
+                        "glass-play-offline".into(),
+                        tr("Play offline (no account)").into(),
+                        crate::Kind::Ghost,
+                        &t,
+                    )
+                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                        this.play_offline(cx);
+                        cx.notify();
+                    })),
+                ),
+            )
             .when(configured, |d| {
                 d.child(
                     ui::text(12., FontWeight::NORMAL, 0.45)

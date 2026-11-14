@@ -262,6 +262,7 @@ mod tests {
         let mut account = crate::account::Account {
             name: "TestPlayer".into(),
             uuid: "00000000000000000000000000000000".into(),
+            offline: false,
             skin: Some((
                 "https://textures.minecraft.net/texture/abc".into(),
                 "classic".into(),
@@ -333,6 +334,7 @@ mod tests {
         let account = crate::account::Account {
             name: "Notch".into(),
             uuid: uuid.into(),
+            offline: false,
             skin: None,
             cape: None,
         };
@@ -365,6 +367,7 @@ mod tests {
         let account = crate::account::Account {
             name: "TestPlayer".into(),
             uuid: "00000000000000000000000000000000".into(),
+            offline: false,
             skin: Some((
                 "https://textures.minecraft.net/texture/abc".into(),
                 "classic".into(),

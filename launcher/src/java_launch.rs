@@ -20,6 +20,8 @@ pub struct Player {
     pub uuid: String,
     pub token: String,
     pub xuid: String,
+    /// `msa` for a Microsoft account, `legacy` for an offline one (vanilla's own values).
+    pub user_type: &'static str,
 }
 
 impl std::fmt::Debug for Player {
@@ -378,7 +380,7 @@ pub fn command(version: &Value, launch: &Launch) -> Result<Command, String> {
         ("auth_session", format!("token:{}:{}", p.token, p.uuid)),
         ("auth_xuid", p.xuid.clone()),
         ("clientid", String::new()),
-        ("user_type", "msa".into()),
+        ("user_type", p.user_type.into()),
         ("user_properties", "{}".into()),
         ("version_name", id.to_string()),
         (

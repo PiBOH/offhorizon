@@ -3198,6 +3198,9 @@ pub fn client_as(tag: &str, who: Option<&str>) -> Result<Command, String> {
     complete_assets(tag);
     crate::browser::horizon::before_play(&game_home());
     let mut cmd = client_command(tag);
+    if let Some(name) = &session.offline_name {
+        cmd.arg("--name").arg(name);
+    }
     if let Some(file) = session.file {
         cmd.arg("--session-file").arg(file);
     }
@@ -4809,6 +4812,7 @@ mod tests {
         let owner = account::Account {
             uuid: "069a79f444e94726a5befca90e38aaf5".into(),
             name: "Notch".into(),
+            offline: false,
             skin: None,
             cape: None,
         };

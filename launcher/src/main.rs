@@ -1232,7 +1232,12 @@ impl Launcher {
                     self.load_auth_statuses(false);
                     if let Some(tag) = self.starting_client.take() {
                         let mut cmd = backend::client_command(&tag);
-                        let account::GameSession { file, offline, env } = match session {
+                        let account::GameSession {
+                            file,
+                            offline,
+                            env,
+                            offline_name,
+                        } = match session {
                             Ok(pass) => pass,
                             Err(refused) => {
                                 // A keyring that didn't answer isn't a missing owner (#12179).
@@ -1248,6 +1253,9 @@ impl Launcher {
                             }
                         };
                         self.owner = Some(true);
+                        if let Some(name) = offline_name {
+                            cmd.arg("--name").arg(name);
+                        }
                         if let Some(file) = file {
                             cmd.arg("--session-file").arg(file);
                         }
@@ -4421,7 +4429,19 @@ impl Launcher {
             let plays = selected.as_ref() == Some(&a.uuid);
             let uuid = a.uuid.clone();
             let mut actions = div().flex().gap(px(4.));
-            if plays {
+            if a.offline {
+                if !plays {
+                    let uuid = uuid.clone();
+                    actions = actions.child(
+                        button(format!("select-{i}"), "Play as", Kind::Secondary, &t).on_click(
+                            cx.listener(move |this, _: &ClickEvent, _, cx| {
+                                this.play_as(&uuid);
+                                cx.notify();
+                            }),
+                        ),
+                    );
+                }
+            } else if plays {
                 actions = actions.child(
                     button(format!("offline-{i}"), "Play offline", Kind::Ghost, &t).on_click(
                         cx.listener(|this, _: &ClickEvent, _, cx| {
@@ -4474,19 +4494,26 @@ impl Launcher {
                 Kind::Ghost,
                 &t,
             );
-            actions = actions.child(if busy {
-                disabled(refresh)
-            } else {
-                refresh.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
-                    if needs_sign_in {
-                        this.re_sign_in(&refresh_id);
-                    } else {
-                        this.refresh_account(refresh_id.clone());
-                    }
-                    cx.notify();
-                }))
-            });
-            let sign_out = button(format!("sign-out-{i}"), "Sign out", Kind::Ghost, &t);
+            if !a.offline {
+                actions = actions.child(if busy {
+                    disabled(refresh)
+                } else {
+                    refresh.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                        if needs_sign_in {
+                            this.re_sign_in(&refresh_id);
+                        } else {
+                            this.refresh_account(refresh_id.clone());
+                        }
+                        cx.notify();
+                    }))
+                });
+            }
+            let sign_out = button(
+                format!("sign-out-{i}"),
+                if a.offline { "Remove" } else { "Sign out" },
+                Kind::Ghost,
+                &t,
+            );
             actions = actions.child(if busy {
                 disabled(sign_out)
             } else {
@@ -4517,12 +4544,20 @@ impl Launcher {
                 a.name.clone(),
                 Some(
                     div()
-                        .child(tr(if plays {
+                        .child(tr(if a.offline {
+                            if plays {
+                                "Offline account · plays"
+                            } else {
+                                "Offline account"
+                            }
+                        } else if plays {
                             "Microsoft account · plays"
                         } else {
                             "Microsoft account"
                         }))
-                        .child(account_status_line(status, progress, &t))
+                        .when(!a.offline, |row| {
+                            row.child(account_status_line(status, progress, &t))
+                        })
                         .when(!busy, |row| {
                             row.when_some(status.filter(|s| s.message != s.label()), |row, s| {
                                 row.child(div().child(tr(&s.message).to_string()))
@@ -4531,6 +4566,28 @@ impl Launcher {
                         .into_any_element(),
                 ),
                 actions,
+                &t,
+            ));
+        }
+        // The classic look has no Microsoft card to hold the offline button.
+        if !t.glass {
+            n += 1;
+            rows = rows.child(account_row(
+                None,
+                tr("Play offline").to_string(),
+                Some(
+                    div()
+                        .child(tr("No Microsoft sign-in: singleplayer and LAN."))
+                        .into_any_element(),
+                ),
+                div().flex().gap(px(4.)).child(
+                    button("add-offline", "Play offline", Kind::Secondary, &t).on_click(
+                        cx.listener(|this, _: &ClickEvent, _, cx| {
+                            this.play_offline(cx);
+                            cx.notify();
+                        }),
+                    ),
+                ),
                 &t,
             ));
         }
@@ -5937,6 +5994,7 @@ mod tests {
         let completed = SignInState::Done(Ok(horizon_launcher::account::Account {
             uuid: "11111111111111111111111111111111".into(),
             name: "TestAccount".into(),
+            offline: false,
             skin: None,
             cape: None,
         }));

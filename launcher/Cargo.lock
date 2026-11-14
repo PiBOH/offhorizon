@@ -2829,6 +2829,7 @@ dependencies = [
  "image",
  "keyring",
  "libc",
+ "md-5",
  "objc2-app-kit 0.3.2",
  "oo7",
  "png 0.18.1",
