@@ -41,14 +41,28 @@ telemetry; keep them local.
 ## Version and releases
 
 `version.txt` in the root is the **single source of truth** for the program version. It holds one
-line, for example `0.1.1-nightly`.
+line, for example `0.1.2-nightly`.
 
 - `launcher/build.rs` reads it into `HORIZON_LAUNCHER_VERSION`; the game's build script reads it
-  into `HORIZON_VERSION`. Do not add a second version number anywhere.
+  into `HORIZON_VERSION`. Do not add a second version number anywhere in code or workflow output.
+- Cargo cannot read a package version from another file, so `tools/sync_version.py` copies the same
+  value into `launcher/Cargo.toml` and `launcher/Cargo.lock`. The release workflow runs it before
+  every build; a local build should run it after editing `version.txt`.
 - A push whose **first line starts with `v`** runs `.github/workflows/auto-release.yml`. The
   workflow reads `version.txt`, tags `v<version>`, builds the launcher for Linux x86_64 and Windows
   x64 (and tries macOS x64 without blocking the release), and publishes a GitHub release. A version
   with a suffix (`-nightly`, `-beta`, `-alpha`, `-rc`) is a pre-release.
+- Assets are the finished native files, never `.zip`/`.tar.gz` wrappers: the Windows `.exe`, the
+  Linux executable, and the macOS executable. `SHA256SUMS` accompanies them for the launcher's
+  unsigned self-update.
+- The launcher updates itself from `PiBOH/offhorizon`; Minecraft/Rust builds still come from
+  `horizon-rust/horizon`. Keep both repositories separate in `launcher/src/backend.rs`.
+- An empty account list gets an offline account automatically. Microsoft sign-in is optional; Java
+  instances download Mojang's public version files without an account. Online servers still need a
+  Microsoft account that owns the game.
+- `.github/workflows/sync-upstream.yml` runs every 30 minutes. It merges with `-X ours`, restores
+  the offline/telemetry files from the pre-merge commit, and only pushes if
+  `tools/offhorizon_sync.py` passes its checks.
 - No version-bump commits: change `version.txt` in the same commit as the code.
 - A changelog is optional. If `CHANGELOG.md` has a `## [<version>]` section it goes in the release
   body; otherwise the body lists the commits since the previous tag.

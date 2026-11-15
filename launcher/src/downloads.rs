@@ -932,7 +932,7 @@ struct Clients {
 }
 fn build_client(config: &Config, proxy: Option<&str>) -> Result<Client, Failure> {
     let mut builder = Client::builder()
-        .user_agent(concat!("horizon-launcher/", env!("CARGO_PKG_VERSION")))
+        .user_agent(format!("horizon-launcher/{}", crate::backend::VERSION))
         .connect_timeout(config.connect_timeout)
         .read_timeout(config.read_timeout)
         .pool_max_idle_per_host(config.per_host)

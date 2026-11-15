@@ -430,7 +430,7 @@ impl Launcher {
             }
         }
         rows.child(shell::text(night::CAPTION, c(n.muted)).child(
-            tr("Play downloads the game from Mojang for your account the first time, with the Java it needs.")
+            tr("Play downloads the game from Mojang the first time, with the Java it needs. Offline accounts can play it too.")
                 .to_string(),
         ))
     }

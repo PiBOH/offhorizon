@@ -619,8 +619,9 @@ pub fn current() -> Language {
 
 type Table = HashMap<String, &'static str>;
 
-/// offhorizon's name in the launcher: the fork is not Horizon, so every visible
-/// "Horizon" becomes "OffHorizon". "Rust" is a language name and never changes.
+/// OffHorizon's name in the launcher: the fork is not Horizon, so every visible
+/// "Horizon" becomes "OffHorizon", and a lowercase fork name becomes "OffHorizon" too.
+/// "Rust" is a language name and never changes.
 fn branded(s: &str) -> &'static str {
     use std::sync::Mutex;
     static CACHE: OnceLock<Mutex<HashMap<String, &'static str>>> = OnceLock::new();
@@ -640,6 +641,8 @@ fn branded(s: &str) -> &'static str {
         rest = &rest[at + "Horizon".len()..];
     }
     out.push_str(rest);
+    // Some source strings and old translations write the fork name in lowercase.
+    let out = out.replace("offhorizon", "OffHorizon");
     let leaked: &'static str = Box::leak(out.into_boxed_str());
     cache
         .lock()

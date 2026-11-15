@@ -23,7 +23,7 @@ use winreg::RegKey;
 
 pub const APP_NAME: &str = "OffHorizon Launcher";
 const BINARY: &str = "horizon-launcher.exe";
-const PUBLISHER: &str = "Horizon";
+const PUBLISHER: &str = "OffHorizon";
 const ABOUT_URL: &str = "https://playhorizon.dev";
 const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\HorizonLauncher";
 const OWN_KEY: &str = r"Software\Horizon\Launcher";

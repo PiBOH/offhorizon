@@ -424,7 +424,7 @@ pub fn command(version: &Value, launch: &Launch) -> Result<Command, String> {
             "quickPlayMultiplayer",
             launch.server.unwrap_or_default().to_string(),
         ),
-        ("launcher_version", env!("CARGO_PKG_VERSION").into()),
+        ("launcher_version", crate::backend::VERSION.into()),
     ]);
     let mut jvm = vec![
         format!("-Xmx{}M", launch.memory_mb),

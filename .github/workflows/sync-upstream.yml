@@ -1,15 +1,16 @@
 name: Sync upstream
 
-# Keep the fork close to horizon-rust/horizon without losing what makes it offhorizon:
+# Keep the fork close to horizon-rust/horizon without losing what makes it OffHorizon:
 # offline accounts, no telemetry collection and the OffHorizon name. Our commits win a
-# textual merge conflict; tools/offhorizon_sync.py then rebrands language values upstream
-# added and checks the promises before anything is pushed.
+# textual merge conflict; the offline/telemetry files are then restored from the pre-merge
+# commit, and tools/offhorizon_sync.py rebrands new language values and checks the promises
+# before anything is pushed. It runs every 30 minutes, not only once a day.
 #
 # This never opens an OffHorizon pull request. Only the translation-only PR is opened by
 # hand; see AGENTS.md.
 on:
   schedule:
-    - cron: '17 4 * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -45,7 +46,9 @@ jobs:
           git remote add upstream https://github.com/horizon-rust/horizon.git
           git fetch --no-tags upstream main
           upstream=$(git rev-parse --short upstream/main)
+          before=$(git rev-parse HEAD)
           echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          echo "before=$before" >> "$GITHUB_OUTPUT"
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "up_to_date=true" >> "$GITHUB_OUTPUT"
             echo "Already contains horizon-rust/horizon@$upstream"
@@ -55,6 +58,14 @@ jobs:
           # -X ours keeps our side of a conflicting hunk: offline play, no collection and
           # branding are not overwritten by an upstream edit to the same lines.
           git merge --no-edit -X ours upstream/main
+          # Re-apply the fork's own offline-account, no-telemetry and branding files even when
+          # upstream changed them without a textual conflict. The rest of the merge stays.
+          git checkout "$before" -- \
+            crates/horizon-telemetry/src/lib.rs \
+            launcher/src/account.rs \
+            launcher/src/glass_account.rs \
+            launcher/src/owner_page.rs \
+            launcher/src/i18n.rs
 
       - name: Rebrand new strings and check the fork's promises
         if: steps.merge.outputs.up_to_date == 'false'
@@ -71,7 +82,7 @@ jobs:
             exit 0
           fi
           git commit -m "Upstream sync: horizon-rust/horizon@${{ steps.merge.outputs.upstream }}" \
-            -m "Merged with -X ours, then tools/offhorizon_sync.py rebranded new language values and checked offline play, telemetry and branding."
+            -m "Merged with -X ours, restored the offline-account/no-telemetry files, then tools/offhorizon_sync.py rebranded new language values and checked offline play, telemetry and branding."
           git push origin HEAD:offhorizon
 
       - name: Report a failed sync

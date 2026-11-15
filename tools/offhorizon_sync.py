@@ -114,6 +114,11 @@ def check() -> list[str]:
     backend = read(launcher / "backend.rs")
     if '"--name"' not in backend:
         errors.append("the Rust game is not started with the offline --name")
+    if "download_version_public" not in backend:
+        errors.append("Java instances lost their account-free Mojang download")
+    main = read(launcher / "main.rs")
+    if "ensure_offline_account" not in main:
+        errors.append("the launcher no longer creates an offline account when it has none")
 
     installer = read(launcher / "installer.rs")
     if 'APP_NAME: &str = "OffHorizon Launcher"' not in installer:

@@ -10,8 +10,14 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
-pub const REPO: &str = "horizon-rust/horizon";
-pub const README_URL: &str = "https://github.com/horizon-rust/horizon/blob/main/launcher/README.md";
+/// The Minecraft/game builds: Horizon's own repository. This launcher never replaces them.
+pub const GAME_REPO: &str = "horizon-rust/horizon";
+/// The launcher's own releases and updates: this fork. The game still comes from [`GAME_REPO`].
+pub const LAUNCHER_REPO: &str = "PiBOH/offhorizon";
+/// Kept for callers that mean the game repository.
+pub const REPO: &str = GAME_REPO;
+pub const README_URL: &str =
+    "https://github.com/PiBOH/offhorizon/blob/offhorizon/launcher/README.md";
 /// The players' page on connecting an AI agent (the website's docs/agents.md).
 pub const AGENT_DOCS_URL: &str = "https://playhorizon.dev/docs/agents";
 /// This launcher's version: the release workflow sets `HORIZON_LAUNCHER_VERSION` from the
@@ -57,32 +63,32 @@ pub const PLATFORMS: [(&str, &str, &str, &str); 5] = [
         "linux",
         "x86_64",
         "horizon-linux-x86_64.tar.gz",
-        "offhorizon-launcher-linux-x86_64.tar.gz",
+        "OffHorizon-Launcher-Linux-x86_64",
     ),
     (
         "macos",
         "aarch64",
         "horizon-macos-arm64.zip",
-        "offhorizon-launcher-macos-arm64.zip",
+        "OffHorizon-Launcher-macOS-arm64",
     ),
     // Intel Macs (#1161).
     (
         "macos",
         "x86_64",
         "horizon-macos-x64.zip",
-        "offhorizon-launcher-macos-x64.zip",
+        "OffHorizon-Launcher-macOS-x64",
     ),
     (
         "windows",
         "x86_64",
         "horizon-windows-x64.zip",
-        "offhorizon-launcher-windows-x64.zip",
+        "OffHorizon-Launcher-Windows-x64.exe",
     ),
     (
         "windows",
         "aarch64",
         "horizon-windows-arm64.zip",
-        "offhorizon-launcher-windows-arm64.zip",
+        "OffHorizon-Launcher-Windows-arm64.exe",
     ),
 ];
 
@@ -476,7 +482,7 @@ const fn game_fallback_for(os: &str, arch: &str) -> Option<&'static str> {
 /// one file. A launcher running from one updates by replacing that file ([`appimage_path`]), so it
 /// needs this archive rather than the platform's `.tar.gz`.
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-pub const LAUNCHER_APPIMAGE_ASSET: Option<&str> = Some("offhorizon-launcher-linux-x86_64.AppImage");
+pub const LAUNCHER_APPIMAGE_ASSET: Option<&str> = Some("OffHorizon-Launcher-Linux-x86_64.AppImage");
 #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
 pub const LAUNCHER_APPIMAGE_ASSET: Option<&str> = None;
 
@@ -549,6 +555,11 @@ pub fn is_game_tag(tag: &str) -> bool {
 pub fn launcher_version(tag: &str) -> Option<&str> {
     tag.strip_prefix(LAUNCHER_TAG_PREFIX)
         .or_else(|| tag.strip_prefix(OLD_LAUNCHER_TAG_PREFIX))
+        // This fork tags launcher releases with version.txt (`v0.1.2-nightly`).
+        .or_else(|| {
+            let v = tag.strip_prefix('v')?;
+            (v.starts_with("0.") || v.starts_with("1.")).then_some(v)
+        })
         .filter(|v| v.starts_with(|c: char| c.is_ascii_digit()))
 }
 
@@ -569,7 +580,7 @@ fn own_tag_of(tag: Option<&str>, injected: Option<&str>) -> String {
     ) {
         (Some(tag), _) => tag.to_string(),
         (None, Some(version)) => format!("{OLD_LAUNCHER_TAG_PREFIX}{version}"),
-        (None, None) => format!("{LAUNCHER_TAG_PREFIX}{}", env!("CARGO_PKG_VERSION")),
+        (None, None) => format!("{LAUNCHER_TAG_PREFIX}{VERSION}"),
     }
 }
 
@@ -671,7 +682,15 @@ pub fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
 /// ETag, and read through Kira's mirror past GitHub's rate limit: [`crate::github`]).
 fn release_list() -> Result<serde_json::Value, String> {
     crate::github::json(&format!(
-        "https://api.github.com/repos/{REPO}/releases?per_page=100"
+        "https://api.github.com/repos/{GAME_REPO}/releases?per_page=100"
+    ))
+}
+
+/// The launcher's own releases, from this fork. Games and their updates still come from
+/// [`GAME_REPO`]; only the launcher updates itself from here.
+fn launcher_release_list() -> Result<serde_json::Value, String> {
+    crate::github::json(&format!(
+        "https://api.github.com/repos/{LAUNCHER_REPO}/releases?per_page=100"
     ))
 }
 
@@ -792,9 +811,9 @@ fn launcher_releases_in_with(
     if found.iter().any(|r| r.asset.is_some()) {
         return found;
     }
-    let api = format!("https://api.github.com/repos/{REPO}");
+    let api = format!("https://api.github.com/repos/{LAUNCHER_REPO}");
     let mut tags = Vec::new();
-    for prefix in [LAUNCHER_TAG_PREFIX, OLD_LAUNCHER_TAG_PREFIX] {
+    for prefix in [LAUNCHER_TAG_PREFIX, OLD_LAUNCHER_TAG_PREFIX, "v"] {
         // Every `launcher@` tag is newer than every `launcher-v` one: those only when there is none.
         if tags.is_empty() {
             if let Ok(refs) = json(format!("{api}/git/matching-refs/tags/{prefix}")) {
@@ -910,7 +929,8 @@ impl Links {
 
 /// The links from main, or the built-in ones when offline.
 pub fn links() -> Links {
-    let url = format!("https://raw.githubusercontent.com/{REPO}/main/launcher/links.json");
+    let url =
+        format!("https://raw.githubusercontent.com/{LAUNCHER_REPO}/offhorizon/launcher/links.json");
     get(&url)
         .ok()
         .and_then(|r| r.into_string().ok())
@@ -1111,6 +1131,28 @@ fn signed_digest(tag: &str, asset: &str) -> Result<String, String> {
         &horizon_release_sign::trusted_keys(),
         fetch_small,
     )
+}
+
+/// This fork's unsigned checksum for `asset`, read from the release's `SHA256SUMS` beside the
+/// downloaded file. GitHub serves it over HTTPS; the downloaded bytes are checked against it.
+fn unsigned_launcher_digest(tag: &str, asset_url: &str, asset: &str) -> Result<String, String> {
+    let base = asset_url
+        .rsplit_once('/')
+        .map(|(dir, _)| dir)
+        .ok_or_else(|| format!("{asset_url} has no release folder"))?;
+    let sums = fetch_small(&format!("{base}/SHA256SUMS"))?
+        .ok_or_else(|| format!("{tag} has no SHA256SUMS"))?;
+    let text = String::from_utf8_lossy(&sums);
+    for line in text.lines() {
+        let mut parts = line.split_whitespace();
+        let (Some(hash), Some(name)) = (parts.next(), parts.next()) else {
+            continue;
+        };
+        if name.trim_start_matches('*') == asset {
+            return Ok(hash.to_ascii_lowercase());
+        }
+    }
+    Err(format!("{tag} has no checksum for {asset}"))
 }
 
 /// Downloads `url` into `to`; the file is kept only if its SHA-256 is `sha256`, the signed (or
@@ -2127,6 +2169,34 @@ fn download_for_owner(
     download_for(pins, dir, pass, !accounts.accounts.is_empty(), fetch, log)
 }
 
+/// Downloads Minecraft `id` from Mojang's public version files into Horizon's own game folder,
+/// in the official launcher's layout, without an account. Java instances use it, so an offline
+/// account can play; online servers still authenticate separately.
+pub fn download_version_public(
+    id: &str,
+    manifest_sha1: &str,
+    log: &dyn Fn(String),
+) -> Result<PathBuf, String> {
+    let dir = data_dir().join("minecraft");
+    let fetch = |url: &str| -> Result<Vec<u8>, String> {
+        let mut body = Vec::new();
+        get(url)?
+            .into_reader()
+            .read_to_end(&mut body)
+            .map_err(|e| e.to_string())?;
+        Ok(body)
+    };
+    let pins = sources::Pins::for_version(id, manifest_sha1);
+    let os = match sources::Os::current() {
+        sources::Os::Linux => "linux",
+        sources::Os::MacOs => "osx",
+        sources::Os::Windows => "windows",
+    };
+    mojang::download(&pins, &dir, os, 8, &fetch, &mojang::CANCEL, log)
+        .map_err(|e| format!("Could not download {id} from Mojang: {e}"))?;
+    Ok(dir)
+}
+
 /// Downloads Minecraft `id` (any version on Mojang's list, its version file's sha1 from it) into
 /// Horizon's own game folder, in the official launcher's layout, for an account that owns the
 /// game (asked again now). Returns that folder.
@@ -2181,7 +2251,9 @@ pub fn java_game(
     if !marker.is_file() {
         let listed = crate::minecraft_versions::load()?;
         let version = listed.find(&game.minecraft)?;
-        download_version_for_owner(&version.id, &version.sha1, log)?;
+        // Vanilla's version files are Mojang's public downloads; an offline account can use
+        // them without owning the game. Online play still authenticates separately.
+        download_version_public(&version.id, &version.sha1, log)?;
         fs::write(&marker, "").map_err(|e| format!("{}: {e}", marker.display()))?;
     }
     // The Java the game needs, which also runs a loader's installer.
@@ -3364,9 +3436,22 @@ fn launcher_update_from(releases: &[Release], own: &str) -> Option<Release> {
 pub fn releases_and_updates(
     on_releases: impl FnOnce(Result<Vec<Release>, String>),
 ) -> Result<Updates, String> {
-    releases_and_updates_with(release_list, installed, launcher_releases_in, on_releases)
+    // Games come from Horizon; the launcher updates from this fork. A failed launcher list
+    // must not hide the games, so the game list is the fallback.
+    let list = release_list()?;
+    let launcher_list = launcher_release_list().unwrap_or_else(|_| list.clone());
+    let releases = game_releases(&list);
+    let installed_versions = installed();
+    let horizon = horizon_update(&installable_updates(&releases), &installed_versions)
+        .or_else(|| architecture_update(&releases, &installed_versions));
+    on_releases(Ok(releases));
+    Ok(Updates {
+        horizon,
+        launcher: launcher_update(&launcher_releases_in(&launcher_list)),
+    })
 }
 
+#[cfg(test)]
 fn releases_and_updates_with(
     load: impl FnOnce() -> Result<serde_json::Value, String>,
     installed: impl FnOnce() -> Vec<String>,
@@ -3743,9 +3828,19 @@ const STAGE_GRACE: std::time::Duration = std::time::Duration::from_secs(60 * 60)
 const HANDED_OVER: &str = "handed-over";
 const UNPACKED: &str = "unpacked";
 /// The archive's name in a stage says how to open it, in the installer too.
-static ARCHIVE_ENDINGS: [&str; 3] = [".tar.gz", ".AppImage", ".zip"];
+static ARCHIVE_ENDINGS: [&str; 4] = [".tar.gz", ".AppImage", ".zip", ".bin"];
+
+/// A release this fork ships as the finished program, not an archive: Windows `.exe`, or a
+/// Linux/macOS binary with no extension.
+fn direct_launcher_url(url: &str) -> bool {
+    let name = url.rsplit('/').next().unwrap_or_default();
+    name.ends_with(".exe") || !name.contains('.')
+}
 
 fn archive_name(url: &str) -> String {
+    if direct_launcher_url(url) {
+        return "download.bin".into();
+    }
     let ending = ARCHIVE_ENDINGS
         .iter()
         .find(|ending| url.ends_with(**ending))
@@ -3890,6 +3985,9 @@ pub fn place_checked(
     staged: &Staged,
     place: impl FnOnce(&Staged) -> Result<(), String>,
 ) -> Result<(), String> {
+    // This fork's launcher releases are not signed by Horizon's key; their SHA256SUMS is still
+    // checked against the downloaded bytes below.
+    let fork = staged.tag.starts_with('v');
     let not_staged = || {
         format!(
             "{} is not a launcher update this launcher downloaded.",
@@ -3902,7 +4000,13 @@ pub fn place_checked(
         .map(|ending| stage.join(format!("download{ending}")))
         .find(|path| path.is_file())
         .ok_or_else(not_staged)?;
-    horizon_release_sign::check(&staged.tag, &staged.sha256, &file_sha256(&archive)?)?;
+    if fork {
+        if file_sha256(&archive)? != staged.sha256 {
+            return Err("The launcher download does not match its SHA256SUMS.".into());
+        }
+    } else {
+        horizon_release_sign::check(&staged.tag, &staged.sha256, &file_sha256(&archive)?)?;
+    }
     let payload = if staged.payload == archive {
         archive
     } else {
@@ -3962,7 +4066,14 @@ pub fn stage_update(release: &Release, progress: impl Fn(f32)) -> Result<Option<
     {
         return Ok(None);
     }
-    let sha256 = signed_digest(&release.tag, launcher_asset().unwrap_or_default())?;
+    let asset = launcher_asset().unwrap_or_default();
+    // Horizon signs its launcher releases; this fork publishes an unsigned SHA256SUMS file.
+    let sha256 = if release.tag.starts_with('v') {
+        unsigned_launcher_digest(&release.tag, &url, asset)
+            .or_else(|_| signed_digest(&release.tag, asset))?
+    } else {
+        signed_digest(&release.tag, asset)?
+    };
     let work = update_work_dir();
     remove_abandoned_stages(&work, std::time::SystemTime::now(), process_alive);
     let stage = new_stage_folder(&work)?;
@@ -3999,6 +4110,9 @@ fn fill_stage(
                 "{tag} is not an AppImage, and this launcher runs from one. Install it from its release page instead."
             ));
         }
+        return staged(archive);
+    }
+    if direct_launcher_url(url) {
         return staged(archive);
     }
     let unpacked = stage.join(UNPACKED);
@@ -4992,27 +5106,24 @@ pub fn {f}("
     fn each_mac_picks_the_build_for_its_processor() {
         assert_eq!(
             platform_assets("macos", "aarch64"),
-            Some((
-                "horizon-macos-arm64.zip",
-                "offhorizon-launcher-macos-arm64.zip"
-            ))
+            Some(("horizon-macos-arm64.zip", "OffHorizon-Launcher-macOS-arm64"))
         );
         assert_eq!(
             platform_assets("macos", "x86_64"),
-            Some(("horizon-macos-x64.zip", "offhorizon-launcher-macos-x64.zip"))
+            Some(("horizon-macos-x64.zip", "OffHorizon-Launcher-macOS-x64"))
         );
         assert_eq!(
             platform_assets("windows", "x86_64"),
             Some((
                 "horizon-windows-x64.zip",
-                "offhorizon-launcher-windows-x64.zip"
+                "OffHorizon-Launcher-Windows-x64.exe"
             ))
         );
         assert_eq!(
             platform_assets("windows", "aarch64"),
             Some((
                 "horizon-windows-arm64.zip",
-                "offhorizon-launcher-windows-arm64.zip"
+                "OffHorizon-Launcher-Windows-arm64.exe"
             ))
         );
         assert_eq!(platform_assets("linux", "aarch64"), None);
@@ -5293,8 +5404,8 @@ pub fn {f}("
     #[test]
     fn an_arm64_launcher_skips_a_release_without_its_zip() {
         let (arm, x64) = (
-            "offhorizon-launcher-windows-arm64.zip",
-            "offhorizon-launcher-windows-x64.zip",
+            "OffHorizon-Launcher-Windows-arm64.exe",
+            "OffHorizon-Launcher-Windows-x64.exe",
         );
         let asset = |name: &str| serde_json::json!({"name": name, "browser_download_url": format!("https://example.test/{name}"), "size": 1});
         let list = serde_json::json!([
@@ -5468,6 +5579,8 @@ pub fn {f}("
         assert!(!is_game_tag("vnext"));
         assert_eq!(launcher_version("launcher-v0.2.0"), Some("0.2.0"));
         assert_eq!(launcher_version("launcher@0.2.0"), Some("0.2.0"));
+        assert_eq!(launcher_version("v0.1.2-nightly"), Some("0.1.2-nightly"));
+        assert!(is_launcher_tag("v0.1.2-nightly"));
         assert!(!is_game_tag("launcher@0.2.0"));
         assert!(is_game_tag("v0.2.0"));
         assert!(is_launcher_tag("launcher@0.2.0"));
@@ -5475,7 +5588,7 @@ pub fn {f}("
         assert_eq!(launcher_version("launcher-vx"), None);
         let list = serde_json::json!([
             {"tag_name": "v2026.10.12", "assets": [{"name": "horizon-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
-            {"tag_name": "launcher-v9.0.0", "assets": [{"name": "offhorizon-launcher-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
+            {"tag_name": "launcher-v9.0.0", "assets": [{"name": "OffHorizon-Launcher-Linux-x86_64", "browser_download_url": "u", "size": 1}]},
             {"tag_name": "v2026.10.13", "assets": []},
             {"tag_name": "launcher-v0.0.1", "draft": true, "assets": []},
         ]);
@@ -5682,13 +5795,11 @@ pub fn {f}("
     #[test]
     fn the_version_is_the_one_the_release_workflow_injects() {
         assert_eq!(version_or(Some("0.4.2")), "0.4.2");
-        assert_eq!(version_or(Some("")), env!("CARGO_PKG_VERSION"));
-        assert_eq!(version_or(None), env!("CARGO_PKG_VERSION"));
+        assert_eq!(version_or(Some("")), VERSION);
+        assert_eq!(version_or(None), VERSION);
         assert_eq!(
             VERSION,
-            option_env!("HORIZON_LAUNCHER_VERSION")
-                .filter(|v| !v.is_empty())
-                .unwrap_or(env!("CARGO_PKG_VERSION"))
+            option_env!("HORIZON_LAUNCHER_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
         );
         // Self-update compares releases with that version: this launcher's own release is no update.
         let r = |tag: String| Release {
@@ -5755,11 +5866,8 @@ pub fn {f}("
         );
         assert_eq!(own_tag_of(None, Some("0.16.0")), "launcher-v0.16.0");
         assert_eq!(own_tag_of(Some(""), Some("0.16.0")), "launcher-v0.16.0");
-        // A build from source is on the 0.2 line.
-        assert_eq!(
-            own_tag_of(None, None),
-            format!("launcher@{}", env!("CARGO_PKG_VERSION"))
-        );
+        // A build from source takes version.txt's version too.
+        assert_eq!(own_tag_of(None, None), format!("launcher@{VERSION}"));
     }
 
     /// The update path to 0.2 (docs/versioning.md): launchers from before it take the last
@@ -5811,6 +5919,25 @@ pub fn {f}("
         );
     }
 
+    /// This fork publishes the finished executable, so the updater stages it directly instead of
+    /// looking for an archive inside it.
+    #[test]
+    fn a_direct_executable_update_is_not_unpacked() {
+        assert!(direct_launcher_url(
+            "https://example.test/OffHorizon-Launcher-Windows-x64.exe"
+        ));
+        assert!(direct_launcher_url(
+            "https://example.test/OffHorizon-Launcher-Linux-x86_64"
+        ));
+        assert!(!direct_launcher_url(
+            "https://example.test/OffHorizon-source.tar.gz"
+        ));
+        assert_eq!(
+            archive_name("https://example.test/OffHorizon-Launcher-Windows-x64.exe"),
+            "download.bin"
+        );
+    }
+
     /// A launcher in an AppImage updates with the AppImage's own file: the `.tar.gz` binary would
     /// be written inside the AppImage's read-only mount.
     #[test]
@@ -5820,7 +5947,7 @@ pub fn {f}("
         #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
         assert_eq!(
             launcher_asset_running_from(true),
-            Some("offhorizon-launcher-linux-x86_64.AppImage")
+            Some("OffHorizon-Launcher-Linux-x86_64.AppImage")
         );
     }
 
@@ -5833,7 +5960,7 @@ pub fn {f}("
         let inside = |dir: &str| in_temp_folder(Path::new(dir), temp);
         assert!(inside("/tmp/t"));
         assert!(inside(
-            "/tmp/t/Temp12_offhorizon-launcher-windows-x64.zip/inner"
+            "/tmp/t/Temp12_OffHorizon-Launcher-Windows-x64.exe/inner"
         ));
         assert!(inside("/tmp/t/7zO8A1B2C3D"));
         assert!(!inside("/tmp/tools"));

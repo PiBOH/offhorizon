@@ -5,11 +5,11 @@
 use super::*;
 
 impl Launcher {
-    /// Whether the screen covers the window: no owner, and either Play was refused or the player
-    /// hasn't read it yet.
+    /// Whether the screen covers the window: Play was refused, the player asked to sign in, or a
+    /// screenshot preview. It never opens by itself on a fresh install: offline accounts play.
     pub(crate) fn asking_owner(&self) -> bool {
         (self.owner == Some(false) || sign_in_preview())
-            && (self.owner_screen_open || !self.settings.owner_notice_seen || sign_in_preview())
+            && (self.owner_screen_open || sign_in_preview())
             && self.opening.is_none()
     }
 

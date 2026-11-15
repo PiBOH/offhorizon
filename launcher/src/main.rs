@@ -752,6 +752,9 @@ impl Launcher {
             sky_wake: None,
             scale: window.scale_factor(),
         };
+        // OffHorizon starts with an offline account when there is none: no Microsoft sign-in is
+        // needed to play either edition. Adding a Microsoft account later is optional.
+        this.ensure_offline_account();
         if this.location_error.is_some() || this.location_note.is_some() {
             this.page = Page::Settings;
         }
@@ -1801,6 +1804,7 @@ impl Launcher {
     }
 
     fn play(&mut self) {
+        self.ensure_offline_account();
         let java = self
             .selected_instance()
             .filter(|i| i.java.is_some())
@@ -1845,10 +1849,27 @@ impl Launcher {
         self.start_client(tag);
     }
 
+    /// Makes the first account an offline one when the launcher has none, and keeps Play's gate
+    /// open for an offline account. A Microsoft account already picked is left alone.
+    fn ensure_offline_account(&mut self) {
+        if self.accounts.accounts.is_empty() {
+            if let Ok(_) = self.accounts.add_offline(&account::offline_name()) {
+                if self.accounts.save().is_ok() {
+                    self.owner = Some(true);
+                } else {
+                    self.client_error = Some("The offline account could not be saved.".into());
+                }
+            }
+        } else if self.accounts.selected().is_some_and(|a| a.offline) {
+            self.owner = Some(true);
+        }
+    }
+
     /// Starts a Java instance's Minecraft, joining `server` if given: its files and Java first
     /// (downloaded the first time, their lines in the log), then `drain` starts the game when
     /// the command arrives.
     fn start_java(&mut self, instance: instances::Instance, server: Option<String>) {
+        self.ensure_offline_account();
         self.client_error = None;
         self.crash = None;
         self.prepare_log.clear();
