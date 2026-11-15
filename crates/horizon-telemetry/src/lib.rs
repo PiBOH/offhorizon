@@ -40,16 +40,18 @@ pub const SCHEMA: u32 = 1;
 /// (cores, clocks, VRAM, drive, screen, power, form), 2026-10-23.
 pub const CONSENT_VERSION: u32 = 2;
 
-/// The ingest server (`crates/horizon-telemetry-server`, on Railway). `HORIZON_TELEMETRY_URL`
-/// overrides it (a local server); `HORIZON_TELEMETRY_URL=off` sends nothing at all, no ping
-/// either (tests and automated runs). What is sent still depends on the player's switches.
+/// The upstream ingest server (`crates/horizon-telemetry-server`, on Railway). offhorizon never
+/// uses it: [`endpoint`] is always `None`. The constant stays so the server's tests still build.
 pub const DEFAULT_ENDPOINT: &str = horizon_addresses::TELEMETRY;
 
-/// Where items are sent, if anywhere.
+/// Where items are sent, if anywhere. offhorizon sends nothing: this is always `None`, so no
+/// ping leaves either, whatever the environment says.
 pub fn endpoint() -> Option<String> {
-    resolve(std::env::var("HORIZON_TELEMETRY_URL").ok().as_deref())
+    None
 }
 
+/// Kept for the ingest server's tests: the launcher no longer reads the environment.
+#[cfg(test)]
 fn resolve(var: Option<&str>) -> Option<String> {
     match var.map(str::trim) {
         Some("off" | "none" | "0") => None,

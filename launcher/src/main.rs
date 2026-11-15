@@ -8,7 +8,6 @@ mod art;
 mod blocks;
 mod cli;
 mod cli_tools;
-mod collection;
 mod console;
 mod console_page;
 mod cull;
@@ -92,7 +91,7 @@ use horizon_launcher::i18n::{self, tr, trf};
 use horizon_launcher::instances;
 use horizon_launcher::native_mods;
 use horizon_launcher::native_status;
-use horizon_launcher::telemetry;
+pub(crate) use horizon_launcher::telemetry;
 use scrollbar::Scrollbar;
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
@@ -410,8 +409,6 @@ struct Launcher {
     proxy_input: line_edit::LineEdit,
     proxy_focused: bool,
     proxy_focus: FocusHandle,
-    /// Opt-in data collection: the player's answer and Settings' section (`collection`).
-    collection: collection::Collection,
     /// Settings' "Connect an AI agent" (`agents_page`).
     agents: agents_page::AgentsUi,
     /// How many play Horizon now, while the server answers ("N playing now" on the Play page).
@@ -699,7 +696,6 @@ impl Launcher {
             quick_play: None,
             client_run: None,
             client_vars: Vec::new(),
-            collection: collection::Collection::load(),
             agents: agents_page::AgentsUi::default(),
             playing: None,
             official_players: None,
@@ -811,10 +807,6 @@ impl Launcher {
         {
             this.wardrobe_preview();
         }
-        // What the game and the launcher kept, if the player allows it and there is a server.
-        telemetry::send_in_background();
-        telemetry::watch_playing(this.tx.clone());
-        telemetry::watch_official(this.tx.clone());
         this
     }
 
@@ -1152,7 +1144,6 @@ impl Launcher {
                 Msg::Links(links) => {
                     // The official server may have moved: its list entry and its count follow.
                     self.multiplayer.stale();
-                    telemetry::set_official_server(&links.official_server);
                     self.links = links;
                 }
                 // The page reads is_prepared when drawn; `changed` redraws it.
@@ -4100,7 +4091,6 @@ impl Launcher {
                         ))
                     }),
             )
-            .child(self.collection_section(cx))
             .children(self.agents_section(cx))
     }
 
@@ -5553,9 +5543,6 @@ impl Render for Launcher {
         if let Some(palette) = self.palette_overlay(window, cx) {
             root = root.child(palette);
         }
-        if self.asking_consent() {
-            root = root.child(self.consent_screen(cx));
-        }
         if self.asking_owner() {
             root = root.child(self.owner_screen(cx));
         }
@@ -5688,11 +5675,10 @@ impl Launcher {
 
 actions!(horizon_launcher, [Quit, CloseWindow]);
 
-/// What closing the last window does: stop the servers this launcher started, send the telemetry,
-/// exit. A game that is running keeps running. Cmd+Q goes through here too.
+/// What closing the last window does: stop the servers this launcher started, then exit. A game
+/// that is running keeps running. Cmd+Q goes through here too.
 fn shut_down(cx: &mut App) {
     servers_page::stop_on_quit();
-    telemetry::send_before_exit();
     // A staged launcher update goes in once this process has exited.
     horizon_launcher::update_handoff::on_quit();
     cx.quit()
@@ -5726,8 +5712,8 @@ fn page_after_startup(page: Page, data_folder_failed: bool) -> Page {
 fn menus() -> Vec<Menu> {
     vec![
         Menu {
-            name: "Horizon Launcher".into(),
-            items: vec![MenuItem::action("Quit Horizon Launcher", Quit)],
+            name: "OffHorizon Launcher".into(),
+            items: vec![MenuItem::action("Quit OffHorizon Launcher", Quit)],
             disabled: false,
         },
         Menu {
@@ -6021,10 +6007,10 @@ mod tests {
     #[test]
     fn the_app_menu_has_quit() {
         let menus = super::menus();
-        assert_eq!(menus[0].name, "Horizon Launcher");
+        assert_eq!(menus[0].name, "OffHorizon Launcher");
         assert!(matches!(
             &menus[0].items[0],
-            gpui::MenuItem::Action { name, .. } if name == "Quit Horizon Launcher"
+            gpui::MenuItem::Action { name, .. } if name == "Quit OffHorizon Launcher"
         ));
     }
 

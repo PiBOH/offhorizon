@@ -11,10 +11,9 @@
 use horizon_platform::hooks::{self, Hooks};
 use horizon_platform::{pages, settings};
 
-/// Every Horizon part in the game, in the order its hooks run.
-const PARTS: [&dyn Hooks; 5] = [
-    // The anonymous "I'm playing" ping.
-    &horizon_heartbeat::HOOKS,
+/// Every Horizon part in the game, in the order its hooks run. offhorizon has no heartbeat
+/// (the anonymous "I'm playing" ping): it is data collection, and this fork sends none.
+const PARTS: [&dyn Hooks; 4] = [
     // Play with Friends: `friend:` addresses join through its tunnel.
     &horizon_friends::game::HOOKS,
     // The official server in the player's server list.

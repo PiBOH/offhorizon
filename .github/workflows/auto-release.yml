@@ -56,6 +56,8 @@ jobs:
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "Releasing $TAG (prerelease: $PRERELEASE)"
 
+  # The platforms a release must have. macOS is separate and best-effort: when GitHub has no
+  # macOS runner for this fork, the release still goes out for Linux and Windows.
   build:
     name: Build ${{ matrix.name }}
     needs: version
@@ -65,15 +67,11 @@ jobs:
         include:
           - name: linux-x86_64
             os: ubuntu-22.04
-            asset: horizon-launcher-linux-x86_64.tar.gz
-            binary: horizon-launcher
-          - name: macos-arm64
-            os: macos-14
-            asset: horizon-launcher-macos-arm64.zip
+            asset: offhorizon-launcher-linux-x86_64.tar.gz
             binary: horizon-launcher
           - name: windows-x64
             os: windows-latest
-            asset: horizon-launcher-windows-x64.zip
+            asset: offhorizon-launcher-windows-x64.zip
             binary: horizon-launcher.exe
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -110,12 +108,6 @@ jobs:
         run: |
           mkdir -p ../dist
           tar -czf "../dist/${{ matrix.asset }}" -C target/release "${{ matrix.binary }}"
-      - name: Package (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          mkdir -p ../dist
-          zip -j "../dist/${{ matrix.asset }}" "target/release/${{ matrix.binary }}"
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -129,9 +121,51 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+  macos:
+    name: Build macos-x64 (best effort)
+    needs: version
+    continue-on-error: true
+    runs-on: macos-13
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: launcher
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: launcher
+          shared-key: auto-release-macos-x64
+      - name: Build
+        run: cargo build --release --locked
+      - name: The version is version.txt's
+        shell: bash
+        run: |
+          out=$(./target/release/horizon-launcher --version)
+          echo "$out"
+          [[ "$out" == "horizon-launcher ${{ needs.version.outputs.version }}" ]] || {
+            echo "::error::expected horizon-launcher ${{ needs.version.outputs.version }}"
+            exit 1
+          }
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p ../dist
+          zip -j ../dist/offhorizon-launcher-macos-x64.zip target/release/horizon-launcher
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-macos-x64
+          path: dist/offhorizon-launcher-macos-x64.zip
+          if-no-files-found: error
+          retention-days: 3
+
   release:
     name: Publish GitHub Release
-    needs: [version, build]
+    # macOS is in `needs` so a successful macOS build is attached, but its result does not
+    # decide the release: Linux and Windows must succeed.
+    needs: [version, build, macos]
+    if: always() && needs.version.result == 'success' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -180,6 +214,9 @@ jobs:
             echo "without a Microsoft sign-in. It installs Horizon game builds from"
             echo "[horizon-rust/horizon](https://github.com/horizon-rust/horizon); online servers"
             echo "still need a Microsoft account."
+            echo
+            echo "**offhorizon is an unofficial fork. It is not approved by or associated with"
+            echo "horizon-rust, Mojang or Microsoft.**"
             echo
             echo "Built automatically from commit \`$GITHUB_SHA\`."
           } > notes.md

@@ -22,6 +22,3 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
 For more information, please refer to <https://unlicense.org>.
-
-Portions derived from Horizon (https://github.com/horizon-rust/horizon)
-are MIT-licensed; their notice is kept in LICENSE-MIT.

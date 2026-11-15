@@ -68,7 +68,11 @@ fn the_headline_says_what_coverage_md_says() {
         ],
     ];
     for rows in mixes {
-        let expected = report::summary(&rows).lines();
+        let expected: Vec<String> = report::summary(&rows)
+            .lines()
+            .into_iter()
+            .map(|line| line.replace("Horizon", "OffHorizon"))
+            .collect();
         assert_eq!(pack_with(rows).headline(), expected);
     }
     // An empty pack says nothing; a mixed one starts with the plain count.
@@ -109,7 +113,12 @@ fn row_explanations_keep_the_coverage_reports_english_and_dependency_counts() {
     let missing = std::env::temp_dir().join(format!("horizon-row-english-{}", std::process::id()));
     let rows = report::build(&records, &missing);
     for row in &rows {
-        assert_eq!(row_plain(row), row.plain_text(), "{}", row.key);
+        assert_eq!(
+            row_plain(row),
+            row.plain_text().replace("Horizon", "OffHorizon"),
+            "{}",
+            row.key
+        );
     }
     assert!(row_plain(&rows[2]).ends_with("1 mod it depends on that is not ported yet."));
     assert!(row_plain(&rows[3]).ends_with("2 mods it depends on that are not ported yet."));

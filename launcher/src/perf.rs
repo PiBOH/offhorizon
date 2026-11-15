@@ -406,15 +406,7 @@ pub fn benchmark(repeats: usize) -> Result<PathBuf, String> {
     if let Some(bytes) = binary_bytes() {
         report.metric("launcher.binary_bytes", &[bytes]);
     }
-    // Kept for upload only if the player allows benchmark uploads (the outbox checks).
-    if let Ok(data) = serde_json::to_value(report.for_upload()) {
-        let item = horizon_telemetry::Item::new(
-            horizon_telemetry::Source::Launcher,
-            crate::backend::VERSION,
-            horizon_telemetry::Payload::Benchmark(data),
-        );
-        let _ = horizon_telemetry::outbox::push(&crate::backend::game_home(), &item);
-    }
+    // offhorizon writes the report locally and uploads nothing.
     report
         .write_to(&crate::backend::data_dir().join("benchmarks"))
         .map_err(|e| e.to_string())

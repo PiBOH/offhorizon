@@ -57,32 +57,32 @@ pub const PLATFORMS: [(&str, &str, &str, &str); 5] = [
         "linux",
         "x86_64",
         "horizon-linux-x86_64.tar.gz",
-        "horizon-launcher-linux-x86_64.tar.gz",
+        "offhorizon-launcher-linux-x86_64.tar.gz",
     ),
     (
         "macos",
         "aarch64",
         "horizon-macos-arm64.zip",
-        "horizon-launcher-macos-arm64.zip",
+        "offhorizon-launcher-macos-arm64.zip",
     ),
     // Intel Macs (#1161).
     (
         "macos",
         "x86_64",
         "horizon-macos-x64.zip",
-        "horizon-launcher-macos-x64.zip",
+        "offhorizon-launcher-macos-x64.zip",
     ),
     (
         "windows",
         "x86_64",
         "horizon-windows-x64.zip",
-        "horizon-launcher-windows-x64.zip",
+        "offhorizon-launcher-windows-x64.zip",
     ),
     (
         "windows",
         "aarch64",
         "horizon-windows-arm64.zip",
-        "horizon-launcher-windows-arm64.zip",
+        "offhorizon-launcher-windows-arm64.zip",
     ),
 ];
 
@@ -476,7 +476,7 @@ const fn game_fallback_for(os: &str, arch: &str) -> Option<&'static str> {
 /// one file. A launcher running from one updates by replacing that file ([`appimage_path`]), so it
 /// needs this archive rather than the platform's `.tar.gz`.
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-pub const LAUNCHER_APPIMAGE_ASSET: Option<&str> = Some("horizon-launcher-linux-x86_64.AppImage");
+pub const LAUNCHER_APPIMAGE_ASSET: Option<&str> = Some("offhorizon-launcher-linux-x86_64.AppImage");
 #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
 pub const LAUNCHER_APPIMAGE_ASSET: Option<&str> = None;
 
@@ -2122,7 +2122,7 @@ fn download_for_owner(
         &mut accounts,
     );
     if let Err(e) = accounts.save_renewed() {
-        log(format!("Horizon: the accounts are not saved: {e}"));
+        log(format!("OffHorizon: the accounts are not saved: {e}"));
     }
     download_for(pins, dir, pass, !accounts.accounts.is_empty(), fetch, log)
 }
@@ -2462,7 +2462,7 @@ pub fn preparer(
             .and_then(|lock| sources::Pins::read(&lock))
             .ok_or("The version's research-lock.json doesn't pin the Minecraft files")?;
         let own = data_dir().join("minecraft");
-        let mut known = vec![("Horizon's own download", own.clone())];
+        let mut known = vec![("OffHorizon's own download", own.clone())];
         known.extend(
             sources::Folders::current()
                 .map(|f| sources::known_folders(sources::Os::current(), &f))
@@ -2935,7 +2935,7 @@ pub fn client_command(tag: &str) -> Command {
     if std::env::var_os("PIPEWIRE_PROPS").is_none() {
         cmd.env(
             "PIPEWIRE_PROPS",
-            "{ application.name = \"Horizon\" media.role = \"Game\" }",
+            "{ application.name = \"OffHorizon\" media.role = \"Game\" }",
         );
     }
     cmd
@@ -3160,7 +3160,7 @@ pub fn need_prepared(tag: &str) -> Result<(), String> {
 /// Says on stderr which step Play is at, one line each: a terminal run shows where it stops when
 /// it never gets to the game (#12179).
 pub fn play_step(step: &str) {
-    eprintln!("Horizon: Play: {step}…");
+    eprintln!("OffHorizon: Play: {step}…");
 }
 
 /// The client's command, once the owner gate lets it start and its resources are prepared. Past
@@ -4994,25 +4994,25 @@ pub fn {f}("
             platform_assets("macos", "aarch64"),
             Some((
                 "horizon-macos-arm64.zip",
-                "horizon-launcher-macos-arm64.zip"
+                "offhorizon-launcher-macos-arm64.zip"
             ))
         );
         assert_eq!(
             platform_assets("macos", "x86_64"),
-            Some(("horizon-macos-x64.zip", "horizon-launcher-macos-x64.zip"))
+            Some(("horizon-macos-x64.zip", "offhorizon-launcher-macos-x64.zip"))
         );
         assert_eq!(
             platform_assets("windows", "x86_64"),
             Some((
                 "horizon-windows-x64.zip",
-                "horizon-launcher-windows-x64.zip"
+                "offhorizon-launcher-windows-x64.zip"
             ))
         );
         assert_eq!(
             platform_assets("windows", "aarch64"),
             Some((
                 "horizon-windows-arm64.zip",
-                "horizon-launcher-windows-arm64.zip"
+                "offhorizon-launcher-windows-arm64.zip"
             ))
         );
         assert_eq!(platform_assets("linux", "aarch64"), None);
@@ -5293,8 +5293,8 @@ pub fn {f}("
     #[test]
     fn an_arm64_launcher_skips_a_release_without_its_zip() {
         let (arm, x64) = (
-            "horizon-launcher-windows-arm64.zip",
-            "horizon-launcher-windows-x64.zip",
+            "offhorizon-launcher-windows-arm64.zip",
+            "offhorizon-launcher-windows-x64.zip",
         );
         let asset = |name: &str| serde_json::json!({"name": name, "browser_download_url": format!("https://example.test/{name}"), "size": 1});
         let list = serde_json::json!([
@@ -5348,7 +5348,7 @@ pub fn {f}("
             .and_then(|(_, v)| v);
         assert!(props.is_some_and(|v| v
             .to_string_lossy()
-            .contains("application.name = \"Horizon\"")));
+            .contains("application.name = \"OffHorizon\"")));
     }
 
     #[test]
@@ -5475,7 +5475,7 @@ pub fn {f}("
         assert_eq!(launcher_version("launcher-vx"), None);
         let list = serde_json::json!([
             {"tag_name": "v2026.10.12", "assets": [{"name": "horizon-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
-            {"tag_name": "launcher-v9.0.0", "assets": [{"name": "horizon-launcher-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
+            {"tag_name": "launcher-v9.0.0", "assets": [{"name": "offhorizon-launcher-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
             {"tag_name": "v2026.10.13", "assets": []},
             {"tag_name": "launcher-v0.0.1", "draft": true, "assets": []},
         ]);
@@ -5820,7 +5820,7 @@ pub fn {f}("
         #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
         assert_eq!(
             launcher_asset_running_from(true),
-            Some("horizon-launcher-linux-x86_64.AppImage")
+            Some("offhorizon-launcher-linux-x86_64.AppImage")
         );
     }
 
@@ -5833,7 +5833,7 @@ pub fn {f}("
         let inside = |dir: &str| in_temp_folder(Path::new(dir), temp);
         assert!(inside("/tmp/t"));
         assert!(inside(
-            "/tmp/t/Temp12_horizon-launcher-windows-x64.zip/inner"
+            "/tmp/t/Temp12_offhorizon-launcher-windows-x64.zip/inner"
         ));
         assert!(inside("/tmp/t/7zO8A1B2C3D"));
         assert!(!inside("/tmp/tools"));

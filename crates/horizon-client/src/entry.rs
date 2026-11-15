@@ -24,8 +24,8 @@ pub fn main_with(mods: crate::mod_api::Mods) {
             .store(false, std::sync::atomic::Ordering::Relaxed);
     }
     horizon_client::telemetry::mark_start();
-    // Opt-in telemetry keeps each crash report (docs/telemetry.md), whatever the mode.
-    crash::on_report(horizon_client::telemetry::keep_crash);
+    // offhorizon keeps no crash report for telemetry (docs/telemetry.md stays as the upstream
+    // reference; this fork collects nothing).
     // Crates above the engine registered their hooks before this (horizon-official's `main`),
     // then the Horizon parts still in this crate; none registers after this point.
     game::player_hooks::register();

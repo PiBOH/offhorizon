@@ -619,6 +619,35 @@ pub fn current() -> Language {
 
 type Table = HashMap<String, &'static str>;
 
+/// offhorizon's name in the launcher: the fork is not Horizon, so every visible
+/// "Horizon" becomes "OffHorizon". "Rust" is a language name and never changes.
+fn branded(s: &str) -> &'static str {
+    use std::sync::Mutex;
+    static CACHE: OnceLock<Mutex<HashMap<String, &'static str>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(hit) = cache.lock().unwrap_or_else(|e| e.into_inner()).get(s) {
+        return hit;
+    }
+    let mut out = String::with_capacity(s.len() + 8);
+    let mut rest = s;
+    while let Some(at) = rest.find("Horizon") {
+        out.push_str(&rest[..at]);
+        // Keep an existing "OffHorizon" from becoming "OffOffHorizon".
+        if !out.ends_with("Off") {
+            out.push_str("Off");
+        }
+        out.push_str("Horizon");
+        rest = &rest[at + "Horizon".len()..];
+    }
+    out.push_str(rest);
+    let leaked: &'static str = Box::leak(out.into_boxed_str());
+    cache
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(s.to_owned(), leaked);
+    leaked
+}
+
 fn table(language: Language) -> &'static Table {
     static TABLES: OnceLock<Vec<Table>> = OnceLock::new();
     let tables = TABLES.get_or_init(|| {
@@ -640,13 +669,14 @@ fn table(language: Language) -> &'static Table {
     &tables[i]
 }
 
-/// `en` in `language`, or `en` itself where the table lacks it.
-pub fn tr_in(language: Language, en: &str) -> &str {
-    table(language).get(en).copied().unwrap_or(en)
+/// `en` in `language`, or `en` itself where the table lacks it. The visible product name is
+/// always offhorizon's, whatever the source string or translation says.
+pub fn tr_in(language: Language, en: &str) -> &'static str {
+    branded(table(language).get(en).copied().unwrap_or(en))
 }
 
 /// `en` in the launcher's language.
-pub fn tr(en: &str) -> &str {
+pub fn tr(en: &str) -> &'static str {
     tr_in(current(), en)
 }
 

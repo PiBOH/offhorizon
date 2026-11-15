@@ -207,6 +207,19 @@ fn the_system_language_is_the_first_one_the_launcher_has() {
 }
 
 #[test]
+fn the_product_is_offhorizon_and_rust_stays_rust() {
+    assert_eq!(tr_in(Language::English, "Horizon"), "OffHorizon");
+    assert_eq!(tr_in(Language::Italian, "Horizon"), "OffHorizon");
+    assert_eq!(
+        tr_in(Language::English, "Horizon Launcher"),
+        "OffHorizon Launcher"
+    );
+    assert_eq!(tr_in(Language::English, "OffHorizon"), "OffHorizon");
+    // The language's name is a proper noun, not a word to translate.
+    assert_eq!(tr_in(Language::English, "Rust"), "Rust");
+}
+
+#[test]
 fn a_missing_string_shows_in_english() {
     assert_eq!(tr_in(Language::Polish, "Settings"), "Ustawienia");
     assert_eq!(tr_in(Language::Japanese, "Settings"), "設定");

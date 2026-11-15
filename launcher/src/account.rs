@@ -781,7 +781,7 @@ impl Bounded {
         use std::sync::atomic::Ordering::SeqCst;
         let no_answer = || {
             let said = keyring_no_answer(self.wait);
-            eprintln!("Horizon: {said}");
+            eprintln!("OffHorizon: {said}");
             Err(said)
         };
         if self.stuck.load(SeqCst) > 0 {
@@ -1211,7 +1211,7 @@ impl SecretStore for SystemStore {
             let attributes = vec![("service", SERVICE), ("account", key)];
             keyring
                 .create_item(
-                    "Horizon launcher: Minecraft account",
+                    "OffHorizon launcher: Minecraft account",
                     &attributes,
                     secret.as_bytes(),
                     true,
@@ -2054,7 +2054,7 @@ pub fn launch(
                     "Can't read {name}'s sign-in: {why}",
                     &[("name", &account.name), ("why", &why)],
                 );
-                eprintln!("Horizon: {said}");
+                eprintln!("OffHorizon: {said}");
                 if plays {
                     pass.offline = Some(said.clone());
                 }
@@ -2409,7 +2409,7 @@ pub fn session_for_game(game_home: &Path) -> Result<GameSession, NoOwner> {
         pass.session.as_ref().map(|(a, _)| a.uuid.as_str()),
     );
     if let Err(e) = accounts.save_renewed() {
-        eprintln!("Horizon: the accounts are not saved: {e}");
+        eprintln!("OffHorizon: the accounts are not saved: {e}");
     }
     Ok(session_file(game_home, pass, env, offline_name))
 }
@@ -2432,7 +2432,7 @@ pub fn session_for_game_as(game_home: &Path, who: &str) -> Result<GameSession, S
         who,
     );
     if let Err(e) = accounts.save_renewed() {
-        eprintln!("Horizon: the accounts are not saved: {e}");
+        eprintln!("OffHorizon: the accounts are not saved: {e}");
     }
     let pass = pass?;
     let env = split_sessions(
@@ -2441,7 +2441,7 @@ pub fn session_for_game_as(game_home: &Path, who: &str) -> Result<GameSession, S
         pass.session.as_ref().map(|(a, _)| a.uuid.as_str()),
     );
     if let Err(e) = accounts.save_renewed() {
-        eprintln!("Horizon: the accounts are not saved: {e}");
+        eprintln!("OffHorizon: the accounts are not saved: {e}");
     }
     Ok(session_file(game_home, pass, env, offline_name))
 }
@@ -2638,7 +2638,7 @@ pub fn java_player() -> Result<crate::java_launch::Player, String> {
         &mut accounts,
     );
     if let Err(e) = accounts.save_renewed() {
-        eprintln!("Horizon: the accounts are not saved: {e}");
+        eprintln!("OffHorizon: the accounts are not saved: {e}");
     }
     player
 }

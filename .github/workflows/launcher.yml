@@ -113,35 +113,35 @@ jobs:
         include:
           - name: linux
             os: ubuntu-22.04
-            asset: horizon-launcher-linux-x86_64.tar.gz
+            asset: offhorizon-launcher-linux-x86_64.tar.gz
             binary: horizon-launcher
           - name: macos
             mac: true
-            asset: horizon-launcher-macos-arm64.zip
+            asset: offhorizon-launcher-macos-arm64.zip
             binary: horizon-launcher
             mac_arch: arm64
           - name: macos-x64
             mac: true
             target: x86_64-apple-darwin
-            asset: horizon-launcher-macos-x64.zip
+            asset: offhorizon-launcher-macos-x64.zip
             binary: horizon-launcher
             mac_arch: x64
           - name: windows
             os: windows-latest
-            asset: horizon-launcher-windows-x64.zip
+            asset: offhorizon-launcher-windows-x64.zip
             binary: horizon-launcher.exe
             pe_arch: x64
-            setup_asset: horizon-launcher-setup.exe
+            setup_asset: offhorizon-launcher-setup.exe
             # The C runtime linked in: without it the launcher asks for VCRUNTIME140.dll,
             # which only the Visual C++ redistributable installs.
             rustflags: -C target-feature=+crt-static
           - name: windows-arm64
             os: windows-11-vs2026-arm
             target: aarch64-pc-windows-msvc
-            asset: horizon-launcher-windows-arm64.zip
+            asset: offhorizon-launcher-windows-arm64.zip
             binary: horizon-launcher.exe
             pe_arch: arm64
-            setup_asset: horizon-launcher-setup-arm64.exe
+            setup_asset: offhorizon-launcher-setup-arm64.exe
             # The C runtime linked in, so the standalone ARM64 launcher needs no redistributable.
             rustflags: -C target-feature=+crt-static
     runs-on: ${{ matrix.mac && (vars.MAC_RUNNER || 'ludovics-mac-mini') || matrix.os }}
@@ -276,9 +276,9 @@ jobs:
           # folder, and the copy it installs uninstalls itself. HKCU of the runner only.
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             setup="$RUNNER_TEMP/setup-smoke"
-            cp "$launcher" "$RUNNER_TEMP/horizon-launcher-setup.exe"
-            "$RUNNER_TEMP/horizon-launcher-setup.exe" setup --quiet --dir "$setup"
-            installed="$setup/Horizon Launcher/horizon-launcher.exe"
+            cp "$launcher" "$RUNNER_TEMP/offhorizon-launcher-setup.exe"
+            "$RUNNER_TEMP/offhorizon-launcher-setup.exe" setup --quiet --dir "$setup"
+            installed="$setup/OffHorizon Launcher/horizon-launcher.exe"
             [[ -f "$installed" ]] || { echo "::error::the setup copied no launcher"; exit 1; }
             "$installed" uninstall --quiet
             [[ ! -f "$installed" ]] || { echo "::error::uninstall left the launcher"; exit 1; }
@@ -406,7 +406,7 @@ jobs:
         # Its build may fail without holding the release (continue-on-error): the release then has no ARM64
         # files, and ARM64 launchers stay on their version until one has (backend::launcher_update_from).
         run: |
-          for file in horizon-launcher-windows-arm64.zip horizon-launcher-setup-arm64.exe; do
+          for file in offhorizon-launcher-windows-arm64.zip offhorizon-launcher-setup-arm64.exe; do
             [[ -f "dist/$file" ]] || echo "::warning::$file is missing: this release goes out without it"
           done
       - name: Publish ${{ needs.decide.outputs.tag }}

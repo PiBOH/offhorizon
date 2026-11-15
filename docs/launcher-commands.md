@@ -186,6 +186,16 @@ Sign out: the account's tokens leave the keychain (and the secrets file, where i
 
 MCP: `account_sign_out`, needs `confirm: true`.
 
+## `horizon-launcher account offline`
+
+Play without a Microsoft account: an offline name (singleplayer and LAN only).
+
+    horizon-launcher account offline <NAME>
+
+- `NAME`: 3 to 16 letters, digits or underscores
+
+MCP: `account_offline`.
+
 ## `horizon-launcher account select`
 
 Play as this account.
@@ -267,81 +277,6 @@ Linux: put Horizon in the applications menu (an entry and the icon, under $XDG_D
 - `--remove`: Remove the entry and the icon, and stop adding them back
 
 MCP: `desktop_entry`.
-
-## `horizon-launcher data status`
-
-What is allowed, the install ID and how many items wait (the default).
-
-    horizon-launcher data status
-
-MCP: `data_status`.
-
-## `horizon-launcher data allow`
-
-Turn kinds on: performance, crashes, bugs, benchmarks, or all.
-
-    horizon-launcher data allow <KINDS>...
-
-- `KINDS`
-
-MCP: `data_allow`, only when the player asks.
-
-## `horizon-launcher data deny`
-
-Turn kinds off: performance, crashes, bugs, benchmarks, or all.
-
-    horizon-launcher data deny <KINDS>...
-
-- `KINDS`
-
-MCP: `data_deny`.
-
-## `horizon-launcher data show`
-
-Print exactly what would be sent.
-
-    horizon-launcher data show
-
-MCP: `data_show`.
-
-## `horizon-launcher data delete`
-
-Delete everything sent from here, and what waits, and take a new install ID.
-
-    horizon-launcher data delete
-
-MCP: `data_delete`, needs `confirm: true`.
-
-## `horizon-launcher data send`
-
-Send what is waiting now.
-
-    horizon-launcher data send
-
-MCP: `data_send`, only when the player asks.
-
-## `horizon-launcher data bug`
-
-Send a bug report you write; it is printed first, as it would leave.
-
-    horizon-launcher data bug <TEXT>
-
-- `TEXT`
-- `--log`: Add the end of the game's log (scrubbed, without chat)
-- `--yes`: Send without asking
-
-MCP: `data_bug`, only when the player asks.
-
-## `horizon-launcher data benchmark`
-
-Upload a benchmark report (docs/benchmark-report.md); it is printed first.
-
-    horizon-launcher data benchmark <FILE>
-
-- `FILE`
-- `--yes`
-
-MCP: `data_benchmark`, only when the player asks.
 
 ## `horizon-launcher instance list`
 

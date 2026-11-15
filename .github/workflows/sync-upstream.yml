@@ -1,0 +1,101 @@
+name: Sync upstream
+
+# Keep the fork close to horizon-rust/horizon without losing what makes it offhorizon:
+# offline accounts, no telemetry collection and the OffHorizon name. Our commits win a
+# textual merge conflict; tools/offhorizon_sync.py then rebrands language values upstream
+# added and checks the promises before anything is pushed.
+#
+# This never opens an OffHorizon pull request. Only the translation-only PR is opened by
+# hand; see AGENTS.md.
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge horizon-rust/horizon
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: offhorizon
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Merge upstream, keeping offhorizon on conflict
+        id: merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "offhorizon-sync[bot]"
+          git config user.email "offhorizon-sync@users.noreply.github.com"
+          git remote add upstream https://github.com/horizon-rust/horizon.git
+          git fetch --no-tags upstream main
+          upstream=$(git rev-parse --short upstream/main)
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+            echo "Already contains horizon-rust/horizon@$upstream"
+            exit 0
+          fi
+          echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          # -X ours keeps our side of a conflicting hunk: offline play, no collection and
+          # branding are not overwritten by an upstream edit to the same lines.
+          git merge --no-edit -X ours upstream/main
+
+      - name: Rebrand new strings and check the fork's promises
+        if: steps.merge.outputs.up_to_date == 'false'
+        run: python3 tools/offhorizon_sync.py
+
+      - name: Commit and push
+        if: steps.merge.outputs.up_to_date == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing to commit after the upstream merge"
+            exit 0
+          fi
+          git commit -m "Upstream sync: horizon-rust/horizon@${{ steps.merge.outputs.upstream }}" \
+            -m "Merged with -X ours, then tools/offhorizon_sync.py rebranded new language values and checked offline play, telemetry and branding."
+          git push origin HEAD:offhorizon
+
+      - name: Report a failed sync
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          body=$(cat <<'EOF'
+          The scheduled upstream sync failed, so offhorizon was not pushed.
+
+          The workflow merges `horizon-rust/horizon` with `-X ours`, then
+          `tools/offhorizon_sync.py` must pass. A failure means either a merge conflict
+          that needs a person, or one of the fork's promises no longer holds (offline
+          accounts, no telemetry collection, OffHorizon branding, complete language keys).
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+          )
+          existing=$(gh issue list --state open --search 'Upstream sync failed in:title' \
+            --json number --jq '.[0].number // empty')
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Upstream sync failed" --body "$body"
+          fi
