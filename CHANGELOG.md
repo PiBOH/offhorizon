@@ -6,6 +6,8 @@ section per version, and Added / Changed / Fixed groups.
 
 ## [Unreleased]
 
+## [0.1.3-nightly] - 2026-11-15
+
 ### ✨ Added
 - **SKlauncher instances can be imported** from its `.sklauncher/instances` and `skprofiles`
   folders, with their Minecraft version and loader when SKlauncher records them.
