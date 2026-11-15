@@ -162,9 +162,10 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    # macOS is in `needs` so a successful macOS build is attached, but its result does not
-    # decide the release: Linux and Windows must succeed.
-    needs: [version, build, macos]
+    # macOS is best effort: its runner can stay queued for hours on a fork, and waiting for it
+    # would hold every release. Linux and Windows decide the release; the macOS job may still
+    # finish afterwards, but it never blocks this one.
+    needs: [version, build]
     if: always() && needs.version.result == 'success' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
