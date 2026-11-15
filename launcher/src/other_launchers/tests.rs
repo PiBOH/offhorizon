@@ -153,6 +153,76 @@ fn official_launcher_profiles() {
 }
 
 #[test]
+fn sklauncher_instances_read_their_metadata_and_profiles() {
+    let root = scratch("sklauncher");
+    let instances = root.join(".sklauncher/instances");
+    write(
+        &instances.join("Fabric Pack/instance.json"),
+        &json!({
+            "name": "Fabric Pack",
+            "minecraft": {"version": "1.21.1"},
+            "loader": {"type": "fabric", "version": "0.16.9"}
+        })
+        .to_string(),
+    );
+    write(&instances.join("Fabric Pack/mods/a.jar"), "jar");
+    // A 3.2 profile without an instance.json: its own files are enough.
+    write(
+        &instances.join("Old Vanilla/saves/World/level.dat"),
+        "level",
+    );
+    // A selected instance's own folder, where SKlauncher keeps its game files beside the file.
+    write(&instances.join("Neo/minecraft/options.txt"), "");
+    write(
+        &instances.join("Neo/instance.json"),
+        &json!({"minecraftVersion": "1.20.1", "modLoader": {"name": "neoforge", "version": "47.1.0"}})
+            .to_string(),
+    );
+
+    let found = sklauncher_instances(&root);
+    let short: Vec<_> = found
+        .iter()
+        .map(|f| {
+            (
+                f.name.as_str(),
+                f.minecraft.as_deref(),
+                f.loader.as_ref().map(|l| (l.name, l.version.as_str())),
+            )
+        })
+        .collect();
+    assert_eq!(
+        short,
+        [
+            ("Fabric Pack", Some("1.21.1"), Some(("fabric", "0.16.9"))),
+            ("Neo", Some("1.20.1"), Some(("neoforge", "47.1.0"))),
+            ("Old Vanilla", None, None),
+        ]
+    );
+    assert_eq!(in_folder(&root.join(".sklauncher"), None), found);
+    assert_eq!(
+        in_folder(&instances.join("Fabric Pack"), None)[0].game,
+        instances.join("Fabric Pack")
+    );
+
+    // SKlauncher 3.2's separate profiles folder is scanned too.
+    write(&root.join(".minecraft/skprofiles/Profile/options.txt"), "");
+    assert_eq!(
+        sklauncher_instances(&root.join(".minecraft/skprofiles"))[0].name,
+        "Profile"
+    );
+    let folders = Folders {
+        home: root.clone(),
+        data: root.clone(),
+        config: root.join("config"),
+    };
+    let scanned = scan(Os::Windows, &folders);
+    assert!(scanned
+        .iter()
+        .any(|f| f.name == "Fabric Pack" && f.launcher == SKLAUNCHER));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn copies_an_instance_but_only_what_a_shared_folder_holds_for_one() {
     let root = scratch("copy");
     let game = root.join("game");

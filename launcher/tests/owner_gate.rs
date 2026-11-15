@@ -12,6 +12,9 @@ fn home(name: &str) -> PathBuf {
     let root =
         std::env::temp_dir().join(format!("horizon-owner-gate-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
+    // This test is about the owner gate, not the fork's No AI default.
+    std::fs::create_dir_all(root.join("game")).unwrap();
+    std::fs::write(root.join("game/horizon-extras.txt"), "noAi:false\n").unwrap();
     let version = root.join("launcher/versions/v2026.10.27.01");
     std::fs::create_dir_all(&version).unwrap();
     std::fs::write(version.join(".installed"), "").unwrap();

@@ -1,4 +1,4 @@
-//! Embeds Horizon's icon (`packaging/icons/horizon.ico`) in the Windows executables, as icon
+//! Embeds OffHorizon's icon (`packaging/icons/offhorizon.ico`) in the Windows executables, as icon
 //! resource 1: Explorer and the task bar show it, and the window takes it as its icon.
 fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
@@ -21,7 +21,7 @@ fn main() {
         })
         .unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_owned());
     println!("cargo:rustc-env=HORIZON_LAUNCHER_VERSION={version}");
-    let ico = format!("{dir}/../packaging/icons/horizon.ico");
+    let ico = format!("{dir}/../packaging/icons/offhorizon.ico");
     println!("cargo:rerun-if-changed={ico}");
     #[cfg(windows)]
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {

@@ -101,6 +101,7 @@ const SKIPPED: [&str; 7] = [
 const CURSEFORGE: &str = "the CurseForge app";
 const MODRINTH_APP: &str = "the Modrinth App";
 const ATLAUNCHER: &str = "ATLauncher";
+const SKLAUNCHER: &str = "SKlauncher";
 
 /// The name a launcher goes by on its own window, for a list: `launcher` as [`Found`] names it.
 pub fn app_name(launcher: &'static str) -> &'static str {
@@ -285,6 +286,13 @@ pub fn official_profiles(root: &Path) -> Vec<Found> {
     found
 }
 
+/// Whether `dir` itself holds a Minecraft game folder's files.
+fn holds_game(dir: &Path) -> bool {
+    ["saves", "mods", "options.txt", "resourcepacks", "config"]
+        .iter()
+        .any(|f| dir.join(f).exists())
+}
+
 /// The game folders in `dir` (each folder in it that holds one), as `launcher`'s instances.
 fn game_folders(dir: &Path, launcher: &'static str) -> Vec<Found> {
     let mut found: Vec<Found> = fs::read_dir(dir)
@@ -292,11 +300,7 @@ fn game_folders(dir: &Path, launcher: &'static str) -> Vec<Found> {
         .flatten()
         .flatten()
         .map(|e| e.path())
-        .filter(|p| {
-            ["saves", "mods", "options.txt", "resourcepacks", "config"]
-                .iter()
-                .any(|f| p.join(f).exists())
-        })
+        .filter(|p| holds_game(p))
         .filter_map(|game| {
             Some(Found {
                 launcher,
@@ -310,6 +314,120 @@ fn game_folders(dir: &Path, launcher: &'static str) -> Vec<Found> {
         .collect();
     found.sort_by_key(|f| f.name.to_lowercase());
     found
+}
+
+/// A string field of a SKlauncher instance file, whichever of its names the build uses.
+fn sklauncher_field<'a>(value: &'a Value, names: &[&str]) -> Option<&'a str> {
+    names
+        .iter()
+        .find_map(|name| value.get(*name).and_then(Value::as_str))
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+}
+
+/// The loader a SKlauncher instance records, in the shapes its exported instances use:
+/// `loader: {type, version}`, `modLoader: {name, version}`, or a `loader` name beside a
+/// string `loaderVersion`.
+fn sklauncher_loader(meta: &Value) -> Option<Loader> {
+    let entry = meta
+        .get("loader")
+        .or_else(|| meta.get("modLoader"))
+        .or_else(|| meta.get("loaderVersion"))?;
+    let name = entry
+        .get("type")
+        .or_else(|| entry.get("name"))
+        .and_then(Value::as_str)
+        .or_else(|| entry.as_str())?;
+    let version = entry
+        .get("version")
+        .and_then(Value::as_str)
+        .or_else(|| meta.get("loaderVersion").and_then(Value::as_str))?;
+    Some(Loader {
+        name: loader_of_name(name)?,
+        version: version.trim().to_string(),
+    })
+}
+
+/// One SKlauncher instance: its `instance.json` (4.0), or a game folder SKlauncher 3.2 kept.
+/// Its own game folder is used when the file names one, else `minecraft/` or `.minecraft/`
+/// beside the file, else the folder itself.
+pub fn sklauncher_instance(dir: &Path) -> Option<Found> {
+    let meta = fs::read_to_string(dir.join("instance.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok());
+    let game = meta
+        .as_ref()
+        .and_then(|m| sklauncher_field(m, &["gameDir", "gameDirectory"]))
+        .map(PathBuf::from)
+        .or_else(|| {
+            ["minecraft", ".minecraft"]
+                .into_iter()
+                .map(|name| dir.join(name))
+                .find(|candidate| candidate.is_dir())
+        })
+        .unwrap_or_else(|| dir.to_path_buf());
+    if meta.is_none() && !holds_game(&game) {
+        return None;
+    }
+    let name = meta
+        .as_ref()
+        .and_then(|m| sklauncher_field(m, &["name", "instanceName"]))
+        .map(String::from)
+        .or_else(|| dir.file_name().map(|n| n.to_string_lossy().into_owned()))?;
+    let minecraft = meta
+        .as_ref()
+        .and_then(|m| {
+            m.pointer("/minecraft/version")
+                .and_then(Value::as_str)
+                .or_else(|| sklauncher_field(m, &["minecraftVersion", "gameVersion", "version"]))
+        })
+        .map(String::from);
+    Some(Found {
+        launcher: SKLAUNCHER,
+        name,
+        minecraft,
+        loader: meta.as_ref().and_then(sklauncher_loader),
+        game,
+        shared: false,
+    })
+}
+
+/// The SKlauncher instances under `root`: its `instances/` folder, a single instance, or the
+/// `skprofiles/` folder SKlauncher 3.2 kept. A folder with no `instance.json` is still found
+/// when it holds the game's own files, as 3.2's profiles do.
+pub fn sklauncher_instances(root: &Path) -> Vec<Found> {
+    if root.join("instance.json").is_file() {
+        return sklauncher_instance(root).into_iter().collect();
+    }
+    let dir = if root.join("instances").is_dir() {
+        root.join("instances")
+    } else if root.join(".sklauncher/instances").is_dir() {
+        root.join(".sklauncher/instances")
+    } else {
+        root.to_path_buf()
+    };
+    let mut found: Vec<Found> = fs::read_dir(&dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| sklauncher_instance(&entry.path()))
+        .collect();
+    for folder in game_folders(&dir, SKLAUNCHER) {
+        if !found.iter().any(|found| found.game == folder.game) {
+            found.push(folder);
+        }
+    }
+    found.sort_by_key(|f| f.name.to_lowercase());
+    found
+}
+
+/// Whether `dir` is inside SKlauncher's own tree, so its `instances/` cannot be mistaken for a
+/// Prism or CurseForge one.
+fn sklauncher_tree(dir: &Path) -> bool {
+    dir.ancestors()
+        .filter_map(Path::file_name)
+        .filter_map(|name| name.to_str())
+        .any(|name| matches!(name, ".sklauncher" | "sklauncher" | "skprofiles"))
 }
 
 /// The CurseForge app's instances: in its modding folder's `Instances/`.
@@ -442,6 +560,12 @@ pub fn in_folder(dir: &Path, launcher: Option<&'static str>) -> Vec<Found> {
             .map(with_curseforge_target)
             .collect();
     }
+    if sklauncher_tree(dir) {
+        let found = sklauncher_instances(dir);
+        if !found.is_empty() {
+            return found;
+        }
+    }
     if dir.join("instance.json").is_file() {
         return atlauncher_instance(dir).into_iter().collect();
     }
@@ -506,6 +630,7 @@ pub fn scan(os: Os, folders: &Folders) -> Vec<Found> {
             "Prism Launcher" | "MultiMC" => found.extend(prism_instances(&dir, launcher)),
             "Modrinth App" => found.extend(modrinth_app_profiles(&dir)),
             ATLAUNCHER => found.extend(atlauncher_instances(&dir)),
+            SKLAUNCHER => found.extend(sklauncher_instances(&dir)),
             _ => {}
         }
     }

@@ -121,13 +121,29 @@ pub fn locate(program: &str) -> std::path::PathBuf {
 /// Starts `exe mcp` as a client would, lists its tools and returns how many answered: the
 /// Settings page's "Test the connection".
 pub fn self_test(exe: &Path) -> Result<usize, String> {
+    self_test_in(exe, None)
+}
+
+/// [`self_test`] with `home` as the game folder, for a test that must not read the player's
+/// own No AI setting.
+#[doc(hidden)]
+pub fn self_test_at(exe: &Path, home: &Path) -> Result<usize, String> {
+    self_test_in(exe, Some(home))
+}
+
+fn self_test_in(exe: &Path, home: Option<&Path>) -> Result<usize, String> {
     use std::io::Write;
     use std::process::Stdio;
-    let mut child = crate::process::command(exe)
+    let mut command = crate::process::command(exe);
+    command
         .arg("mcp")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let Some(home) = home {
+        command.env("HORIZON_HOME", home);
+    }
+    let mut child = command
         .spawn()
         .map_err(|e| format!("Could not start {}: {e}", exe.display()))?;
     let lines = [

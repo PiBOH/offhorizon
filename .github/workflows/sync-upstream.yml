@@ -61,11 +61,17 @@ jobs:
           # Re-apply the fork's own offline-account, no-telemetry and branding files even when
           # upstream changed them without a textual conflict. The rest of the merge stays.
           git checkout "$before" -- \
+            CHANGELOG.md \
             crates/horizon-telemetry/src/lib.rs \
+            crates/horizon-theme/icons/offhorizon-64.png \
             launcher/src/account.rs \
             launcher/src/glass_account.rs \
+            launcher/src/offhorizon.rs \
+            launcher/src/other_launchers.rs \
             launcher/src/owner_page.rs \
-            launcher/src/i18n.rs
+            launcher/src/i18n.rs \
+            launcher/src/sources.rs \
+            packaging/icons/offhorizon.ico
           # GITHUB_TOKEN may not create or update workflow files. Keep the fork's workflows
           # untouched by the merge (including files upstream added).
           rm -rf .github/workflows

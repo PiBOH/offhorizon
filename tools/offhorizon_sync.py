@@ -116,9 +116,24 @@ def check() -> list[str]:
         errors.append("the Rust game is not started with the offline --name")
     if "download_version_public" not in backend:
         errors.append("Java instances lost their account-free Mojang download")
+    offhorizon = read(launcher / "offhorizon.rs")
+    if "ai_is_off" not in offhorizon:
+        errors.append("the launcher's AI features are no longer off by default")
     main = read(launcher / "main.rs")
     if "ensure_offline_account" not in main:
         errors.append("the launcher no longer creates an offline account when it has none")
+    if "OFFHORIZON" not in main or "offhorizon::apply" not in main:
+        errors.append("the launcher's opening or first-run defaults are no longer OffHorizon's")
+    other = read(launcher / "other_launchers.rs")
+    if "sklauncher_instances" not in other or "SKlauncher" not in other:
+        errors.append("launcher/src/other_launchers.rs lost SKlauncher imports")
+    settings = read(launcher / "backend.rs")
+    if "PERFORMANCE_DEFAULT" not in settings:
+        errors.append("Performance mode is no longer on by default")
+    if not (ROOT / "CHANGELOG.md").is_file():
+        errors.append("CHANGELOG.md is missing")
+    if not (ROOT / "packaging/icons/offhorizon.ico").is_file():
+        errors.append("the OffHorizon crack icon is missing")
 
     installer = read(launcher / "installer.rs")
     if 'APP_NAME: &str = "OffHorizon Launcher"' not in installer:

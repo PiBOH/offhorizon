@@ -755,6 +755,7 @@ impl Launcher {
         // OffHorizon starts with an offline account when there is none: no Microsoft sign-in is
         // needed to play either edition. Adding a Microsoft account later is optional.
         this.ensure_offline_account();
+        horizon_launcher::offhorizon::apply();
         if this.location_error.is_some() || this.location_note.is_some() {
             this.page = Page::Settings;
         }
@@ -2253,6 +2254,20 @@ fn mark(size: f32, t: &Theme) -> Div {
                 .h(px(u))
                 .bg(t.accent),
         )
+        // One crack through the mark: the offline split, drawn in the surface under it.
+        .child(crack(7.5, 1.2, 1.5, 5.4, u, t))
+        .child(crack(6.2, 6.2, 1.5, 4.4, u, t))
+        .child(crack(7.6, 10.2, 1.5, 4.6, u, t))
+}
+
+fn crack(x: f32, y: f32, w: f32, h: f32, u: f32, t: &Theme) -> Div {
+    div()
+        .absolute()
+        .left(px(x * u))
+        .top(px(y * u))
+        .w(px(w * u))
+        .h(px(h * u))
+        .bg(t.side)
 }
 
 /// The last thing the player did was press Tab: focused controls show a ring (a click focuses them
@@ -3207,7 +3222,7 @@ impl Launcher {
                 .child(
                     shell::text(theme::night::TITLE, shell::c(n.ink))
                         .font_family(theme::DISPLAY_FONT)
-                        .child("Horizon"),
+                        .child("OffHorizon"),
                 )
         });
         shell::sidebar_plate(&t)
@@ -4633,7 +4648,9 @@ impl Launcher {
                         .child(code.user_code.clone()),
                 )
                 .when(!microsoft::has_private_window(), |col| {
-                    col.child(tr("Open this link in a private window to pick another account."))
+                    col.child(tr(
+                        "Open this link in a private window to pick another account.",
+                    ))
                 })
                 .child({
                     let uri = code.verification_uri.clone();
@@ -4651,9 +4668,9 @@ impl Launcher {
                 div().child(trf("Signed in as {name}.", &[("name", &a.name)]))
             }
             Some(SignInState::Done(Err(e))) => div().text_color(t.danger).child(e.clone()),
-            None if self.accounts.accounts.is_empty() => div().child(tr(
-                "Horizon needs a Microsoft account that owns Minecraft: Java Edition, like other launchers. It also plays online servers with your name and skin.",
-            )),
+            None if self.accounts.accounts.is_empty() => {
+                div().child(tr("No Microsoft sign-in: singleplayer and LAN."))
+            }
             None => div().child(tr("Add another account.")),
         };
         let detail = if let Some(target) = &self.sign_in_target {
@@ -5578,7 +5595,7 @@ impl Render for Launcher {
                 .line_height(px(theme::WORDMARK.px * 0.5))
                 .font_weight(FontWeight::BOLD)
                 .text_color(t.ink)
-                .children("HORIZON".chars().enumerate().map(|(i, c)| {
+                .children("OFFHORIZON".chars().enumerate().map(|(i, c)| {
                     let at = held - i as f32 * theme::STAGGER.as_secs_f32() * 1.5;
                     let p = ease_out_cubic(at / theme::ENTER.as_secs_f32());
                     div()

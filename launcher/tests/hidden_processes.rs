@@ -91,7 +91,12 @@ fn cli_keeps_redirected_stdout_and_stderr() {
 #[test]
 fn mcp_keeps_its_stdio_transport() {
     let executable = Path::new(env!("CARGO_BIN_EXE_horizon-launcher"));
-    assert!(horizon_launcher::agents::self_test(executable).unwrap() > 0);
+    let root = std::env::temp_dir().join(format!("horizon-mcp-test-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("horizon-extras.txt"), "noAi:false\n").unwrap();
+    assert!(horizon_launcher::agents::self_test_at(executable, &root).unwrap() > 0);
+    let _ = fs::remove_dir_all(&root);
 }
 
 #[test]

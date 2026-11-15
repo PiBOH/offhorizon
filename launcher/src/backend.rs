@@ -2737,9 +2737,10 @@ pub fn game_home() -> PathBuf {
 }
 
 /// Whether No AI is on: every AI feature hidden and off (`horizon_platform::no_ai`, kept in the
-/// game's `horizon-extras.txt` so the game reads the same switch).
+/// game's `horizon-extras.txt` so the game reads the same switch). OffHorizon starts with it on;
+/// only `noAi:false`, written by the player, turns AI features back on.
 pub fn no_ai() -> bool {
-    horizon_platform::no_ai::is_on(&game_home())
+    crate::offhorizon::ai_is_off(&game_home())
 }
 
 /// Turns No AI on or off for the launcher and the game.
@@ -4600,7 +4601,8 @@ pub struct Settings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
     /// The cheaper scene for older computers (a lower-resolution sky, a box blur, the scene
-    /// following the mouse less often and resizes baked in the background). Unset is off.
+    /// following the mouse less often and resizes baked in the background). Unset is on for
+    /// OffHorizon; only a player who turned it off has `false` here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub performance: Option<bool>,
     /// Home's background: a picture the player picked, kept in the data folder under this name
@@ -4709,7 +4711,8 @@ impl Settings {
     }
     /// Whether the cheaper scene is on ([`performance`](Self::performance)).
     pub fn performance(&self) -> bool {
-        self.performance.unwrap_or(false)
+        self.performance
+            .unwrap_or(crate::offhorizon::PERFORMANCE_DEFAULT)
     }
     /// Registry mods update by themselves ([`Settings::mods_auto_update`]): on unless turned off.
     pub fn auto_updates_mods(&self) -> bool {
@@ -4983,13 +4986,21 @@ mod tests {
                     .map(move |_| name.as_str())
             })
             .collect();
-        assert_eq!(calls, ["backend.rs"]);
+        assert_eq!(
+            calls,
+            ["backend.rs", "backend.rs"],
+            "only download_for and download_version_public reach Mojang"
+        );
         let backend = &sources.iter().find(|(n, ..)| n == "backend.rs").unwrap().2;
         let body = |f: &str| {
-            let start = backend.find(&format!("\nfn {f}(")).unwrap();
+            let start = backend
+                .find(&format!("\nfn {f}("))
+                .or_else(|| backend.find(&format!("\npub fn {f}(")))
+                .unwrap();
             &backend[start..start + backend[start + 1..].find("\n}\n").unwrap()]
         };
         assert!(body("download_for").contains("mojang::download("));
+        assert!(body("download_version_public").contains("mojang::download("));
         assert!(body("download_for_owner").contains("account::launch("));
         assert!(!body("download_for_owner").contains("launch_for_game("));
         // `download_for` is defined once and called once, by `download_for_owner`.
@@ -5107,7 +5118,10 @@ pub fn {f}("
     fn each_mac_picks_the_build_for_its_processor() {
         assert_eq!(
             platform_assets("macos", "aarch64"),
-            Some(("horizon-macos-arm64.zip", "OffHorizon-Launcher-macOS-arm64"))
+            Some((
+                "horizon-macos-arm64.zip",
+                "offhorizon-launcher-macos-arm64.zip"
+            ))
         );
         assert_eq!(
             platform_assets("macos", "x86_64"),
@@ -5124,7 +5138,7 @@ pub fn {f}("
             platform_assets("windows", "aarch64"),
             Some((
                 "horizon-windows-arm64.zip",
-                "OffHorizon-Launcher-Windows-arm64.exe"
+                "offhorizon-launcher-windows-arm64.zip"
             ))
         );
         assert_eq!(platform_assets("linux", "aarch64"), None);
