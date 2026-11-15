@@ -125,7 +125,11 @@ jobs:
           retention-days: 3
 
   macos:
-    name: Build macos-x64 (best effort)
+    name: Build macos-x64 (opt-in)
+    # A queued job on a fork without a macOS runner keeps the whole run queued and
+    # holds the auto-release concurrency group, so newer releases never start.
+    # Set the repository variable OFFHORIZON_MACOS=true when a runner is available.
+    if: vars.OFFHORIZON_MACOS == 'true'
     needs: version
     continue-on-error: true
     runs-on: macos-13
