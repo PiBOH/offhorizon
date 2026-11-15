@@ -61,11 +61,12 @@ line, for example `0.1.1-nightly`.
 branding go straight to the `offhorizon` branch, pushed by PiBOH or an agent he asked. There is
 no OffHorizon PR to review.
 
-The one exception is translations: they get their own PR from branch `traduzioni` to
-`offhorizon`, and that PR contains **only** the language tables:
-`launcher/lang/*.json` and `crates/horizon-client/assets/horizon/lang/*.json`. Never mix code,
-branding, workflows, licence or version changes into it. The branches exist so the translation
-work can be read on its own.
+The one exception is translations for **upstream Horizon**: branch `traduzioni-upstream` is based
+on `horizon-rust/horizon` main and opens a PR there containing **only**
+`crates/horizon-client/assets/horizon/lang/*.json` (and `launcher/lang/*.json` only if upstream
+needs them). Its values say Horizon, never OffHorizon. Never mix code, branding, workflows,
+licence or version changes into it. OffHorizon's own translation tables are already complete on
+`offhorizon`; do not open a translation PR on the fork.
 
 ## Upstream sync
 
@@ -86,12 +87,14 @@ word **Rust** is a language name and stays `Rust` in every language, never trans
 Release assets and installers are named `offhorizon-launcher-…` (not `horizon-launcher-…`). The
 Cargo package and binary names stay as they are; only what a player downloads and sees changes.
 
-The complete set of language tables is delivered on branch `traduzioni` as the translation-only
-pull request: every key in `en_us.json` exists in every game language, and every key the launcher
-asks for exists in every launcher language. Missing entries were filled with the English text as
-a fallback; they are **unreviewed** and must not be marked reviewed (`tools/lang_review/`).
-Improve a translation only by writing it in that language. `tools/offhorizon_sync.py` keeps new
-upstream game keys filled on future syncs; new launcher keys still need a translation commit.
+OffHorizon's language tables are complete on `offhorizon`: every key in `en_us.json` exists in
+every game language, and every key the launcher asks for exists in every launcher language. The
+separate upstream PR (`traduzioni-upstream`) carries Horizon-branded game tables only, with every
+`en_us.json` key present in every language; it never carries OffHorizon values. Missing entries
+were filled with the English text as a fallback; they are **unreviewed** and must not be marked
+reviewed (`tools/lang_review/`). Improve a translation only by writing it in that language.
+`tools/offhorizon_sync.py` keeps new upstream game keys filled on future syncs; new launcher keys
+still need a translation commit.
 
 ## Licence
 

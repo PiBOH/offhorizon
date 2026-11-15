@@ -199,7 +199,7 @@ jobs:
             if [[ -n "$PREV" ]]; then
               SECTION=$(git log "$PREV..HEAD" --pretty=format:'- %s' --no-merges)
             else
-              SECTION=$(git log --pretty=format:'- %s' --no-merges | head -30)
+              SECTION=$(git log --max-count=30 --pretty=format:'- %s' --no-merges)
             fi
           fi
           if [[ "$VERSION" == *-* ]]; then CHANNEL=nightly; else CHANNEL=stable; fi
