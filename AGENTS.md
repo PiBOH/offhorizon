@@ -41,7 +41,7 @@ telemetry; keep them local.
 ## Version and releases
 
 `version.txt` in the root is the **single source of truth** for the program version. It holds one
-line, for example `0.1.0-nightly.1`.
+line, for example `0.1.1-nightly`.
 
 - `launcher/build.rs` reads it into `HORIZON_LAUNCHER_VERSION`; the game's build script reads it
   into `HORIZON_VERSION`. Do not add a second version number anywhere.
