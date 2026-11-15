@@ -1,6 +1,7 @@
 //! The launcher's core, shared by the GUI, the CLI and the MCP server.
 pub mod account;
 pub mod agents;
+pub mod auto_ports;
 pub mod backend;
 pub mod browser;
 pub mod build_import;

@@ -1768,12 +1768,20 @@ impl Launcher {
         self.prepare_error = None;
         self.prepare_log
             .push_back("Checking Java and your Minecraft install".into());
+        // The Java mods already on the machine get their Rust ports while the game prepares.
+        let java_homes: Vec<std::path::PathBuf> = horizon_launcher::instances::list()
+            .into_iter()
+            .filter(|instance| instance.java.is_some())
+            .map(|instance| instance.home)
+            .collect();
+        let game_home = backend::game_home();
         let tx = self.tx.clone();
         // The checks may download the server jar, so they run on the thread too.
         std::thread::spawn(move || {
             let log = |line| {
                 let _ = tx.send(Msg::Line(Job::Prepare, line));
             };
+            horizon_launcher::auto_ports::prepare(&java_homes, &game_home, &log);
             let result = backend::preparer(&tag, &minecraft, from, &log)
                 .inspect(|(_, minecraft)| backend::sounds(&tag, minecraft, &log))
                 .map(|(p, _)| {
@@ -5782,6 +5790,10 @@ fn main() {
     let _location_error = horizon_launcher::data_location::startup();
     perf::process_started();
     backend::exe_path();
+    // A launcher started straight from a downloaded `.exe` gets its Start menu entry (and its
+    // place in the Apps list) on that first start, so it installs like every other program.
+    #[cfg(windows)]
+    horizon_launcher::installer::register_first_run();
     // The launcher's own installer (`update_handoff`): no window, no CLI parser.
     if let Some(code) = horizon_launcher::update_handoff::run() {
         std::process::exit(code);

@@ -39,6 +39,15 @@ fn main() {
     {
         let mut resource = winresource::WindowsResource::new();
         resource.set_icon(&ico);
+        // Explorer, the task bar and Settings > Apps read these: the executable says OffHorizon,
+        // not the name of the project it is a fork of.
+        resource.set("FileDescription", "OffHorizon");
+        resource.set("ProductName", "OffHorizon");
+        resource.set("CompanyName", "OffHorizon");
+        resource.set("InternalName", "horizon-launcher");
+        resource.set("OriginalFilename", "OffHorizon.exe");
+        resource.set("FileVersion", &version);
+        resource.set("ProductVersion", &version);
         if let Err(e) = resource.compile() {
             panic!("embedding {ico}: {e}");
         }

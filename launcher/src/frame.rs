@@ -638,6 +638,8 @@ impl Launcher {
             }));
 
         let (name, how) = self.who_plays();
+        // The chip clips its name and account kind at narrow widths: both stay readable on hover.
+        let chip_tip = format!("{name} — {how}");
         let face = self.accounts.selected().map(|a| a.uuid.clone());
         let open = self.account_menu;
         let chip =
@@ -684,17 +686,19 @@ impl Launcher {
                             if open { std::f32::consts::PI } else { 0. },
                         ))),
                 )
-                .on_click(cx.listener(|this, event: &ClickEvent, _, cx| {
-                    if this.closed_by_this_press(event) {
-                        return;
-                    }
-                    this.account_menu = !this.account_menu;
-                    if this.account_menu {
-                        this.accounts = Accounts::load();
-                        this.load_profile_heads();
-                    }
-                    cx.notify();
-                }));
+                ;
+        let chip = chip.tooltip(ui::tip(chip_tip));
+        let chip = chip.on_click(cx.listener(|this, event: &ClickEvent, _, cx| {
+            if this.closed_by_this_press(event) {
+                return;
+            }
+            this.account_menu = !this.account_menu;
+            if this.account_menu {
+                this.accounts = Accounts::load();
+                this.load_profile_heads();
+            }
+            cx.notify();
+        }));
         let account = div()
             .relative()
             .child(keyboard(chip, &t))

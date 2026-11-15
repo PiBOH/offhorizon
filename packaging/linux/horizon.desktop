@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Horizon
+Name=OffHorizon
 Comment=Minecraft: Java Edition 26.3, rewritten in Rust
 Exec=horizon-client
-Icon=horizon
+Icon=offhorizon
 Terminal=false
 Categories=Game;
 StartupWMClass=horizon

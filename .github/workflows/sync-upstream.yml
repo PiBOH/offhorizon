@@ -60,10 +60,15 @@ jobs:
           git merge --no-edit -X ours upstream/main
           # Re-apply the fork's own offline-account, no-telemetry and branding files even when
           # upstream changed them without a textual conflict. The rest of the merge stays.
+          # The launcher, its translation tables and its download links are OffHorizon's own:
+          # upstream changes to them never reach this branch, and README.md and AGENTS.md keep
+          # pointing at OffHorizon's site and releases.
           git checkout "$before" -- \
             AGENTS.md \
             CHANGELOG.md \
+            CHANGELOG.dev.md \
             README.md \
+            launcher \
             crates/horizon-telemetry/src/lib.rs \
             crates/horizon-theme/icons/offhorizon-64.png \
             launcher/src/account.rs \

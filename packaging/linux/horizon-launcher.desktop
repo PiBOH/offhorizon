@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Horizon
+Name=OffHorizon
 GenericName=Game launcher
-Comment=Install, prepare and play Horizon, Minecraft: Java Edition 26.3 rewritten in Rust
+Comment=Install, prepare and play OffHorizon, Minecraft: Java Edition 26.3 rewritten in Rust
 Exec=horizon-launcher
-Icon=horizon
+Icon=offhorizon
 Terminal=false
 Categories=Game;
 StartupWMClass=horizon-launcher

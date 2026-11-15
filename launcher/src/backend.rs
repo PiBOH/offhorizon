@@ -890,7 +890,7 @@ impl Default for Links {
         Self {
             discord: "https://discord.gg/playhorizon".into(),
             sponsor: "https://github.com/sponsors/ludovic111".into(),
-            website: "https://playhorizon.dev".into(),
+            website: "https://piboh.github.io/offhorizon".into(),
             official_server: crate::server_list::OFFICIAL_ADDRESS.into(),
             official_server_previous: crate::server_list::OFFICIAL_PREVIOUS
                 .iter()
@@ -1163,6 +1163,36 @@ fn unsigned_launcher_digest(tag: &str, asset_url: &str, asset: &str) -> Result<S
 /// Downloads `url` into `to`; the file is kept only if its SHA-256 is `sha256`, the signed (or
 /// pinned) one. A `size` of 0 takes the server's Content-Length for the progress.
 pub(crate) fn download(
+    url: &str,
+    size: u64,
+    sha256: &str,
+    to: &Path,
+    progress: &impl Fn(f32),
+) -> Result<(), String> {
+    // A reset connection (os error 10054 on Windows) is what a home network or an antivirus does
+    // every so often; a library is small, so the first two failures are simply tried again
+    // instead of ending preparation with "No connection".
+    let mut last = String::new();
+    for attempt in 1..=3u8 {
+        match download_once(url, size, sha256, to, progress) {
+            Ok(()) => return Ok(()),
+            Err(e) if attempt < 3 && transient_download_error(&e) => {
+                last = e;
+                std::thread::sleep(std::time::Duration::from_millis(400 * attempt as u64));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Err(last)
+}
+
+/// Whether a failed download is worth another request: the server never answered, or the
+/// connection broke part-way. A wrong checksum is not.
+fn transient_download_error(error: &str) -> bool {
+    error.starts_with("No connection") || error.starts_with("Download interrupted")
+}
+
+fn download_once(
     url: &str,
     size: u64,
     sha256: &str,
@@ -6456,7 +6486,7 @@ pub fn {f}("
         let defaults = Links::default();
         assert_eq!(defaults.discord, "https://discord.gg/playhorizon");
         assert_eq!(defaults.sponsor, "https://github.com/sponsors/ludovic111");
-        assert_eq!(defaults.website, "https://playhorizon.dev");
+        assert_eq!(defaults.website, "https://piboh.github.io/offhorizon");
         // The file on main says the same thing as the defaults.
         assert_eq!(Links::parse(include_str!("../links.json")), defaults);
         // Unreadable or missing, offline included: the defaults.

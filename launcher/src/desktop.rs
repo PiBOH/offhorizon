@@ -82,12 +82,12 @@ pub fn launcher_entry(exe: &Path) -> String {
     format!(
         "[Desktop Entry]\n\
          Type=Application\n\
-         Name=Horizon\n\
+         Name=OffHorizon\n\
          GenericName=Game launcher\n\
-         Comment=Install, prepare and play Horizon, Minecraft: Java Edition {minecraft} rewritten in Rust\n\
+         Comment=Install, prepare and play OffHorizon, Minecraft: Java Edition {minecraft} rewritten in Rust\n\
          Exec={}\n\
          TryExec={}\n\
-         Icon=horizon\n\
+         Icon=offhorizon\n\
          Terminal=false\n\
          Categories=Game;\n\
          StartupWMClass=horizon-launcher\n",
@@ -262,7 +262,7 @@ mod tests {
         let entry = launcher_entry(Path::new("/home/a b/Horizon \"x\"/horizon-launcher"));
         assert!(entry.contains("Exec=\"/home/a b/Horizon \\\"x\\\"/horizon-launcher\"\n"));
         assert!(entry.contains("TryExec=/home/a b/Horizon \"x\"/horizon-launcher\n"));
-        assert!(entry.contains("Icon=horizon\n"));
+        assert!(entry.contains("Icon=offhorizon\n"));
     }
 
     #[test]

@@ -1,16 +1,44 @@
 # Changelog
 
-All notable changes to OffHorizon are recorded here. It follows the same shape as
-[PiBOH/vivi-music-de](https://github.com/PiBOH/vivi-music-de): an Unreleased section, one
-section per version, and Added / Changed / Fixed groups.
+All notable changes to OffHorizon, in the order a player meets them. This file is what the release
+body quotes: it says what changed for the people who play, not how it was built. The engineering
+record — modules, causes, tests — is [CHANGELOG.dev.md](CHANGELOG.dev.md).
+
+The shape follows [PiBOH/vivi-music-de](https://github.com/PiBOH/vivi-music-de): an Unreleased
+section, one section per version, and Added / Changed / Fixed groups.
 
 ## [Unreleased]
+
+## [0.1.5-nightly] - 2026-11-15
+
+### ✨ Added
+- **The launcher puts itself in the Start menu** the first time it runs from the downloaded
+  `.exe`, and in Windows' Apps list with its OffHorizon name and icon, like any other program.
+- **A tooltip shows what a clipped label hides**: an instance's name and state, a server's, the
+  account chip and the Play button's progress all read in full when the pointer rests on them.
+- **Importing an instance from another launcher brings the official Rust server** into its
+  Multiplayer list, and the name the other launcher played as (an offline account, yours to rename
+  in OffHorizon). Key bindings, options and worlds already travelled with the instance.
+
+### 🔧 Changed
+- **Technical names stay as they are in every language**: Rust, Vanilla, Java and Launcher are never
+  translated, and On/Off are left in English instead of becoming “su” and “giù”.
+- **The game window says OffHorizon**, in the title bar and in the taskbar, instead of Horizon.
+- **Version 0.1.5-nightly.**
+
+### 🐛 Fixed
+- **Performance mode now reaches the tabbed panel too**: it used to keep sampling the sky, so the
+  cards stayed see-through while every other plate was solid.
+- **A reset connection while a Mojang library downloads is tried again** (three times, with a short
+  pause), instead of ending preparation with “No connection: … os error 10054”.
+- **SKlauncher's own game folders are searched** for Minecraft 26.3 (`sklauncher/minecraft`,
+  `instances`, `profiles`) instead of only its program folder, which holds no game files.
 
 ## [0.1.4-nightly] - 2026-11-15
 
 ### 🐛 Fixed
 - **The launcher no longer offers the version it already runs as an update**: `v0.1.4-nightly`
-  and `launcher-v0.1.4-nightly` now compare as the same launcher version.
+  and `launcher-v0.1.4-nightly` compare as the same launcher version.
 - **A missing Minecraft 26.3 client is downloaded from Mojang's public files**, without a
   Microsoft account or ownership check. SKlauncher can keep a Fabric profile without the
   vanilla jar; that no longer blocks preparation.
@@ -36,37 +64,3 @@ section per version, and Added / Changed / Fixed groups.
 - **The OffHorizon mark carries a single crack**, in the launcher and the window icon.
 - **The changelog is part of the repository**, so the release body comes from the version's
   section instead of a generated commit list.
-
-### 🔧 Changed
-- **The opening says OFFHORIZON**, and the launcher's own mark and title use the same name.
-- **Performance mode is on from the first start.**
-- **AI features are off from the first start**: No AI is written before any page is drawn, and
-  an explicit choice by the player is kept.
-
-### 🐛 Fixed
-- **The launcher no longer presents a Microsoft account as required**: offline accounts play
-  both the Rust game and Java instances, and the Microsoft card only adds optional online play.
-
-## [0.1.2-nightly] - 2026-11-15
-
-### ✨ Added
-- **Offline accounts play Minecraft Rust and Minecraft Java** without a Microsoft sign-in.
-- **The launcher updates from `PiBOH/offhorizon`**, while the Rust game still installs from
-  `horizon-rust/horizon`.
-- **Native release assets**: `OffHorizon-Launcher-Linux-x86_64` and
-  `OffHorizon-Launcher-Windows-x64.exe`, with `SHA256SUMS` and a source archive.
-- **`version.txt` is the one version number**, embedded by the build and used for the release
-  tag, the launcher version and the update check.
-- **The upstream sync runs every 30 minutes** and reapplies the offline-account, no-telemetry
-  and branding patches.
-- **The launcher is called OffHorizon**, not offhorizon.
-
-### 🔧 Changed
-- **The release workflow publishes raw native executables**, not launcher zip files.
-- **macOS x64 is opt-in** (`OFFHORIZON_MACOS=true`), so a queued runner cannot hold releases.
-
-### 🐛 Fixed
-- **An offline account is created at first start** when the launcher has no account.
-- **Java instances download their version from Mojang's public files**, with or without a
-  Microsoft account.
-- **The release checksums and version check match the fork's workflows.**

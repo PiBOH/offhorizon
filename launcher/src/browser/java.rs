@@ -7,7 +7,7 @@
 //!
 //! Installing copies the carried-over folder mod into `horizon-mods/<mod id>/` beside
 //! `options.txt` and turns it on in `horizon-mods.txt`, where the game's Options > Mods reads it.
-use super::{installed::Entry, pick, FileRef, Kind, Project, Source, Support, Version};
+use super::{installed::Entry, pick, FileRef, Kind, Project, Source, SourceId, Support, Version};
 use horizon_port_pack::check::{self, Check, Verdict};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -290,6 +290,60 @@ impl Job<'_> {
     }
 }
 
+/// Installs a Java mod that is already on the machine: what [`install`] does with the carry of a
+/// jar the browser never downloaded (one an imported instance had). Its entry reads `Imported`,
+/// there being no project page to name, and it is removed as any other ([`remove`]).
+pub fn install_ported(
+    home: &Path,
+    check: &Check,
+    carry: &Path,
+    title: &str,
+    version: &str,
+) -> Result<Entry, String> {
+    let _lock = super::lock_home(home);
+    let relative = format!("{MODS_DIR}/{}", check.mod_id);
+    let target = home.join(&relative);
+    let mut installed = super::installed::Installed::load(home);
+    if let Some(other) = installed
+        .entries
+        .iter()
+        .find(|e| e.kind == Kind::Mod && e.file == relative)
+    {
+        return Err(format!("{title} is installed already: {}.", other.title));
+    }
+    if target.exists() {
+        return Err(format!(
+            "{relative} is already there and wasn't installed by the browser: move it away first."
+        ));
+    }
+    let part = home.join(MODS_DIR).join(format!(".{}.part", check.mod_id));
+    let _ = fs::remove_dir_all(&part);
+    copy_dir(carry, &part).inspect_err(|_| {
+        let _ = fs::remove_dir_all(&part);
+    })?;
+    fs::rename(&part, &target).map_err(|e| format!("{}: {e}", target.display()))?;
+    set_enabled(home, &check.mod_id, true)?;
+    let entry = Entry {
+        source: SourceId::Local,
+        project: check.mod_id.clone(),
+        slug: check.mod_id.clone(),
+        title: title.to_owned(),
+        kind: Kind::Mod,
+        version: version.to_owned(),
+        number: version.to_owned(),
+        file: relative,
+        checksum: String::new(),
+        page: String::new(),
+        dependency: false,
+        verdict: Some(check.verdict.label().to_owned()),
+        skipped: check.skipped.clone(),
+        namespaces: check.namespaces.clone(),
+    };
+    installed.entries.push(entry.clone());
+    installed.save(home)?;
+    Ok(entry)
+}
+
 /// Removes an installed mod's folder and turns it off.
 pub fn remove(home: &Path, entry: &Entry) -> Result<(), String> {
     let _lock = super::lock_home(home);
@@ -330,6 +384,38 @@ mod tests {
             fs::read_to_string(home.join(MODS_LIST)).unwrap(),
             "mod.coords_hud:true\n"
         );
+        fs::remove_dir_all(&home).unwrap();
+    }
+
+    #[test]
+    fn a_ported_mod_lands_in_the_folder_and_is_listed_as_imported() {
+        let home = std::env::temp_dir().join(format!("horizon-ported-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&home);
+        let carry = home.join("carry");
+        fs::create_dir_all(carry.join("data/ruby")).unwrap();
+        fs::write(carry.join("data/ruby/loot.json"), "{}").unwrap();
+        let check = Check {
+            mod_id: "ruby".into(),
+            name: "Ruby".into(),
+            version: "1.2".into(),
+            loader: "fabric".into(),
+            license: "MIT".into(),
+            verdict: Verdict::Works,
+            summary: "Ports blocks and recipes".into(),
+            ports: vec!["2 blocks".into()],
+            skipped: Vec::new(),
+            depends: Vec::new(),
+            namespaces: vec!["ruby".into()],
+            code: Default::default(),
+        };
+        let entry = install_ported(&home, &check, &carry, "Ruby", "1.2").unwrap();
+        assert_eq!(entry.file, "horizon-mods/ruby");
+        assert_eq!(entry.source, SourceId::Local);
+        assert_eq!(entry.verdict.as_deref(), Some("Works"));
+        assert!(home.join("horizon-mods/ruby/data/ruby/loot.json").is_file());
+        assert!(is_enabled(&home, "ruby"));
+        // The same mod a second time is left alone rather than replacing what is there.
+        assert!(install_ported(&home, &check, &carry, "Ruby", "1.2").is_err());
         fs::remove_dir_all(&home).unwrap();
     }
 

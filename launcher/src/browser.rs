@@ -78,6 +78,9 @@ pub enum SourceId {
     CurseForge,
     /// Horizon's own registry of reviewed mods, modpacks and resource packs ([`horizon`]).
     Horizon,
+    /// A Java mod that was already on the machine, ported while a Horizon instance prepared
+    /// ([`crate::auto_ports`]): there is no project page to point at.
+    Local,
 }
 
 impl SourceId {
@@ -86,6 +89,7 @@ impl SourceId {
             SourceId::Modrinth => "Modrinth",
             SourceId::CurseForge => "CurseForge",
             SourceId::Horizon => "Horizon",
+            SourceId::Local => "Imported",
         }
     }
 

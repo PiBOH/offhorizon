@@ -220,6 +220,19 @@ fn the_product_is_offhorizon_and_rust_stays_rust() {
 }
 
 #[test]
+fn a_technical_name_is_never_translated() {
+    // The Italian table once said "Edizione ruggine": Rust is the language, not the metal.
+    assert_eq!(tr_in(Language::Italian, "Rust Edition"), "Edizione Rust");
+    // A table that wrote the metal anyway gets the name back.
+    assert_eq!(
+        keep_technical(Language::French, "Rouille, le jeu".into()),
+        "Rust, le jeu"
+    );
+    // And a table that already says the name keeps it.
+    assert_eq!(keep_technical(Language::Italian, "Rust".into()), "Rust");
+}
+
+#[test]
 fn a_missing_string_shows_in_english() {
     assert_eq!(tr_in(Language::Polish, "Settings"), "Ustawienia");
     assert_eq!(tr_in(Language::Japanese, "Settings"), "設定");

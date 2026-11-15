@@ -334,7 +334,20 @@ fn paint(bounds: Bounds<Pixels>, kind: Kind, corners: Corners<Pixels>, window: &
 /// inward curve where the strip's right edge meets the panel's top. `strip` is the strip's size,
 /// recorded by [`measure`] inside it. Close to the panel's own width, the panel is one plate
 /// round at 20, as the mockup does.
-pub fn tabbed(strip: Rc<Cell<Option<Size<Pixels>>>>) -> impl IntoElement {
+pub fn tabbed(strip: Rc<Cell<Option<Size<Pixels>>>>) -> AnyElement {
+    // Performance mode: the panel is a solid plate like the other cards, never a piece of the
+    // scene, so it can be read and stays cheap on an older GPU.
+    let (plain, look) = PIECES.with_borrow(|p| (p.plain, p.look));
+    if plain {
+        return div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+            .rounded(px(20.))
+            .bg(rgb(look.plate))
+            .into_any_element();
+    }
     canvas(
         |_, _, _| {},
         move |bounds, (), window, _| {
@@ -374,6 +387,7 @@ pub fn tabbed(strip: Rc<Cell<Option<Size<Pixels>>>>) -> impl IntoElement {
     .top_0()
     .left_0()
     .size_full()
+    .into_any_element()
 }
 
 /// Records the size of the element it sits in (absolute, filling it) for [`tabbed`].

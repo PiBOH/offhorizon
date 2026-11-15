@@ -1,8 +1,8 @@
-# The macOS launcher: Horizon.app in a .dmg
+# The macOS launcher: OffHorizon.app in a .dmg
 
 `package.sh BINARY VERSION OUTDIR` (run by `.github/workflows/launcher.yml` on macOS) makes:
 
-- `Horizon.app`: `Contents/MacOS/horizon-launcher`, `Contents/Info.plist` (this folder's, bundle
+- `OffHorizon.app`: `Contents/MacOS/horizon-launcher`, `Contents/Info.plist` (this folder's, bundle
   id `dev.horizon.launcher`, macOS 11 or later), `Contents/Resources/horizon.icns`
   (`packaging/icons`, from `cargo run -p xtask -- icons`).
 - `horizon-launcher-macos-arm64.dmg`: the installer. Opening it shows the app and a link to
@@ -10,7 +10,7 @@
   player drags one onto the other. Built by [dmgbuild](https://github.com/dmgbuild/dmgbuild),
   which writes the Finder layout without a GUI session.
 - `horizon-launcher-macos-arm64.zip`: the same app, zipped with `ditto`. The launcher updates
-  itself from this: inside Horizon.app it replaces the whole bundle (copied beside it, then
+  itself from this: inside OffHorizon.app it replaces the whole bundle (copied beside it, then
   swapped in by renaming, then restarted); a bare `horizon-launcher` binary, as launchers before
   the app shipped, finds the binary inside the zip and replaces only itself.
 
@@ -20,7 +20,7 @@ Releases are signed with Ludovic's **Developer ID** ("Developer ID Application: 
 (YYJU63HSD4)"), with the hardened runtime and a secure timestamp, then **notarized** by Apple and
 **stapled**, so Gatekeeper opens them on any Mac without a warning, offline too:
 
-- the launcher (`package.sh`): Horizon.app is signed, notarized and stapled first, so the zip the
+- the launcher (`package.sh`): OffHorizon.app is signed, notarized and stapled first, so the zip the
   launcher updates itself from and the .dmg both hold it stapled; then the .dmg is signed,
   notarized and stapled. The script ends with what Gatekeeper says of each, which must read
   `accepted` and `source=Notarized Developer ID`.
@@ -30,7 +30,7 @@ Releases are signed with Ludovic's **Developer ID** ("Developer ID Application: 
   ticket: Gatekeeper asks Apple online the first time each one runs.
 
 No entitlements are needed. The launcher checks an update's signature before swapping the new
-Horizon.app in, and again where it lands; when it doesn't hold, the old app is put back.
+OffHorizon.app in, and again where it lands; when it doesn't hold, the old app is put back.
 
 The switch is the repository variable `MACOS_SIGN_IDENTITY`: set to the identity's name, the
 builds sign and notarize; empty (as in forks), they are signed **ad hoc** as before.

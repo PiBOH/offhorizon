@@ -64,8 +64,22 @@ line, for example `0.1.2-nightly`.
   the offline/telemetry files from the pre-merge commit, and only pushes if
   `tools/offhorizon_sync.py` passes its checks.
 - No version-bump commits: change `version.txt` in the same commit as the code.
-- A changelog is optional. If `CHANGELOG.md` has a `## [<version>]` section it goes in the release
-  body; otherwise the body lists the commits since the previous tag.
+- Two changelogs, as in [PiBOH/vivi-music-de](https://github.com/PiBOH/vivi-music-de):
+  `CHANGELOG.md` is the players' record and the only one the release body quotes (`## [<version>]`
+  section, else the commits since the previous tag); `CHANGELOG.dev.md` is the engineering record
+  (module, cause, check) and never reaches a release. A change adds a line to both, in the same
+  version section.
+- `site/` is the download site: the Horizon site from `.local/website`, rebranded OffHorizon and
+  with no telemetry, served at `https://piboh.github.io/offhorizon`. Publishing it is `git
+  checkout gh-pages` and copying `site/` over the branch root (or `git subtree push --prefix=site
+  origin gh-pages`); `.nojekyll` and the `_next/` folder travel with it. `README.md`'s download
+  button points there.
+- One icon, `packaging/icons/offhorizon.ico`: `launcher/build.rs` embeds it (and the OffHorizon
+  version resource) in the Windows executables, the Linux packages use
+  `packaging/icons/hicolor/*/apps/offhorizon.png` and `scalable/apps/offhorizon.svg`, and macOS
+  uses `packaging/icons/offhorizon.icns`. Never ship a package that shows Horizon's name or mark.
+- The release body keeps the line that offhorizon is not approved by or associated with
+  horizon-rust, Mojang or Microsoft.
 - The release body must keep the line that offhorizon is not approved by or associated with
   horizon-rust, Mojang or Microsoft.
 
@@ -139,6 +153,13 @@ python3 tools/pr_ready.py            # the upstream self-check, when the change 
 The launcher is its own Cargo workspace; the game is the root workspace. Linux needs
 `libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libfontconfig-dev libvulkan-dev libasound2-dev`.
 Use `CARGO_TARGET_DIR=.local/target` when the default target would land outside `.local/`.
+
+On Windows a checkout whose path has spaces (`D:\8 - GitHub PiBOH\…`) breaks the bundled GNU
+toolchain: `ld` and `windres` split their own paths on the spaces (`cannot find -: No such file or
+directory`), and `subst` does not help because gcc resolves its real path. Copy `.local/tools/mingw`
+and `.local/tools/cargo` to a folder without spaces and build with `CARGO_HOME`, `CARGO_TARGET_DIR`
+and `PATH` pointing there (`mingw64\bin` first). A release build also needs `fxc.exe` from the
+Windows SDK (`GPUI_FXC_PATH`), which a machine without the SDK does not have; debug tests do not.
 
 ## Where things live
 

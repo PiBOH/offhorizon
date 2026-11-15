@@ -146,6 +146,7 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
             ("ATLauncher", f.data.join("ATLauncher")),
             ("Dawn Client", f.data.join(".dawn")),
             (SKLAUNCHER, f.data.join("sklauncher")),
+            (SKLAUNCHER, f.data.join("sklauncher").join("minecraft")),
             (SKLAUNCHER, f.data.join(".sklauncher")),
             (SKLAUNCHER, f.data.join("minecraft").join("skprofiles")),
         ],
@@ -156,7 +157,11 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
             ("ATLauncher", f.data.join("ATLauncher")),
             ("Dawn Client", f.data.join(".dawn")),
             (SKLAUNCHER, f.data.join(".sklauncher")),
-            (SKLAUNCHER, f.data.join("sklauncher")),
+            // SKlauncher 3.2's program folder (`%APPDATA%\sklauncher`, holding its jar and JRE)
+            // also keeps the game data it downloaded, when the player picked that layout.
+            (SKLAUNCHER, f.data.join("sklauncher").join("minecraft")),
+            (SKLAUNCHER, f.data.join("sklauncher").join("instances")),
+            (SKLAUNCHER, f.data.join("sklauncher").join("profiles")),
             (SKLAUNCHER, f.data.join(".minecraft").join("skprofiles")),
         ],
     };

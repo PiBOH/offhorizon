@@ -562,7 +562,7 @@ impl<'a> Split<'a> {
                             }
                         }
                     }
-                    .with_title("Horizon")
+                    .with_title("OffHorizon")
                 }
             };
             let made = event_loop

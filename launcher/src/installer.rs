@@ -129,6 +129,27 @@ pub fn folder_for(chosen: &Path) -> PathBuf {
     }
 }
 
+/// Registers a launcher the player started without running setup (the `.exe` a release page
+/// serves): the Start menu shortcut and the Apps list entry point at that very file, so
+/// OffHorizon opens from the Start menu like any other program. Nothing is copied or moved; a
+/// later setup replaces both entries with the installed copy.
+pub fn register_first_run() {
+    if cfg!(debug_assertions) || registered().is_some() {
+        return;
+    }
+    if std::env::var_os("HORIZON_LAUNCHER_NO_SHORTCUT").is_some_and(|v| !v.is_empty()) {
+        return;
+    }
+    let exe = backend::exe_path().to_path_buf();
+    let Some(dir) = exe.parent() else {
+        return;
+    };
+    if let Some(link) = start_menu_link() {
+        let _ = write_link(&link, &exe);
+    }
+    let _ = register(dir, &exe, backend::VERSION);
+}
+
 /// The install this account has, if its launcher is still there.
 pub fn installed() -> Option<Installed> {
     let installed = registered()?;

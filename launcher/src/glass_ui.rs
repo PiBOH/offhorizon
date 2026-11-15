@@ -3,8 +3,8 @@
 //! text and fills at a few opacities over [`glass`](crate::glass) plates; Geist throughout.
 use crate::{hover_fade, hover_is, keyboard, note_hover, theme::Theme, track_hover, Kind};
 use gpui::{
-    div, prelude::*, px, rgb, rgba, svg, App, ClickEvent, Div, FontWeight, Hsla, SharedString,
-    Stateful, Svg, TextRun, Window,
+    div, prelude::*, px, rgb, rgba, svg, AnyView, App, ClickEvent, Context, Div, FontWeight, Hsla,
+    SharedString, Stateful, Svg, TextRun, Window,
 };
 use horizon_theme::glass::{fill, ink, radius, Glass};
 use std::cell::Cell;
@@ -325,10 +325,48 @@ pub fn row(id: impl Into<SharedString>, current: bool, pr: f32, t: &Theme) -> St
     keyboard(track_hover(d, id), t)
 }
 
+/// A short tooltip: one label in full, for the places that can only ellipsize it.
+pub struct Tip {
+    text: SharedString,
+}
+
+impl gpui::Render for Tip {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .max_w(px(320.))
+            .px(px(10.))
+            .py(px(7.))
+            .rounded(px(8.))
+            .bg(rgb(0x1c1630))
+            .border_1()
+            .border_color(rgba(0xffffff2e))
+            .text_size(px(12.5))
+            .line_height(px(18.))
+            .text_color(gpui::white())
+            .child(self.text.clone())
+    }
+}
+
+/// The tooltip view for `text`, built only once the tooltip shows: an element whose text fits
+/// costs nothing. Attach it with `StatefulInteractiveElement::tooltip` on an element with an id.
+pub fn tip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView + 'static {
+    let text = text.into();
+    move |_, cx: &mut App| {
+        let text = text.clone();
+        cx.new(|_| Tip { text }).into()
+    }
+}
+
 /// A row's two lines: the name (14 px semibold) and its state after a dot (12.5 px, white at
-/// 65 %), both at the page's 1.5 line height.
-pub fn row_text(name: impl Into<SharedString>, state: (Tone, String)) -> Div {
-    div()
+/// 65 %), both at the page's 1.5 line height. A name or state long enough for the column to clip
+/// it carries the whole of both in a tooltip.
+pub fn row_text(name: impl Into<SharedString>, state: (Tone, String)) -> Stateful<Div> {
+    let name = name.into();
+    let (tone, said) = state;
+    let full = SharedString::from(format!("{name} — {said}"));
+    let long = name.chars().count() > 22 || said.chars().count() > 28;
+    let row = div()
+        .id(SharedString::from(format!("row-text-{full}")))
         .relative()
         .flex()
         .flex_col()
@@ -338,7 +376,7 @@ pub fn row_text(name: impl Into<SharedString>, state: (Tone, String)) -> Div {
             text(14., FontWeight::SEMIBOLD, ink::FULL)
                 .line_height(px(21.))
                 .truncate()
-                .child(name.into()),
+                .child(name),
         )
         .child(
             div()
@@ -346,14 +384,15 @@ pub fn row_text(name: impl Into<SharedString>, state: (Tone, String)) -> Div {
                 .items_center()
                 .gap(px(6.))
                 .min_w_0()
-                .child(dot(state.0))
+                .child(dot(tone))
                 .child(
                     text(12.5, FontWeight::NORMAL, ink::MUTED)
                         .line_height(px(18.75))
                         .truncate()
-                        .child(state.1),
+                        .child(said),
                 ),
-        )
+        );
+    if long { row.tooltip(tip(full)) } else { row }
 }
 
 /// A square button with one icon (`ICON_BUTTON`): white at 65 %, white with a 8 % fill under

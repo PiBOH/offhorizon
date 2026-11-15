@@ -619,14 +619,67 @@ pub fn current() -> Language {
 
 type Table = HashMap<String, &'static str>;
 
+/// Words a table turned a technical name of the game into, per language: `Rust` is the language
+/// the game is written in, never the metal, and `Vanilla`, `Java` and `Launcher` are names too.
+/// A translated value that contains one of these gets the name back, whatever the translator
+/// wrote for it.
+const TECHNICAL_WORDS: &[(&str, &[&str])] = &[
+    ("it", &["ruggine", "Ruggine"]),
+    ("fr", &["rouille", "Rouille"]),
+    ("es", &["óxido", "Óxido", "oxido", "Oxido"]),
+    ("de", &["Rost"]),
+    ("pt-br", &["ferrugem", "Ferrugem"]),
+    ("pt", &["ferrugem", "Ferrugem"]),
+    ("ru", &["Ржавчина", "ржавчина"]),
+    ("uk", &["Іржа", "іржа"]),
+    ("pl", &["Rdza", "rdza"]),
+    ("cs", &["rez", "Rez"]),
+    ("sk", &["hrdza", "Hrdza"]),
+    ("nl", &["roest", "Roest"]),
+    ("sv", &["rost", "Rost"]),
+    ("fi", &["ruoste", "Ruoste"]),
+    ("hu", &["rozsda", "Rozsda"]),
+    ("ro", &["rugină", "Rugină"]),
+    ("el", &["σκουριά", "Σκουριά"]),
+    ("ja", &["錆"]),
+    ("zh", &["锈", "鏽"]),
+    ("ko", &["녹"]),
+];
+
+/// The names a translation must keep as they are, put back in `text`.
+fn keep_technical(language: Language, text: String) -> String {
+    let Some((_, words)) = TECHNICAL_WORDS.iter().find(|(code, _)| *code == language.code()) else {
+        return text;
+    };
+    let mut out = text;
+    for word in *words {
+        if out.contains(word) {
+            out = out.replace(word, "Rust");
+        }
+    }
+    out
+}
+
 /// OffHorizon's name in the launcher: the fork is not Horizon, so every visible
 /// "Horizon" becomes "OffHorizon", and a lowercase fork name becomes "OffHorizon" too.
 /// "Rust" is a language name and never changes.
-fn branded(s: &str) -> &'static str {
+fn branded(language: Language, s: &str) -> &'static str {
     use std::sync::Mutex;
-    static CACHE: OnceLock<Mutex<HashMap<String, &'static str>>> = OnceLock::new();
+    static CACHE: OnceLock<Mutex<HashMap<(u8, String), &'static str>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Some(hit) = cache.lock().unwrap_or_else(|e| e.into_inner()).get(s) {
+    let key = (
+        Language::ALL
+            .iter()
+            .position(|l| *l == language)
+            .unwrap_or(0) as u8,
+        s.to_owned(),
+    );
+    if let Some(hit) = cache
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&key)
+        .copied()
+    {
         return hit;
     }
     let mut out = String::with_capacity(s.len() + 8);
@@ -643,11 +696,11 @@ fn branded(s: &str) -> &'static str {
     out.push_str(rest);
     // Some source strings and old translations write the fork name in lowercase.
     let out = out.replace("offhorizon", "OffHorizon");
-    let leaked: &'static str = Box::leak(out.into_boxed_str());
+    let leaked: &'static str = Box::leak(keep_technical(language, out).into_boxed_str());
     cache
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .insert(s.to_owned(), leaked);
+        .insert(key, leaked);
     leaked
 }
 
@@ -675,7 +728,7 @@ fn table(language: Language) -> &'static Table {
 /// `en` in `language`, or `en` itself where the table lacks it. The visible product name is
 /// always offhorizon's, whatever the source string or translation says.
 pub fn tr_in(language: Language, en: &str) -> &'static str {
-    branded(table(language).get(en).copied().unwrap_or(en))
+    branded(language, table(language).get(en).copied().unwrap_or(en))
 }
 
 /// `en` in the launcher's language.

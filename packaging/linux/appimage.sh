@@ -34,7 +34,7 @@ chmod 755 "$appdir/usr/bin/horizon-launcher"
 cp "$here/horizon-launcher.desktop" "$appdir/horizon-launcher.desktop"
 cp "$here/horizon-launcher.desktop" "$appdir/usr/share/applications/horizon-launcher.desktop"
 cp -R "$here/../icons/hicolor/." "$appdir/usr/share/icons/hicolor/"
-cp "$here/../icons/hicolor/512x512/apps/horizon.png" "$appdir/horizon.png"
+cp "$here/../icons/hicolor/512x512/apps/offhorizon.png" "$appdir/offhorizon.png"
 ln -s horizon.png "$appdir/.DirIcon"
 
 # Runs the packaged binary. It finds the packaged libraries through its own run path (set below),

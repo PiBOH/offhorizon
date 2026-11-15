@@ -684,6 +684,56 @@ pub fn copy_game(found: &Found, to: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// The player name another launcher recorded for its account, when it keeps one where OffHorizon
+/// can read it: the Modrinth App's `accounts.json`, the official launcher's
+/// `launcher_accounts.json`, and SKlauncher's `profiles/*.json` or an instance's `instance.json`.
+/// A name OffHorizon can't use (empty, too long, punctuation) is not one.
+pub fn player_name(root: &Path) -> Option<String> {
+    fn usable(name: &str) -> Option<String> {
+        let name = name.trim();
+        ((3..=16).contains(&name.chars().count())
+            && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'))
+        .then(|| name.to_string())
+    }
+    fn from_json(value: &Value) -> Option<String> {
+        let accounts = value.get("accounts")?;
+        let pick = |a: &Value| {
+            ["username", "name", "playerName"]
+                .iter()
+                .find_map(|k| a.get(*k).and_then(Value::as_str))
+                .or_else(|| a.get("minecraftProfile")?.get("name")?.as_str())
+                .and_then(usable)
+        };
+        match accounts {
+            Value::Array(list) => list.iter().find_map(pick),
+            Value::Object(map) => map.values().find_map(pick),
+            _ => None,
+        }
+    }
+    let read = |path: PathBuf| -> Option<String> {
+        let text = fs::read_to_string(path).ok()?;
+        let json: Value = serde_json::from_str(&text).ok()?;
+        from_json(&json)
+    };
+    read(root.join("accounts.json"))
+        .or_else(|| read(root.join("launcher_accounts.json")))
+        .or_else(|| {
+            fs::read_dir(root.join("profiles"))
+                .into_iter()
+                .flatten()
+                .flatten()
+                .filter(|e| e.path().extension().is_some_and(|x| x == "json"))
+                .find_map(|e| {
+                    let json: Value =
+                        serde_json::from_str(&fs::read_to_string(e.path()).ok()?).ok()?;
+                    ["username", "playerName"]
+                        .iter()
+                        .find_map(|k| json.get(*k).and_then(Value::as_str))
+                        .and_then(usable)
+                })
+        })
+}
+
 /// The loader `found` runs, at the same version, when Horizon installs it ([`loaders::Kind`]).
 pub fn loader(found: &Found) -> Option<loaders::Loader> {
     let l = found.loader.as_ref()?;
@@ -709,6 +759,23 @@ pub fn import(found: &Found, name: &str, minecraft: Option<&str>) -> Result<Inst
     if let Err(e) = copy_game(found, &instance.home) {
         let _ = instances::delete(&instance.id);
         return Err(format!("Could not copy {}: {e}", found.game.display()));
+    }
+    // The official Rust server comes along, and so does the player: an offline account with the
+    // name the other launcher used, so worlds and LAN players meet the same `OfflinePlayer`
+    // UUID. Both stay the player's to change in OffHorizon.
+    let links = crate::backend::Links::default();
+    let _ = crate::server_list::add_official(
+        &instance.home,
+        &links.official_server,
+        &links.official_server_previous,
+    );
+    if let Some(name) = player_name(&found.game) {
+        let mut accounts = crate::account::Accounts::load();
+        if accounts.accounts.is_empty() {
+            if accounts.add_offline(&name).is_ok() {
+                let _ = accounts.save();
+            }
+        }
     }
     match loader(found) {
         Some(l) => instances::edit(&instance.id, |m| {

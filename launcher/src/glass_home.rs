@@ -403,33 +403,38 @@ impl Launcher {
                 .child(label)
         };
         let group = match busy {
-            Some((label, progress)) => base
-                .bg(accent.opacity(0.35))
-                .child(
-                    div()
-                        .absolute()
-                        .top_0()
-                        .left_0()
-                        .h_full()
-                        .w(gpui::relative(progress.unwrap_or(0.).clamp(0., 1.)))
-                        .bg(accent),
-                )
-                .child(
-                    div()
-                        .relative()
-                        .flex()
-                        .flex_1()
-                        .justify_center()
-                        .pr(px(40.))
-                        .text_color(on_accent)
-                        .font_family(horizon_theme::glass::FONT)
-                        .text_size(px(16.))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child(match progress {
-                            Some(p) => format!("{label} {:.0}%", p * 100.),
-                            None => format!("{label}…"),
-                        }),
-                ),
+            Some((label, progress)) => {
+                // The button clips a long state at a narrow width: the whole of it on hover.
+                let said = match progress {
+                    Some(p) => format!("{label} {:.0}%", p * 100.),
+                    None => format!("{label}…"),
+                };
+                base.bg(accent.opacity(0.35))
+                    .child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .left_0()
+                            .h_full()
+                            .w(gpui::relative(progress.unwrap_or(0.).clamp(0., 1.)))
+                            .bg(accent),
+                    )
+                    .child(
+                        div()
+                            .id("play-state")
+                            .relative()
+                            .flex()
+                            .flex_1()
+                            .justify_center()
+                            .pr(px(40.))
+                            .text_color(on_accent)
+                            .font_family(horizon_theme::glass::FONT)
+                            .text_size(px(16.))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(said.clone())
+                            .tooltip(ui::tip(said)),
+                    )
+            }
             None if running => base.bg(white(0.14)).child(
                 body(tr("Stop").into(), "stop")
                     .id("play")
