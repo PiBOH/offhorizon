@@ -66,6 +66,10 @@ jobs:
             launcher/src/glass_account.rs \
             launcher/src/owner_page.rs \
             launcher/src/i18n.rs
+          # GITHUB_TOKEN may not create or update workflow files. Keep the fork's workflows
+          # untouched by the merge (including files upstream added).
+          rm -rf .github/workflows
+          git checkout "$before" -- .github/workflows
 
       - name: Rebrand new strings and check the fork's promises
         if: steps.merge.outputs.up_to_date == 'false'
@@ -87,6 +91,7 @@ jobs:
 
       - name: Report a failed sync
         if: failure()
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
