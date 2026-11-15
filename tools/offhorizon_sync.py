@@ -134,6 +134,9 @@ def check() -> list[str]:
         errors.append("CHANGELOG.md is missing")
     if not (ROOT / "packaging/icons/offhorizon.ico").is_file():
         errors.append("the OffHorizon crack icon is missing")
+    readme = read(ROOT / "README.md")
+    if "https://piboh.github.io/offhorizon/" not in readme:
+        errors.append("README.md lost the OffHorizon download link")
 
     installer = read(launcher / "installer.rs")
     if 'APP_NAME: &str = "OffHorizon Launcher"' not in installer:

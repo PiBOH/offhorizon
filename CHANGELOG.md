@@ -6,6 +6,28 @@ section per version, and Added / Changed / Fixed groups.
 
 ## [Unreleased]
 
+## [0.1.4-nightly] - 2026-11-15
+
+### 🐛 Fixed
+- **The launcher no longer offers the version it already runs as an update**: `v0.1.4-nightly`
+  and `launcher-v0.1.4-nightly` now compare as the same launcher version.
+- **A missing Minecraft 26.3 client is downloaded from Mojang's public files**, without a
+  Microsoft account or ownership check. SKlauncher can keep a Fabric profile without the
+  vanilla jar; that no longer blocks preparation.
+- **Settings fit a narrow window**: below the wide breakpoint the section list becomes a
+  wrapping grid instead of a tall full-width column that pushes the card off-screen.
+- **Visible names say OffHorizon everywhere**: the default instance, the settings tiles and
+  the error text no longer fall back to “Horizon”.
+- **The crack in the mark is light red**, in the PNG and every frame of the Windows icon.
+
+### 🔧 Changed
+- **Italian translations were revised**: offline-account text, Microsoft-account wording,
+  technical terms such as jar and mixins, and strings that had stayed in English.
+- **The README download button points to the OffHorizon site**, and the upstream sync keeps
+  `README.md` and `AGENTS.md` from overwriting it.
+- **The `gh-pages` site is rebuilt as OffHorizon**, with direct release downloads and no
+  analytics or telemetry.
+
 ## [0.1.3-nightly] - 2026-11-15
 
 ### ✨ Added

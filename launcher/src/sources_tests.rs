@@ -496,7 +496,7 @@ fn nothing_found_lists_every_folder_and_what_it_lacks() {
     let mojang = Mojang::new(MANIFEST);
     let error = resolve_with(&chosen, &known, &s.0.join("linked"), &mojang).unwrap_err();
     let expected = format!(
-        "Minecraft 26.3 was not found. Horizon looked in:\n  \
+        "Minecraft 26.3 was not found. OffHorizon looked in:\n  \
          {} (the folder doesn't exist)\n  \
          {} (Prism Launcher: libraries/com/mojang/minecraft/26.3/minecraft-26.3-client.jar is \
          not the 26.3 release Horizon was made for)\n  \
@@ -526,7 +526,7 @@ fn a_version_file_without_its_game_says_to_play_it_once() {
     let mojang = Mojang::new(MANIFEST);
     let error = resolve_with(&chosen, &known, &s.0.join("linked"), &mojang).unwrap_err();
     let expected = format!(
-        "Minecraft 26.3 was not found. Horizon looked in:\n  \
+        "Minecraft 26.3 was not found. OffHorizon looked in:\n  \
          {} (versions/26.3/26.3.json is here but not the game itself: play 26.3 once in that \
          launcher to download it)\n  \
          {} (Modrinth App: meta/versions/26.3/26.3.json is here but not the game itself: play \

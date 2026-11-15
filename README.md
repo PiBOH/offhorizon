@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://playhorizon.dev"><img src="docs/media/readme/download-button.png" alt="Download the Horizon launcher for Windows, macOS and Linux" width="400"></a>
+  <a href="https://piboh.github.io/offhorizon/"><img src="docs/media/readme/download-button.png" alt="Download the OffHorizon launcher for Windows and Linux" width="400"></a>
 </p>
 
 <p align="center">
@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
-  <a href="https://playhorizon.dev"><b>Website</b></a> ·
-  <a href="https://playhorizon.dev/docs/"><b>Docs</b></a> ·
-  <a href="https://playhorizon.dev/docs/install"><b>Install guide</b></a> ·
+  <a href="https://piboh.github.io/offhorizon/"><b>Website</b></a> ·
+  <a href="https://piboh.github.io/offhorizon/#docs"><b>Docs</b></a> ·
+  <a href="https://piboh.github.io/offhorizon/#install"><b>Install guide</b></a> ·
   <a href="https://discord.gg/playhorizon"><b>Discord</b></a> ·
   <a href="ROADMAP.md"><b>Roadmap</b></a>
 </p>

@@ -61,7 +61,9 @@ jobs:
           # Re-apply the fork's own offline-account, no-telemetry and branding files even when
           # upstream changed them without a textual conflict. The rest of the merge stays.
           git checkout "$before" -- \
+            AGENTS.md \
             CHANGELOG.md \
+            README.md \
             crates/horizon-telemetry/src/lib.rs \
             crates/horizon-theme/icons/offhorizon-64.png \
             launcher/src/account.rs \

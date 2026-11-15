@@ -1223,5 +1223,8 @@
   "Play offline (no account)": "Play offline (no account)",
   "No Microsoft sign-in: singleplayer and LAN.": "No Microsoft sign-in: singleplayer and LAN.",
   "line comment": "line comment",
-  "Offline account · singleplayer and LAN": "Offline account · singleplayer and LAN"
+  "Offline account · singleplayer and LAN": "Offline account · singleplayer and LAN",
+  "OffHorizon": "OffHorizon",
+  "Offline account": "Offline account",
+  "Offline account · plays": "Offline account · plays"
 }

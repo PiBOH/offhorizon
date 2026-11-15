@@ -21,10 +21,22 @@ fn main() {
         })
         .unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_owned());
     println!("cargo:rustc-env=HORIZON_LAUNCHER_VERSION={version}");
-    let ico = format!("{dir}/../packaging/icons/offhorizon.ico");
-    println!("cargo:rerun-if-changed={ico}");
+    // windres cannot carry a path with spaces (this checkout's folder has them). Copy the icon
+    // into OUT_DIR, which Cargo keeps under the target folder, and hand windres that path.
+    let ico_src = std::path::Path::new(&dir).join("../packaging/icons/offhorizon.ico");
+    let ico_src = ico_src.canonicalize().unwrap_or(ico_src);
+    println!("cargo:rerun-if-changed={}", ico_src.display());
+    let ico = std::path::PathBuf::from(
+        std::env::var_os("OUT_DIR").expect("build scripts always get OUT_DIR"),
+    )
+    .join("offhorizon.ico");
+    std::fs::copy(&ico_src, &ico)
+        .unwrap_or_else(|e| panic!("copying {} to {}: {e}", ico_src.display(), ico.display()));
+    let ico = ico.to_string_lossy().replace('\\', "/");
     #[cfg(windows)]
-    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+        && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("gnu")
+    {
         let mut resource = winresource::WindowsResource::new();
         resource.set_icon(&ico);
         if let Err(e) = resource.compile() {

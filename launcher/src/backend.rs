@@ -618,7 +618,11 @@ pub fn release_order(tag: &str) -> ReleaseOrder {
         return ReleaseOrder::Nightly(date.to_owned());
     }
     let semver = tag
-        .strip_prefix(LAUNCHER_TAG_PREFIX)
+        // `launcher-v0.16.0` is the old scheme and stays below 0.2; the fork's
+        // `launcher-v0.1.4-nightly` names the same version as `v0.1.4-nightly`.
+        .strip_prefix(OLD_LAUNCHER_TAG_PREFIX)
+        .filter(|v| v.contains('-'))
+        .or_else(|| tag.strip_prefix(LAUNCHER_TAG_PREFIX))
         .or_else(|| tag.strip_prefix('v'))
         .and_then(semver_order);
     semver.unwrap_or_else(|| {
@@ -1999,15 +2003,9 @@ fn refill_own_store(tag: &str) {
     else {
         return;
     };
-    let fetch = |url: &str| -> Result<Vec<u8>, String> {
-        let mut body = Vec::new();
-        get(url)?
-            .into_reader()
-            .read_to_end(&mut body)
-            .map_err(|e| e.to_string())?;
-        Ok(body)
-    };
-    if let Err(e) = download_for_owner(&pins, &own, &fetch, &|line| eprintln!("{line}")) {
+    if let Err(e) = download_version_public(&pins.version, &pins.manifests[0], &|line| {
+        eprintln!("{line}")
+    }) {
         eprintln!("{tag}: the missing assets were not downloaded: {e}");
     }
 }
@@ -2344,7 +2342,7 @@ fn download_for(
                 sources::Os::Windows => "windows",
             };
             mojang::download(pins, dir, os, 8, fetch, &mojang::CANCEL, log).map_err(|e| {
-                format!("\n  • Horizon tried to download {v} from Mojang for {name}, but: {e}")
+                format!("\n  • OffHorizon tried to download {v} from Mojang for {name}, but: {e}")
             })
         }
         // An owner by its last answer, who can't be asked now.
@@ -2354,11 +2352,11 @@ fn download_for(
             pass.offline.unwrap_or_default()
         )),
         Err(_) if signed_in => Err(
-            "\n  • No signed-in account owns Minecraft: Java Edition, so Horizon can't download it."
+            "\n  • No signed-in account owns Minecraft: Java Edition, so OffHorizon can't download it."
                 .into(),
         ),
         Err(_) => Err(format!(
-            "\n  • Or sign in with the Microsoft account that owns Minecraft: Horizon then \
+            "\n  • Or sign in with the Microsoft account that owns Minecraft: OffHorizon then \
              downloads {v} from Mojang itself."
         )),
     }
@@ -2417,7 +2415,7 @@ fn java(
     let runtime = data_dir().join("minecraft").join("runtime");
     let home = mojang::java_runtime(&component, &runtime, 8, &fetch, &mojang::CANCEL, log)
         .map_err(|e| {
-        format!("{missing}\n  • Horizon also tried to download Minecraft's own Java from Mojang, but: {e}")
+        format!("{missing}\n  • OffHorizon also tried to download Minecraft's own Java from Mojang, but: {e}")
     })?;
     find(major, &[home]).map(|jdk| jdk.home())
 }
@@ -2551,9 +2549,8 @@ pub fn preparer(
         };
         let linked = data_dir().join("linked-minecraft");
         if from == MinecraftFrom::Mojang {
-            // Straight from Mojang (what is already there and whole is kept), for an owner only.
-            download_for_owner(&pins, &own, &fetch, log)
-                .map_err(|e| e.trim_start_matches("\n  • ").to_string())?;
+            // Mojang's version files are public: no account or ownership gate here.
+            download_version_public(&pins.version, &pins.manifests[0], log)?;
             own
         } else {
             let resolved = sources::resolve(minecraft, &pins, &known, &linked, &fetch, log);
@@ -2564,7 +2561,8 @@ pub fn preparer(
                     sources::Resolved::Folder(dir) => dir,
                     sources::Resolved::NotFound(checked) => {
                         let not_found = sources::not_found(&version, &checked, minecraft);
-                        download_for_owner(&pins, &own, &fetch, log).map_err(|e| not_found + &e)?;
+                        download_version_public(&pins.version, &pins.manifests[0], log)
+                            .map_err(|e| format!("{not_found}\n  • {e}"))?;
                         own
                     }
                 }
@@ -5006,8 +5004,10 @@ mod tests {
         // `download_for` is defined once and called once, by `download_for_owner`.
         assert_eq!(backend.matches("download_for(").count(), 2);
         assert!(body("download_for_owner").contains("download_for("));
-        // Refilling an incomplete store asks the same gate and names no host or download itself.
-        assert!(body("refill_own_store").contains("download_for_owner("));
+        // Refilling an incomplete store uses Mojang's public files, so an offline account can
+        // repair a store without a Microsoft sign-in.
+        assert!(body("refill_own_store").contains("download_version_public("));
+        assert!(!body("refill_own_store").contains("download_for_owner("));
         assert!(!body("refill_own_store").contains("mojang::"));
         // It runs at start-up, never on Play, which also runs `complete_assets`.
         let public = |f: &str| {
@@ -6181,6 +6181,21 @@ pub fn {f}("
         );
         assert_eq!(appimage_path_in(Some(file.as_os_str()), None, exe), None);
         let _ = std::fs::remove_file(&file);
+    }
+
+    /// The old `launcher-v` tags and the fork's `v` tags name the same launcher version. Before
+    /// this, `launcher-v0.1.3-nightly` sorted below `v0.1.3-nightly`, so the installed release
+    /// looked older than itself and the launcher offered its own version as an update.
+    #[test]
+    fn the_old_launcher_prefix_does_not_make_the_same_version_newer() {
+        assert_eq!(
+            compare_versions("launcher-v0.1.4-nightly", "v0.1.4-nightly"),
+            Equal
+        );
+        assert_eq!(
+            compare_versions("v0.1.4-nightly", "launcher-v0.1.4-nightly"),
+            Equal
+        );
     }
 
     #[test]

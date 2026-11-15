@@ -108,7 +108,8 @@ impl Launcher {
                     div()
                         .id(SharedString::from(format!("settings-nav-{i}")))
                         .flex()
-                        .flex_none()
+                        .when(wide, |d| d.flex_none())
+                        .when(!wide, |d| d.flex_1().min_w(px(132.)))
                         .items_center()
                         .gap(px(if wide { 12. } else { 8. }))
                         .h(px(if wide { 40. } else { 34. }))
@@ -156,9 +157,8 @@ impl Launcher {
                 .id("settings-nav-strip")
                 .flex_none()
                 .w_full()
-                .flex_row()
-                .overflow_x_scroll()
-                .on_scroll(|_, _, cx| cx.stop_propagation())
+                .flex()
+                .flex_wrap()
                 .gap(px(4.))
                 .p(px(6.))
                 .children(items)
@@ -372,7 +372,7 @@ impl Launcher {
             .gap(px(8.))
             .child(tile(
                 self.horizon_mark(42.),
-                "Horizon".into(),
+                "OffHorizon".into(),
                 installed.unwrap_or_else(|| tr("Nightly").to_string()),
                 div()
                     .flex()
@@ -485,7 +485,7 @@ impl Launcher {
                     0,
                     tr("Applications menu"),
                     note(if self.settings.desktop_entry() {
-                        "Horizon and its icon are in your desktop's menu."
+                        "OffHorizon and its icon are in your desktop's menu."
                     } else {
                         "Not in your desktop's menu."
                     }),

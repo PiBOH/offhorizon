@@ -345,7 +345,7 @@ pub fn find(dir: &Path, pins: &Pins) -> Result<Found, String> {
 /// launcher Horizon knows, the advice names it: a Prism or MultiMC instance downloads the game
 /// only when it is launched once.
 pub fn not_found(version: &str, checked: &[(PathBuf, String)], chosen: &Path) -> String {
-    let mut text = format!("Minecraft {version} was not found. Horizon looked in:");
+    let mut text = format!("Minecraft {version} was not found. OffHorizon looked in:");
     for (dir, missing) in checked {
         text += &format!("\n  {} ({missing})", dir.display());
     }
