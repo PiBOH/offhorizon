@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OffHorizon — Minecraft: Java Edition, rebuilt in Rust</title>
+  <meta name="description" content="OffHorizon is an offline-first launcher for Minecraft: Java Edition and the Rust rewrite. Play without a Microsoft account, with no telemetry.">
+  <meta name="theme-color" content="#100a1f">
+  <meta property="og:title" content="OffHorizon — Minecraft: Java Edition, rebuilt in Rust">
+  <meta property="og:description" content="An offline-first launcher for Minecraft Java and the Rust game. No Microsoft sign-in, no telemetry.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="assets/offhorizon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="OffHorizon home">
+      <img src="assets/offhorizon.png" width="40" height="40" alt="">
+      <span>OffHorizon</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#docs">Docs</a>
+      <a href="https://github.com/PiBOH/offhorizon" rel="noreferrer">GitHub</a>
+    </nav>
+    <a class="button small" href="https://github.com/PiBOH/offhorizon/releases/latest">Download</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot"></span> Minecraft: Java Edition 26.3</p>
+        <h1>The game you know.<br><span>Offline by default.</span></h1>
+        <p class="lead">OffHorizon launches Minecraft: Java Edition and the Rust rewrite without a Microsoft account. No sign-in gate, no telemetry, your worlds in your folder.</p>
+        <div class="actions">
+          <a class="button" href="https://github.com/PiBOH/offhorizon/releases/latest/download/OffHorizon-Launcher-Windows-x64.exe">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4v7H3zm9.5-1.7L21 2v9h-8.5zM3 12h7.5v7L3 17.5zm9.5 0H21v9l-8.5-1.8z"/></svg>
+            Download for Windows
+          </a>
+          <a class="button secondary" href="https://github.com/PiBOH/offhorizon/releases/latest/download/OffHorizon-Launcher-Linux-x86_64">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-2.2 0-3.5 1.7-3.5 4.1 0 1.4-.5 2.3-1.4 3.5C5.8 11.3 4.5 13 4.5 15c0 1.8 1 2.8 2.4 3.2-.4 1.1.1 2.1 1.3 2.4 1.1.3 2.2-.2 2.8-1.1.3-.4.6-.6 1-.6s.7.2 1 .6c.6.9 1.7 1.4 2.8 1.1 1.2-.3 1.7-1.3 1.3-2.4 1.4-.4 2.4-1.4 2.4-3.2 0-2-1.3-3.7-2.6-5.4-.9-1.2-1.4-2.1-1.4-3.5C15.5 3.7 14.2 2 12 2zm-1.3 3.1c.4 0 .7.4.7.9s-.3.9-.7.9-.7-.4-.7-.9.3-.9.7-.9zm2.6 0c.4 0 .7.4.7.9s-.3.9-.7.9-.7-.4-.7-.9.3-.9.7-.9zM9.3 13.2l1.3 2.2-1.9.7zm5.4 0 .6 2.9-1.9-.7z"/></svg>
+            Download for Linux
+          </a>
+          <a class="link" href="https://github.com/PiBOH/offhorizon/releases">All releases and checksums →</a>
+        </div>
+        <p class="fine">Windows x64 and Linux x86-64. The launcher downloads the game files from Mojang when needed.</p>
+      </div>
+      <div class="hero-art">
+        <img src="assets/hero.webp" alt="A Minecraft village at sunrise">
+        <div class="badge">Rust game + Java instances</div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="section-head">
+        <p class="eyebrow">Why OffHorizon</p>
+        <h2>Your game. Your account. Your rules.</h2>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <span class="icon">◎</span>
+          <h3>No Microsoft gate</h3>
+          <p>Singleplayer and LAN work with an offline name. The Microsoft account is optional, for online servers only.</p>
+        </article>
+        <article class="card">
+          <span class="icon">⌁</span>
+          <h3>Rust and Java</h3>
+          <p>Play the Rust rewrite of Minecraft 26.3 or your own Java instances, including Fabric and SKlauncher profiles.</p>
+        </article>
+        <article class="card">
+          <span class="icon">◈</span>
+          <h3>No telemetry</h3>
+          <p>OffHorizon sends no usage pings. This site has no analytics, no cookies and no third-party scripts.</p>
+        </article>
+        <article class="card">
+          <span class="icon">▣</span>
+          <h3>Your folders stay yours</h3>
+          <p>Worlds, options and packs live in the game folder you choose. The launcher keeps its own data separate.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="install" class="section split">
+      <div>
+        <p class="eyebrow">Install</p>
+        <h2>Three steps, no account.</h2>
+        <ol class="steps">
+          <li><b>Download</b> the OffHorizon launcher for Windows or Linux.</li>
+          <li><b>Open it.</b> If Minecraft 26.3 is missing, OffHorizon downloads Mojang's public files itself.</li>
+          <li><b>Press Play.</b> Choose the Rust game or a Java instance. Online servers ask for a Microsoft account; singleplayer does not.</li>
+        </ol>
+        <p class="note">Updating? Download the newest file and replace the old launcher. Your worlds and settings stay where they are.</p>
+      </div>
+      <div class="screenshot">
+        <img src="assets/screenshot.png" alt="OffHorizon launcher showing the OffHorizon instance and Play button">
+      </div>
+    </section>
+
+    <section id="docs" class="section">
+      <div class="section-head">
+        <p class="eyebrow">Docs</p>
+        <h2>What to know</h2>
+      </div>
+      <details>
+        <summary>Do I need to own Minecraft: Java Edition?</summary>
+        <p>Yes. OffHorizon does not include Minecraft code, assets or game files. It uses the copy you already own and can download Mojang's public version files for offline play.</p>
+      </details>
+      <details>
+        <summary>Does OffHorizon work with SKlauncher?</summary>
+        <p>Yes. It looks in the usual launcher folders, including SKlauncher's, and reads the profiles it finds. If a profile has no vanilla client jar, OffHorizon downloads the missing public files instead of stopping.</p>
+      </details>
+      <details>
+        <summary>What is sent over the network?</summary>
+        <p>The launcher contacts Mojang for game files and GitHub for launcher and mod updates. OffHorizon has no telemetry endpoint. This static site loads only its own files; there is no analytics script.</p>
+      </details>
+      <details>
+        <summary>Where are my worlds?</summary>
+        <p>In the game folder shown in the launcher. Each instance has its own folder; deleting a launcher version never deletes a world.</p>
+      </details>
+      <details>
+        <summary>Is this the official Horizon?</summary>
+        <p>No. OffHorizon is an unofficial fork of <a href="https://github.com/horizon-rust/horizon">Horizon</a>, focused on offline play and no telemetry. It is not approved by or associated with Mojang, Microsoft or the Horizon project.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot-brand">
+      <img src="assets/offhorizon.png" width="32" height="32" alt="">
+      <b>OffHorizon</b>
+    </div>
+    <p>Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB. OffHorizon is an unofficial fork of Horizon.</p>
+    <p class="foot-links">
+      <a href="https://github.com/PiBOH/offhorizon">Source</a>
+      <a href="https://github.com/PiBOH/offhorizon/releases">Releases</a>
+      <a href="https://github.com/PiBOH/offhorizon/issues">Issues</a>
+    </p>
+  </footer>
+</body>
+</html>
