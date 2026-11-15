@@ -56,8 +56,9 @@ pub struct Release {
 }
 
 /// The release assets of each system Horizon ships for: (OS, architecture, the game, the launcher).
-/// game-build.yml builds the game's, nightly-build.yml signs and publishes them, and launcher.yml
-/// builds the launcher's (`platform_assets_are_published`).
+/// game-build.yml builds the game's, nightly-build.yml signs and publishes them. The fork's
+/// auto-release.yml builds the native Linux, Windows x64 and macOS x64 launcher; launcher.yml
+/// builds the packages for the remaining systems (`platform_assets_are_published`).
 pub const PLATFORMS: [(&str, &str, &str, &str); 5] = [
     (
         "linux",
@@ -69,7 +70,7 @@ pub const PLATFORMS: [(&str, &str, &str, &str); 5] = [
         "macos",
         "aarch64",
         "horizon-macos-arm64.zip",
-        "OffHorizon-Launcher-macOS-arm64",
+        "offhorizon-launcher-macos-arm64.zip",
     ),
     // Intel Macs (#1161).
     (
@@ -88,7 +89,7 @@ pub const PLATFORMS: [(&str, &str, &str, &str); 5] = [
         "windows",
         "aarch64",
         "horizon-windows-arm64.zip",
-        "OffHorizon-Launcher-Windows-arm64.exe",
+        "offhorizon-launcher-windows-arm64.zip",
     ),
 ];
 
@@ -5427,6 +5428,7 @@ pub fn {f}("
         let build = read(".github/workflows/game-build.yml");
         let nightly = read(".github/workflows/nightly-build.yml");
         let launcher = read(".github/workflows/launcher.yml");
+        let auto = read(".github/workflows/auto-release.yml");
         for (os, arch, game, launcher_asset) in PLATFORMS {
             assert!(
                 build.contains(&format!("asset: {game}")),
@@ -5441,8 +5443,9 @@ pub fn {f}("
                 "nightly-build.yml must sign and publish {game} ({os} {arch})"
             );
             assert!(
-                launcher.contains(&format!("asset: {launcher_asset}")),
-                "launcher.yml builds no {launcher_asset}"
+                launcher.contains(&format!("asset: {launcher_asset}"))
+                    || auto.contains(launcher_asset),
+                "no release workflow builds {launcher_asset}"
             );
         }
     }
