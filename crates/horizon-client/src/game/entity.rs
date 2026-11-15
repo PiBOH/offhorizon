@@ -554,7 +554,9 @@ mod render_bounds_tests {
             invisible: false,
             check_interval: 0,
             custom_name: None,
-            random: horizon_core::random::LegacyRandom::new(0),
+            random: horizon_core::random::EntityRandom::own(
+                horizon_core::random::LegacyRandom::new(0),
+            ),
         };
         let bounds = frame.render_bounds(1.0);
         assert!(bounds.min_position().x <= -0.71875);
@@ -1566,9 +1568,11 @@ impl Entity for ArmorStand {
     }
     /// A NoGravity stand is not swept for the blocks it stands in (plates,
     /// fire): measured beside the real server, it never presses a plate nor
-    /// catches fire, and does again once `NoGravity` is cleared.
+    /// catches fire, and does again once `NoGravity` is cleared. A marker is
+    /// not either: `ArmorStand.hasPhysics` is false for it too, so
+    /// `noPhysics` keeps it out of `applyEffectsFromBlocks`.
     fn sweeps_blocks_inside(&self) -> bool {
-        !self.no_gravity
+        !self.marker && !self.no_gravity
     }
     fn pushed_by_explosion(&self) -> bool {
         false
@@ -2077,6 +2081,7 @@ mod no_gravity_stand_tests {
         assert!(!stand.sweeps_blocks_inside());
         stand.no_gravity = false;
         stand.marker = true;
+        assert!(!stand.sweeps_blocks_inside());
         assert!(!stand.triggers_blocks());
     }
 }
