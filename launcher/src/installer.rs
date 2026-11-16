@@ -184,6 +184,10 @@ pub fn home_exe() -> PathBuf {
     home().join("OffHorizon.exe")
 }
 
+/// An old copy of the launcher lives in [`home`] for a week at most: the shortcuts point at the
+/// copy, and one that is replaced leaves nothing worth keeping behind.
+const KEEP_OLD: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
+
 /// Puts the launcher's `.exe` in [`home`], creating the folder if it is not there yet. Unset and
 /// unchanged: the copy is left alone, so a start does no work. Returns the copy.
 pub fn keep_a_copy() -> io::Result<PathBuf> {
@@ -201,7 +205,7 @@ fn copy_home(source: &Path) -> io::Result<PathBuf> {
     // next start tries again.
     let staging = home().join("OffHorizon.exe.new");
     fs::copy(source, &staging)?;
-    match fs::rename(&staging, &target) {
+    let placed = match fs::rename(&staging, &target) {
         Ok(()) => Ok(target),
         Err(e) => {
             let _ = fs::remove_file(&staging);
@@ -211,12 +215,50 @@ fn copy_home(source: &Path) -> io::Result<PathBuf> {
                 Err(e)
             }
         }
+    };
+    if placed.is_ok() {
+        sweep_old_copies();
+    }
+    placed
+}
+
+/// Removes the launcher copies in [`home`] that are a week old: an update that leaves one behind
+/// does not keep a second OffHorizon on the disk.
+fn sweep_old_copies() {
+    let Ok(entries) = fs::read_dir(home()) else {
+        return;
+    };
+    let now = std::time::SystemTime::now();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        let ours = name.starts_with("OffHorizon") && name != "OffHorizon.exe";
+        let old = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|m| now.duration_since(m).ok())
+            .is_some_and(|age| age > KEEP_OLD);
+        if ours && old {
+            let _ = fs::remove_file(&path);
+        }
+    }
+}
+
+/// What the shortcuts open: the copy in [`home`], so a launcher update that replaces it updates
+/// every menu entry too, and the running file when there is no copy.
+fn shortcut_target() -> PathBuf {
+    let copy = home_exe();
+    if copy.is_file() {
+        copy
+    } else {
+        backend::exe_path().to_path_buf()
     }
 }
 
 /// The Start menu shortcut (and the desktop one when asked), opening this launcher.
 pub fn create_shortcuts(desktop: bool) -> io::Result<()> {
-    shortcuts_for(&backend::exe_path(), desktop)
+    shortcuts_for(&shortcut_target(), desktop)
 }
 
 fn shortcuts_for(exe: &Path, desktop: bool) -> io::Result<()> {
@@ -245,7 +287,7 @@ pub fn remove_shortcuts(desktop: bool) {
 
     /// Whether the Start menu entry is there and opens this launcher.
 pub fn shortcuts_present() -> bool {
-    start_menu_link().is_some_and(|link| points_to(&link, backend::exe_path()))
+    start_menu_link().is_some_and(|link| points_to(&link, &shortcut_target()))
 }
 
 /// A portable launcher's first start, before the window opens: its copy in [`home`], and — once,
@@ -276,9 +318,10 @@ fn first_start_with(ask: impl FnOnce() -> bool, launcher: Option<&Path>, argumen
         settings.shortcuts = stored;
         let _ = settings.save();
     }
-    // Asked before: a shortcut the player deleted by hand comes back, a No stays a no.
+    // Asked before: a shortcut the player deleted by hand comes back, a No stays a no, and the
+    // entry opens the copy in `home`, which the next update replaces.
     if wanted {
-        let _ = shortcuts_for(&exe, true);
+        let _ = shortcuts_for(&shortcut_target(), true);
     }
 }
 
@@ -1058,6 +1101,17 @@ mod tests {
         copy_home(&exe).unwrap();
         assert_eq!(home_exe(), root.join("roaming").join("OffHorizon.exe"));
         assert_eq!(fs::read(home_exe()).unwrap(), b"the portable launcher");
+        copy_home(&exe).unwrap();
+        // A copy left by an old update lives a week, then goes with the next start.
+        let stale = home().join("OffHorizon-old.exe");
+        fs::write(&stale, b"an older launcher").unwrap();
+        let eight_days_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(8 * 24 * 60 * 60);
+        fs::File::options()
+            .write(true)
+            .open(&stale)
+            .unwrap()
+            .set_modified(eight_days_ago)
+            .unwrap();
         copy_home(&exe).unwrap();
         let kept: Vec<String> = fs::read_dir(home())
             .unwrap()

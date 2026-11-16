@@ -15,6 +15,13 @@ release, newest first, and an Unreleased section for work that is not released y
   release asset cannot turn into a setup by its name; the install/uninstall code of 0.1.5-nightly
   stays for the player who installed that build, and `installer::tests`
   `the_portable_release_is_no_setup_and_the_old_one_still_is` holds the line.
+- `installer::shortcut_target`: `create_shortcuts` and `shortcuts_present` work on the copy in
+  `%APPDATA%\offhorizon` rather than on the file the player launched, so an entry keeps opening
+  the newest launcher after an update overwrites that copy; with no copy yet they fall back to the
+  running file. `installer::sweep_old_copies` deletes `OffHorizon*` files other than
+  `OffHorizon.exe` in that folder once they are a week old (`KEEP_OLD`), called after a successful
+  copy; `the_launcher_keeps_a_copy_and_only_the_shortcuts_it_is_told_to_make` sets a stale file
+  eight days back with `File::set_modified` and asserts only `OffHorizon.exe` survives.
 - `installer::{home, home_exe, keep_a_copy}`: a portable launcher keeps itself in
   `%APPDATA%\offhorizon\OffHorizon.exe`. The copy is written beside the target first
   (`OffHorizon.exe.new`) and renamed over it, so a failed copy never leaves a broken launcher and a

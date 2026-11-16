@@ -65,6 +65,12 @@ line, for example `0.1.2-nightly`.
   install/uninstall code in `launcher/src/installer.rs` exists only for the players who installed
   the 0.1.5-nightly setup that shipped briefly; `installer::setup_name` no longer recognises an
   `OffHorizon-Setup…` file name.
+- `%APPDATA%\offhorizon` holds **only the launcher**. Settings, accounts, logs and the prepared
+  game stay in Horizon's own folders (`%APPDATA%\horizon-launcher`), because OffHorizon is a fork
+  and shares them.
+- The shortcuts open the copy in `%APPDATA%\offhorizon`, and every plain start overwrites that
+  copy (`installer::shortcut_target`), so Start menu, desktop and taskbar always launch the newest
+  launcher. A copy left behind by an update is removed after seven days (`installer::sweep_old_copies`).
 - The launcher updates itself from `PiBOH/offhorizon`; Minecraft/Rust builds still come from
   `horizon-rust/horizon`. Keep both repositories separate in `launcher/src/backend.rs`.
 - An empty account list gets an offline account automatically. Microsoft sign-in is optional; Java

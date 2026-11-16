@@ -17,6 +17,9 @@ section, one section per version, and Added / Changed / Fixed groups.
   itself in `%APPDATA%\offhorizon` and asks once whether to add its shortcuts to the Start menu
   and the desktop; the same switch lives in Settings → About, and the `.exe`, the shortcut and the
   window all carry the OffHorizon icon.
+- **The shortcuts always open the newest OffHorizon**: they launch the copy in
+  `%APPDATA%\offhorizon`, which every start refreshes, so Start menu, desktop and taskbar follow
+  an update on their own. A copy an update left behind is removed after seven days.
 - **A tooltip shows what a clipped label hides**: an instance's name and state, a server's, the
   account chip and the Play button's progress all read in full when the pointer rests on them.
 - **Dedicated GPU on by default**: on a laptop with two graphics cards the launcher now asks
