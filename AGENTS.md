@@ -69,11 +69,11 @@ line, for example `0.1.2-nightly`.
   section, else the commits since the previous tag); `CHANGELOG.dev.md` is the engineering record
   (module, cause, check) and never reaches a release. A change adds a line to both, in the same
   version section.
-- `site/` is the download site: the Horizon site from `.local/website`, rebranded OffHorizon and
-  with no telemetry, served at `https://piboh.github.io/offhorizon`. Publishing it is `git
-  checkout gh-pages` and copying `site/` over the branch root (or `git subtree push --prefix=site
-  origin gh-pages`); `.nojekyll` and the `_next/` folder travel with it. `README.md`'s download
-  button points there.
+- The download site lives on the `gh-pages` branch, served at `https://piboh.github.io/offhorizon`:
+  the Horizon site from `.local/website`, rebranded OffHorizon, telemetry removed, its Next routes
+  turned into `pages/*.html` and its `/_next` paths kept. It is not part of the `offhorizon`
+  branch: publish it by copying the built folder over the `gh-pages` branch root (`.nojekyll` and
+  `_next/` travel with it). `README.md`'s download button points there.
 - One icon, `packaging/icons/offhorizon.ico`: `launcher/build.rs` embeds it (and the OffHorizon
   version resource) in the Windows executables, the Linux packages use
   `packaging/icons/hicolor/*/apps/offhorizon.png` and `scalable/apps/offhorizon.svg`, and macOS

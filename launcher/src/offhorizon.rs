@@ -13,6 +13,10 @@ pub const NAME: &str = "OffHorizon";
 /// launcher, and OffHorizon should stay usable on older computers before anything is configured.
 pub const PERFORMANCE_DEFAULT: bool = true;
 
+/// The dedicated GPU is asked for from the first start (`crate::gpu`): a laptop with two cards
+/// plays on the fast one without the player finding Settings > Display > Graphics.
+pub const DEDICATED_GPU: bool = true;
+
 /// Applies the defaults for this computer's game folder.
 pub fn apply() {
     apply_at(&crate::backend::game_home());

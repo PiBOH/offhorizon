@@ -605,3 +605,19 @@ fn a_download_goes_on_past_an_asset_that_keeps_failing() {
     assert!(last.contains("1 of 2 files failed"), "{last}");
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn a_library_has_a_maven_central_mirror() {
+    assert_eq!(
+        super::mirror(
+            "https://libraries.minecraft.net/org/lwjgl/lwjgl-spvc/3.4.3/lwjgl-spvc-3.4.3-natives-windows.jar"
+        )
+        .as_deref(),
+        Some(
+            "https://repo1.maven.org/maven2/org/lwjgl/lwjgl-spvc/3.4.3/lwjgl-spvc-3.4.3-natives-windows.jar"
+        )
+    );
+    // Anything that is not a library has no mirror: trying another host would only be another
+    // failed request.
+    assert_eq!(super::mirror("https://piston-meta.mojang.com/v1/packages/26.3.json"), None);
+}

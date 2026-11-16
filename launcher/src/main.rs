@@ -5794,6 +5794,15 @@ fn main() {
     // place in the Apps list) on that first start, so it installs like every other program.
     #[cfg(windows)]
     horizon_launcher::installer::register_first_run();
+    // The dedicated GPU, unless the player turned it off: written for the launcher and for every
+    // prepared game, so the pair does not run on the card the screen is plugged into.
+    #[cfg(windows)]
+    {
+        let settings = horizon_launcher::backend::Settings::load();
+        for line in horizon_launcher::gpu::apply(settings.dedicated_gpu()) {
+            eprintln!("dedicated GPU: {line}");
+        }
+    }
     // The launcher's own installer (`update_handoff`): no window, no CLI parser.
     if let Some(code) = horizon_launcher::update_handoff::run() {
         std::process::exit(code);

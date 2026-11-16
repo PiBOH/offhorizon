@@ -1183,6 +1183,23 @@ pub(crate) fn download(
             Err(e) => return Err(e),
         }
     }
+    // The same artifact is published on Maven Central, and a network that resets connections to
+    // Mojang's library host (os error 10054) usually reaches it. The check above still decides:
+    // a mirror serving anything else is refused like any wrong checksum.
+    if transient_download_error(&last) {
+        if let Some(elsewhere) = crate::mojang::mirror(url) {
+            for attempt in 1..=2u8 {
+                match download_once(&elsewhere, size, sha256, to, progress) {
+                    Ok(()) => return Ok(()),
+                    Err(e) if attempt < 2 && transient_download_error(&e) => {
+                        last = e;
+                        std::thread::sleep(std::time::Duration::from_millis(400 * attempt as u64));
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+    }
     Err(last)
 }
 
@@ -4633,6 +4650,11 @@ pub struct Settings {
     /// OffHorizon; only a player who turned it off has `false` here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub performance: Option<bool>,
+    /// Windows: the game and the launcher ask for the dedicated GPU (`gpu`, the same preference
+    /// Settings > Display > Graphics writes). Unset is on for OffHorizon; only a player who
+    /// turned it off has `false` here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dedicated_gpu: Option<bool>,
     /// Home's background: a picture the player picked, kept in the data folder under this name
     /// (`themes::keep_background`). Unset shows Horizon's landscape.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4736,6 +4758,12 @@ impl Settings {
         self.blur
             .filter(|v| v.is_finite())
             .map_or(horizon_theme::glass::BLUR, |v| v.clamp(0., 48.))
+    }
+    /// The game and the launcher ask Windows for the dedicated GPU ([`crate::gpu`]). On unless
+    /// turned off.
+    pub fn dedicated_gpu(&self) -> bool {
+        self.dedicated_gpu
+            .unwrap_or(crate::offhorizon::DEDICATED_GPU)
     }
     /// Whether the cheaper scene is on ([`performance`](Self::performance)).
     pub fn performance(&self) -> bool {

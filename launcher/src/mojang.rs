@@ -436,6 +436,14 @@ fn fetch_each(
     }
 }
 
+/// Where else a library is published: Maven Central carries the same artifact under the same
+/// path, so a network that resets connections to Mojang's host (os error 10054) can still fetch
+/// it. Only a library has one: a version file or an asset index is Mojang's alone.
+pub fn mirror(url: &str) -> Option<String> {
+    url.strip_prefix("https://libraries.minecraft.net/")
+        .map(|path| format!("https://repo1.maven.org/maven2/{path}"))
+}
+
 #[cfg(test)]
 #[path = "mojang_tests.rs"]
 mod tests;

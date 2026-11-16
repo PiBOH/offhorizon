@@ -9,6 +9,12 @@ release, newest first, and an Unreleased section for work that is not released y
 ## [0.1.5-nightly] - 2026-11-15
 
 ### Added
+- `gpu::apply` (called at start, Windows only): writes the per-program DirectX preference
+  (`HKCU\Software\Microsoft\DirectX\UserGpuPreferences`, `GpuPreference=2;`) for the launcher and
+  every `horizon-client` under the game home (`gpu::programs`, four folders deep), so the pair
+  runs on the discrete card. `Settings::dedicated_gpu` (unset = `offhorizon::DEDICATED_GPU`, on)
+  and the `dedicated_gpu_row` switch in Appearance turn it off, which deletes the value; on other
+  systems `set` does nothing, the game already asks wgpu for `HighPerformance`.
 - `auto_ports::prepare` (called from `main`'s prepare thread): every Java instance's `mods/*.jar`
   goes through `horizon_port_pack::check`, and what ports is installed into the game folder's
   `horizon-mods/<id>/` through `browser::java::install_ported`, on in `horizon-mods.txt`. Each jar
@@ -62,7 +68,10 @@ release, newest first, and an Unreleased section for work that is not released y
 - `glass::tabbed` draws a solid plate in performance mode instead of painting a piece of the scene:
   the tabbed panel is the card that stayed translucent with performance mode on.
 - `backend::download` retries a transport failure twice (`transient_download_error`: «No
-  connection», «Download interrupted»), with 400 ms/800 ms backoff; a wrong checksum still fails.
+  connection», «Download interrupted»), with 400 ms/800 ms backoff, and then tries
+  `mirror(url)` — the same path under `repo1.maven.org/maven2` for a `libraries.minecraft.net`
+  URL — twice more. `write_checked` still decides, so a mirror cannot stand in for a wrong file;
+  the error the player sees names the last transport failure, not «does not download the game».
 - `sources::known_folders` searches SKlauncher's game folders (`sklauncher/minecraft`,
   `sklauncher/instances`, `sklauncher/profiles`) as well as `.sklauncher`.
 

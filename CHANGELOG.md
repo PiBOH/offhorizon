@@ -16,6 +16,12 @@ section, one section per version, and Added / Changed / Fixed groups.
   `.exe`, and in Windows' Apps list with its OffHorizon name and icon, like any other program.
 - **A tooltip shows what a clipped label hides**: an instance's name and state, a server's, the
   account chip and the Play button's progress all read in full when the pointer rests on them.
+- **Dedicated GPU on by default**: on a laptop with two graphics cards the launcher now asks
+  Windows for the high-performance one, for itself and for the game, and the switch to turn that
+  off is in Appearance.
+- **A library a network refuses to serve still arrives**: when `libraries.minecraft.net` keeps
+  dropping the connection, the same file is fetched from Maven Central and checked against the
+  same hash, so preparing stops failing with “Missing …wjgl-spvc…jar”.
 - **Importing an instance from another launcher brings the official Rust server** into its
   Multiplayer list, and the name the other launcher played as (an offline account, yours to rename
   in OffHorizon). Key bindings, options and worlds already travelled with the instance.

@@ -1226,5 +1226,7 @@
   "Offline account · singleplayer and LAN": "Account offline · giocatore singolo e LAN",
   "Offline account · plays": "Account offline · gioca",
   "Offline account": "Account offline",
-  "OffHorizon": "OffHorizon"
+  "OffHorizon": "OffHorizon",
+  "Dedicated GPU": "GPU dedicata",
+  "Plays on the high-performance graphics card when the computer has one. On by default.": "Gioca sulla scheda grafica ad alte prestazioni quando il computer ne ha una. Attiva per impostazione predefinita."
 }
