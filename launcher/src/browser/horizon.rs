@@ -1249,12 +1249,35 @@ fn install_version(
     home: &Path,
     progress: &dyn Fn(&str, f32),
 ) -> Result<installed::Entry, String> {
-    let entry = install_version_guarded(index, local, p, v, home, &|_| Ok(()), progress)?;
+    let entry = install_version_guarded(
+        index,
+        local,
+        p,
+        v,
+        home,
+        // A shader pack is read the way the game reads it before it replaces anything: one for
+        // another shader API line is refused here, with its reason, instead of landing in
+        // `shaderpacks/` and never drawing.
+        &|path| match p.kind {
+            index::Kind::Shader => crate::shader_pack::check(path).map(|_| ()),
+            _ => Ok(()),
+        },
+        progress,
+    )?;
     // The player asked for this install: the mod starts on. An automatic update installs
     // through the guarded function alone, so it leaves the player's on/off choice as it was
     // (#10071).
     if entry.kind == Kind::Mod {
         java::set_enabled(home, &p.id, true)?;
+    }
+    // A shader pack is turned on as it lands: the Shader Packs page picks one at a time, and an
+    // installed pack nothing picked would never draw.
+    if entry.kind == Kind::Shader {
+        let file = Path::new(&entry.file)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .ok_or_else(|| format!("{}: not a file name.", entry.file))?;
+        crate::shader_pack::activate(home, &file)?;
     }
     Ok(entry)
 }

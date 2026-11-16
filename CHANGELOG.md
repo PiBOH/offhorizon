@@ -33,6 +33,11 @@ section, one section per version, and Added / Changed / Fixed groups.
 - **Version 0.1.5-nightly.**
 
 ### 🐛 Fixed
+- **A shader pack now installs, stays installed and is on**: the packs the registry lists are
+  written for the shader API line the game no longer draws, so every install ended in
+  “needs shader API 0.1” with an empty `shaderpacks/` and nothing to pick in game. A pack is now
+  read the way the game reads it before it lands, a pack that can't be drawn says why, and
+  Horizon's own **Golden Hour** pack is installed and turned on in its place.
 - **Performance mode now reaches the tabbed panel too**: it used to keep sampling the sky, so the
   cards stayed see-through while every other plate was solid.
 - **A reset connection while a Mojang library downloads is tried again** (three times, with a short

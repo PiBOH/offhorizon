@@ -218,7 +218,16 @@ pub fn install(
 ) -> Result<Vec<Entry>, String> {
     let _lock = super::lock_home(home);
     if project.source == SourceId::Horizon {
-        return super::horizon::install(project, home, progress);
+        return match super::horizon::install(project, home, progress) {
+            // The registry's shader packs are written for the shader API line this Horizon no
+            // longer serves ([`crate::shader_pack`]): Horizon's own pack installs and turns on
+            // instead, with the refusal said on the way, rather than a page that stays empty.
+            Err(e) if project.kind == Kind::Shader && crate::shader_pack::refused_for_api(&e) => {
+                progress(&e, 0.0);
+                builtin_shader(home)
+            }
+            other => other,
+        };
     }
     if project.kind == Kind::Mod {
         return super::java::install(source, project, everything, home, progress);
@@ -231,6 +240,36 @@ pub fn install(
         &|kind| kind.folder().expect("plan keeps folder kinds"),
         progress,
     )
+}
+
+/// Installs Horizon's own shader pack ([`crate::shader_pack::install`]) in `home` and lists it, on
+/// the Shaders page, as one this launcher put there: the entry an install of a registry pack
+/// leaves, so the installed state survives a restart as any other install's does.
+pub(super) fn builtin_shader(home: &Path) -> Result<Vec<Entry>, String> {
+    let builtin = crate::shader_pack::install(home)?;
+    let entry = Entry {
+        source: SourceId::Local,
+        project: builtin.manifest.id.clone(),
+        slug: builtin.manifest.id.clone(),
+        title: builtin.manifest.name.clone(),
+        kind: Kind::Shader,
+        version: builtin.manifest.version.clone(),
+        number: builtin.manifest.version.clone(),
+        file: format!("{}/{}", crate::packs::Kind::Shader.folder(), builtin.pack.file),
+        checksum: builtin.checksum,
+        page: String::new(),
+        dependency: false,
+        verdict: None,
+        skipped: Vec::new(),
+        namespaces: Vec::new(),
+    };
+    let mut installed = Installed::load(home);
+    installed.entries.retain(|e| {
+        !(e.source == entry.source && e.project == entry.project && e.kind == entry.kind)
+    });
+    installed.entries.push(entry.clone());
+    installed.save(home)?;
+    Ok(vec![entry])
 }
 
 /// Downloads each step's file into `home`, in the folder `folder` names for its kind, and lists

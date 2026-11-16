@@ -449,8 +449,13 @@ fn installs_a_shader_pack_into_shaderpacks() {
     assert_eq!(done[0].file, "shaderpacks/glow-1.0.0.hshader");
     assert_eq!(done[0].kind, Kind::Shader);
     assert!(home.join("shaderpacks/glow-1.0.0.hshader").is_file());
-    // Not a mod: nothing turns on in horizon-mods.txt; the game's Shader Packs page picks it.
+    // Not a mod: nothing goes in horizon-mods.txt. The pack is turned on as it lands, so the
+    // game draws it without the player picking it again.
     assert!(!home.join("horizon-mods.txt").exists());
+    assert_eq!(
+        fs::read_to_string(home.join("horizon-graphics.txt")).unwrap(),
+        "pickedShaderPack:horizon:glow\n"
+    );
 
     let mut revoked = index.clone();
     revoked.revoked.push(index::Revoked {
@@ -646,4 +651,45 @@ fn a_picked_version_is_kept_until_it_is_cleared() {
     assert_eq!(chosen(&home).keys().collect::<Vec<_>>(), ["flair"]);
     fs::write(home.join(CHOSEN), b"not json").unwrap();
     assert!(chosen(&home).is_empty(), "an unreadable file picks nothing");
+}
+
+/// A game folder whose name has spaces, as a Windows one often does.
+fn spaced(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!(
+        "horizon launcher registry {} {}",
+        name,
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+#[test]
+fn installs_a_mod_and_a_shader_into_a_folder_with_spaces() {
+    let index = sample();
+    let home = spaced("game dir");
+    // The mod: its file lands where the game reads mods, and it is on.
+    let done = put(&index, true, &home).unwrap();
+    assert_eq!(done[0].file, "horizon-mods/coords_hud.hmod");
+    assert!(home.join("horizon-mods/coords_hud.hmod").is_file());
+    assert_eq!(
+        fs::read_to_string(home.join("horizon-mods.txt")).unwrap(),
+        "mod.coords_hud:true\n"
+    );
+    // The shader: in shaderpacks/ and turned on as it lands.
+    let p = project_of(index.project("glow").unwrap()).unwrap();
+    let shader = install_from(&index, true, None, &p, &home, &|_, _| {}).unwrap();
+    assert_eq!(shader[0].file, "shaderpacks/glow-1.0.0.hshader");
+    assert!(home.join("shaderpacks/glow-1.0.0.hshader").is_file());
+    assert_eq!(
+        fs::read_to_string(home.join("horizon-graphics.txt")).unwrap(),
+        "pickedShaderPack:horizon:glow\n"
+    );
+    // Both listed as installed, as a restart reads them again.
+    let listed = installed::Installed::load(&home);
+    assert_eq!(listed.entries.len(), 2);
+    assert!(listed.lookup("coords_hud").is_some());
+    assert_eq!(listed.lookup("glow").unwrap().kind, Kind::Shader);
+    fs::remove_dir_all(home).unwrap();
 }

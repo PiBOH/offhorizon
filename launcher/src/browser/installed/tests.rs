@@ -446,3 +446,54 @@ fn data_packs_go_into_a_world_when_something_in_them_runs() {
     assert_eq!(names.len(), 4, "{names:?}");
     fs::remove_dir_all(world.parent().unwrap().parent().unwrap()).unwrap();
 }
+
+/// A pack written for the shader API line this Horizon no longer serves: the registry's are all
+/// 0.1 ones, and installing one ends in that refusal.
+fn old_api_shader() -> Vec<u8> {
+    use std::io::Write;
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default();
+    zip.start_file("horizon-shaders.toml", options).unwrap();
+    write!(
+        zip,
+        "schema = 1\nid = \"glow\"\nname = \"Soft Glow\"\nversion = \"1.0.0\"\napi = \"0.1\"\n\
+         description = \"A post pass.\"\n\n[[post]]\nfile = \"post.wgsl\"\nname = \"Colour\"\n"
+    )
+    .unwrap();
+    zip.start_file("post.wgsl", options).unwrap();
+    zip.write_all(b"@fragment fn colour() -> vec4<f32> { vec4(1.0) }")
+        .unwrap();
+    zip.finish().unwrap().into_inner()
+}
+
+#[test]
+fn a_shader_for_the_old_api_leaves_the_builtin_one_installed_and_on() {
+    let home = self::home("builtin shader pack");
+    // The refusal from the real check, on the bytes the registry serves.
+    let path = home.join("glow-1.0.0.hshader");
+    fs::create_dir_all(home.join("shaderpacks")).unwrap();
+    fs::write(&path, old_api_shader()).unwrap();
+    let said = crate::shader_pack::check(&path).unwrap_err();
+    assert!(
+        said.contains("needs shader API 0.1; this Horizon serves 0.2"),
+        "{said}"
+    );
+    assert!(crate::shader_pack::refused_for_api(&said));
+    fs::remove_file(&path).unwrap();
+
+    // What the install falls back to, listed and on.
+    let done = super::builtin_shader(&home).unwrap();
+    assert_eq!(done[0].file, "shaderpacks/golden_hour.hshader");
+    assert_eq!(done[0].source, SourceId::Local);
+    assert_eq!(done[0].kind, Kind::Shader);
+    assert_eq!(done[0].title, "Golden Hour");
+    assert!(done[0].checksum.starts_with("SHA-256:"));
+    let text = fs::read_to_string(home.join("horizon-graphics.txt")).unwrap();
+    assert!(text.contains("pickedShaderPack:horizon:golden_hour"), "{text}");
+    // Persisted, and installing it again lists it once.
+    super::builtin_shader(&home).unwrap();
+    let listed = Installed::load(&home);
+    assert_eq!(listed.entries.len(), 1);
+    assert_eq!(listed.entries[0].file, "shaderpacks/golden_hour.hshader");
+    fs::remove_dir_all(home).unwrap();
+}

@@ -65,6 +65,28 @@ release, newest first, and an Unreleased section for work that is not released y
   `CHANGELOG.dev.md` from the pre-merge commit, so the launcher and its download links stay ours.
 
 ### Fixed
+- `shader_pack` (new): `bytes` zips `crates/horizon-shader-api/packs/golden_hour` (through
+  `include_bytes!`) into the `golden_hour.hshader` the game reads; `check` runs
+  `horizon_shader_api::Pack::read` then `horizon_shader_api::check`, so a manifest for another
+  shader API line is refused with its own reason; `install` writes a `.<file>.part.hshader` and
+  renames it, then `packs::set_enabled(.., true)` → `pickedShaderPack:horizon:golden_hour` in
+  `horizon-graphics.txt`, which `packs` and the Shader Packs page both read. `activate` is that
+  same pick for a pack that just installed.
+- `browser::horizon::install_version` passes the shader check as `install_version_guarded`'s
+  guard and turns a just-installed `Kind::Shader` on. The registry's 13 shaders are 0.1 packs and
+  `horizon_mods::index` refuses them while reading their facts, so before this every shader
+  install died before `shaderpacks/` was written.
+- `browser::installed::builtin_shader` and the Horizon branch of `browser::installed::install`: an
+  install refused for its API line (`shader_pack::refused_for_api`) installs the built-in pack and
+  lists it (`SourceId::Local`, `shaderpacks/golden_hour.hshader`), so the Shaders page, `mods list`
+  and a restart all show it installed; the refusal itself goes to `progress`.
+- Tests: `shader_pack::tests` (the pack is one `check` accepts, install turns it on and keeps the
+  other `horizon-graphics.txt` lines, a second install does not duplicate it, a 0.1 pack is
+  refused); `browser::horizon::tests::installs_a_mod_and_a_shader_into_a_folder_with_spaces`
+  (mod `.hmod` + `horizon-mods.txt`, shader in `shaderpacks/` + `pickedShaderPack`, both in
+  `mod-browser.json` on a temp folder with spaces);
+  `browser::installed::tests::a_shader_for_the_old_api_leaves_the_builtin_one_installed_and_on`;
+  `installs_a_shader_pack_into_shaderpacks` now expects the pack turned on.
 - `glass::tabbed` draws a solid plate in performance mode instead of painting a piece of the scene:
   the tabbed panel is the card that stayed translucent with performance mode on.
 - `backend::download` retries a transport failure twice (`transient_download_error`: «No

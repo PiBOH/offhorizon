@@ -51,6 +51,7 @@ pub mod screenshots;
 pub mod server_list;
 pub mod servers;
 pub mod setup_args;
+pub mod shader_pack;
 pub mod shop;
 pub mod shortcut;
 pub mod signed;
