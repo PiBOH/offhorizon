@@ -90,6 +90,12 @@ line, for example `0.1.2-nightly`.
   turned into `pages/*.html` and its `/_next` paths kept. It is not part of the `offhorizon`
   branch: publish it by copying the built folder over the `gh-pages` branch root (`.nojekyll` and
   `_next/` travel with it). `README.md`'s download button points there.
+- The site's download buttons carry the newest release's tag
+  (`/releases/download/v<version>/OffHorizon-Launcher-Windows-x64.exe`), not
+  `/releases/latest/download/…`: a nightly is a pre-release and `/latest` skips pre-releases, so
+  that path answers 404. `tools/site_download_links.py` moves those links, and the `release` job
+  of `auto-release.yml` runs it on `gh-pages` after publishing — do not add a `release: published`
+  workflow instead, because GitHub starts none from events its own `GITHUB_TOKEN` caused.
 - One icon, `packaging/icons/offhorizon.ico`: `launcher/build.rs` embeds it (and the OffHorizon
   version resource) in the Windows executables, the Linux packages use
   `packaging/icons/hicolor/*/apps/offhorizon.png` and `scalable/apps/offhorizon.svg`, and macOS

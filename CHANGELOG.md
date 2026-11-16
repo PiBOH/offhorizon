@@ -9,6 +9,11 @@ section, one section per version, and Added / Changed / Fixed groups.
 
 ## [Unreleased]
 
+### ✨ Added
+- **The site's download buttons follow each release on their own**: publishing a build moves the
+  links on `piboh.github.io/offhorizon` to that build's files, so the Download button always
+  downloads the newest launcher instead of waiting for the pages to be edited by hand.
+
 ## [0.1.5-nightly] - 2026-11-15
 
 ### ✨ Added

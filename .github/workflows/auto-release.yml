@@ -251,3 +251,24 @@ jobs:
           body_path: notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 1
+      # The buttons download a file of this tag, not /releases/latest: a nightly is a pre-release,
+      # and GitHub leaves pre-releases out of /latest. So the site's links move with the release.
+      - name: Point the site's download links at this release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/site_download_links.py site "${{ needs.version.outputs.tag }}"
+          if git -C site diff --quiet; then
+            echo "The site already carries ${{ needs.version.outputs.tag }}."
+            exit 0
+          fi
+          git -C site config user.name "OffHorizon release"
+          git -C site config user.email "actions@users.noreply.github.com"
+          git -C site add -A
+          git -C site commit -m "Download links follow ${{ needs.version.outputs.tag }}"
+          git -C site push origin gh-pages

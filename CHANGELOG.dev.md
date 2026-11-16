@@ -6,6 +6,20 @@ release, newest first, and an Unreleased section for work that is not released y
 
 ## [Unreleased]
 
+### Added
+- `tools/site_download_links.py`: rewrites every `releases/download/<tag>/…`, `releases/tag/<tag>`
+  and the same tag in the site's prose to the given tag, across the root `*.html` and
+  `pages/*.html` of a site folder. It exits 1 when no page references a tag, so a page rewrite
+  cannot leave the release job silently doing nothing. Tested on a copy of `gh-pages`:
+  `v0.1.5-nightly` → `v0.2.0-nightly` touched all 8 pages (including the terms page's version
+  without the `v`), a second run changed nothing.
+- `.github/workflows/auto-release.yml`: the `release` job checks `gh-pages` out into `site/` after
+  publishing and runs the script with `needs.version.outputs.tag`, then commits and pushes the
+  retagged pages. A `release: published` workflow cannot do this: GitHub does not start workflows
+  from events its own `GITHUB_TOKEN` caused, so the step lives in the release job that creates the
+  release. The buttons carry a tag rather than `/releases/latest/download/…` because a nightly is
+  a pre-release and `/latest` leaves pre-releases out (that URL answers 404).
+
 ## [0.1.5-nightly] - 2026-11-15
 
 ### Added
