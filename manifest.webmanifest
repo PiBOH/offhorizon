@@ -1,0 +1,21 @@
+{
+  "name": "OffHorizon",
+  "short_name": "OffHorizon",
+  "description": "Offline-first launcher for Minecraft: Java Edition and the Rust rewrite.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#100a1f",
+  "theme_color": "#100a1f",
+  "icons": [
+    {
+      "src": "assets/offhorizon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
