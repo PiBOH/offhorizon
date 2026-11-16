@@ -158,8 +158,20 @@ On Windows a checkout whose path has spaces (`D:\8 - GitHub PiBOH\…`) breaks t
 toolchain: `ld` and `windres` split their own paths on the spaces (`cannot find -: No such file or
 directory`), and `subst` does not help because gcc resolves its real path. Copy `.local/tools/mingw`
 and `.local/tools/cargo` to a folder without spaces and build with `CARGO_HOME`, `CARGO_TARGET_DIR`
-and `PATH` pointing there (`mingw64\bin` first). A release build also needs `fxc.exe` from the
-Windows SDK (`GPUI_FXC_PATH`), which a machine without the SDK does not have; debug tests do not.
+and `PATH` pointing there (`mingw64\bin` first). A release build also needs `fxc.exe`, which
+`gpui-fast-windows` runs on the HLSL it ships; debug tests do not. Without the Windows SDK, lay
+the tools out without installing or elevating anything:
+
+```sh
+winsdksetup.exe /features OptionId.DesktopCPPx64 /layout D:\ofh-tools\win-sdk\layout /quiet
+msiexec /a "layout\Installers\Windows SDK for Windows Store Apps Tools-x86_en-us.msi" /qn \
+  TARGETDIR=D:\ofh-tools\win-sdk\tools
+# then, from Git Bash, MSYS2_ARG_CONV_EXCL="*" so /features and /layout stay switches:
+export GPUI_FXC_PATH=D:/ofh-tools/win-sdk/tools/Windows\ Kits/10/bin/10.0.26100.0/x64/fxc.exe
+```
+
+`fxc.exe` lives in the Store Apps tools MSI, not in the Desktop Tools one, and it needs the
+`d3dcompiler_47.dll` beside it (both are in that folder).
 
 ## Where things live
 

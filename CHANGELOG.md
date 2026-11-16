@@ -12,6 +12,11 @@ section, one section per version, and Added / Changed / Fixed groups.
 ## [0.1.5-nightly] - 2026-11-15
 
 ### ✨ Added
+- **The release now ships a real installer**, `OffHorizon-Setup-Windows-x64.exe`: run it and
+  OffHorizon is installed for your account in `%LOCALAPPDATA%\Programs\OffHorizon Launcher`,
+  with a Start menu shortcut and an entry in Settings → Apps that uninstalls it and takes its
+  file, its shortcuts and its entry away again — nothing of it is left beside the install folder.
+  The `.exe`, the shortcut and the window all carry the OffHorizon icon.
 - **The launcher puts itself in the Start menu** the first time it runs from the downloaded
   `.exe`, and in Windows' Apps list with its OffHorizon name and icon, like any other program.
 - **A tooltip shows what a clipped label hides**: an instance's name and state, a server's, the

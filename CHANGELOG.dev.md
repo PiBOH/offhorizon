@@ -9,6 +9,37 @@ release, newest first, and an Unreleased section for work that is not released y
 ## [0.1.5-nightly] - 2026-11-15
 
 ### Added
+- `installer::setup_name`: the release asset `OffHorizon-Setup-Windows-x64.exe` is taken for the
+  installer as well as the old `horizon-launcher-setup` name, so the binary a player downloads
+  from the release page opens the setup instead of the launcher. The Windows job of
+  `.github/workflows/auto-release.yml` copies the built binary under both names and uploads
+  `dist/*`, so every release carries the launcher and the installer.
+- `installer::install_from(source, options, progress)`: what `install` copies is a parameter now,
+  so a test installs a small file rather than the whole test binary.
+- `installer::keys`, `parent_of`, `testing` and the `HORIZON_LAUNCHER_INSTALL_KEY` override, plus
+  `HORIZON_LAUNCHER_SETUP_MENU` for `start_menu_link`: a test writes its Start menu shortcut and
+  its two HKCU keys under a folder and a key base of its own, and `uninstall` closes no running
+  launcher then (`testing`), so nothing of a player's or a developer's is touched or killed.
+- `installer::tests::install_puts_the_shortcut_and_the_apps_entry_there_and_uninstall_takes_them_away`:
+  installs a fake setup into a temp folder with spaces, then reads the shortcut's target from the
+  file (`points_to`), the Apps entry's `DisplayName`/`Publisher`/`InstallLocation`/`DisplayIcon`/
+  `UninstallString`/`QuietUninstallString` from HKCU, and repeats the install (an update) to see
+  the folder still holds one file; `uninstall` must return no leftovers and leave no file, no
+  shortcut and no key.
+- `installer::delete_soon`: the copy the uninstaller runs from can only be renamed out of the
+  install folder, so a small `.cmd` written beside it waits for the process to end and deletes the
+  copy, then itself. The line goes through a script because `cmd /C` splits a whole command line
+  handed to it as one argument wherever the path has spaces; `delete_at_restart` stays as the
+  backstop. An uninstall leaves no file beside the install folder and none in %TEMP% (checked on
+  a `D:` install with %TEMP% on `C:`).
+- `launcher/build.rs` embeds the icon and the version resource for a GNU toolchain too
+  (`gnu_resource`, `resource_script`, `numeric_version`): `winresource` drives `windres` with an
+  unquoted `-I<CARGO_MANIFEST_DIR>`, which gcc splits on a checkout whose path has spaces — the
+  reason the resource used to be MSVC-only. The script lives in `OUT_DIR`, so no spaced path
+  reaches the compiler. The installed `.exe` here now carries all seven frames of
+  `packaging/icons/offhorizon.ico` and `FileDescription`/`ProductName`/`CompanyName` = OffHorizon.
+  Checked by extracting the icon from the installed copy and by finding the ico's frames in it.
+- `installer::tests::the_release_ships_an_installer_the_launcher_does_not_take_for_one`.
 - `gpu::apply` (called at start, Windows only): writes the per-program DirectX preference
   (`HKCU\Software\Microsoft\DirectX\UserGpuPreferences`, `GpuPreference=2;`) for the launcher and
   every `horizon-client` under the game home (`gpu::programs`, four folders deep), so the pair

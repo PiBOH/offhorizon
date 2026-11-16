@@ -28,6 +28,33 @@ const ABOUT_URL: &str = "https://playhorizon.dev";
 const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\HorizonLauncher";
 const OWN_KEY: &str = r"Software\Horizon\Launcher";
 const ASIDE_PREFIX: &str = "horizon-launcher-uninstall-";
+/// A key base that replaces the two above, and the folder the Start menu shortcut goes to, so a
+/// test installs and uninstalls without touching an account's own menu and registry.
+const KEY_ENV: &str = "HORIZON_LAUNCHER_INSTALL_KEY";
+const MENU_ENV: &str = "HORIZON_LAUNCHER_SETUP_MENU";
+
+/// The Uninstall and own keys of this run: `<base>\Uninstall` and `<base>\Launcher` for a test,
+/// else the account's own.
+fn keys() -> (String, String) {
+    match std::env::var_os(KEY_ENV).filter(|v| !v.is_empty()) {
+        Some(base) => {
+            let base = base.to_string_lossy().into_owned();
+            (format!(r"{base}\Uninstall"), format!(r"{base}\Launcher"))
+        }
+        None => (UNINSTALL_KEY.to_string(), OWN_KEY.to_string()),
+    }
+}
+
+/// Whether this process is a test install: it was given a key base of its own, so it has no
+/// launcher of a player's to close ([`close_running_launchers`]).
+fn testing() -> bool {
+    std::env::var_os(KEY_ENV).is_some_and(|v| !v.is_empty())
+}
+
+/// What both keys live under: `Software\Horizon` before the game's own key, or a test base.
+fn parent_of(key: &str) -> Option<String> {
+    key.rsplit_once('\\').map(|(parent, _)| parent.to_string())
+}
 
 pub use crate::setup_args::Mode;
 use crate::setup_args::{classify, Invocation};
@@ -89,7 +116,14 @@ pub fn is_setup_exe() -> bool {
     backend::exe_path()
         .file_stem()
         .and_then(|s| s.to_str())
-        .is_some_and(|s| s.to_ascii_lowercase().starts_with("horizon-launcher-setup"))
+        .is_some_and(setup_name)
+}
+
+/// Whether a file stem is one the release ships as the installer: `horizon-launcher-setup` (the
+/// old name) or `OffHorizon-Setup-Windows-x64` (the asset a player downloads).
+fn setup_name(stem: &str) -> bool {
+    let stem = stem.to_ascii_lowercase();
+    stem.starts_with("horizon-launcher-setup") || stem.starts_with("offhorizon-setup")
 }
 
 /// The window to open instead of the launcher: the wizard for the setup exe started without
@@ -159,8 +193,9 @@ pub fn installed() -> Option<Installed> {
 /// The install this account has in the registry, even if its launcher is gone (a removal still
 /// clears the keys and the shortcuts then).
 fn registered() -> Option<Installed> {
+    let (_, own) = keys();
     let key = RegKey::predef(HKEY_CURRENT_USER)
-        .open_subkey_with_flags(OWN_KEY, KEY_READ)
+        .open_subkey_with_flags(&own, KEY_READ)
         .ok()?;
     let dir: String = key.get_value("InstallDir").ok()?;
     let version: String = key.get_value("Version").unwrap_or_default();
@@ -175,11 +210,12 @@ pub fn installed_exe() -> Option<PathBuf> {
 }
 
 fn start_menu_link() -> Option<PathBuf> {
-    std::env::var_os("APPDATA").map(|a| {
-        PathBuf::from(a)
-            .join(r"Microsoft\Windows\Start Menu\Programs")
-            .join(format!("{APP_NAME}.lnk"))
-    })
+    let dir = match std::env::var_os(MENU_ENV).filter(|d| !d.is_empty()) {
+        Some(dir) => PathBuf::from(dir),
+        None => PathBuf::from(std::env::var_os("APPDATA")?)
+            .join(r"Microsoft\Windows\Start Menu\Programs"),
+    };
+    Some(dir.join(format!("{APP_NAME}.lnk")))
 }
 
 fn desktop_link() -> Option<PathBuf> {
@@ -251,7 +287,8 @@ fn size_kb(exe: &Path) -> u32 {
 
 fn register(dir: &Path, exe: &Path, version: &str) -> io::Result<()> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let (key, _) = hkcu.create_subkey(UNINSTALL_KEY)?;
+    let (uninstall, own_key) = keys();
+    let (key, _) = hkcu.create_subkey(&uninstall)?;
     let exe_s = exe.to_string_lossy().to_string();
     let text = |name: &str, value: &str| key.set_value(name, &value.to_string());
     text("DisplayName", APP_NAME)?;
@@ -272,7 +309,7 @@ fn register(dir: &Path, exe: &Path, version: &str) -> io::Result<()> {
     key.set_value("EstimatedSize", &size_kb(exe))?;
     key.set_value("NoModify", &1u32)?;
     key.set_value("NoRepair", &1u32)?;
-    let (own, _) = hkcu.create_subkey(OWN_KEY)?;
+    let (own, _) = hkcu.create_subkey(&own_key)?;
     own.set_value("InstallDir", &dir.to_string_lossy().to_string())?;
     own.set_value("Version", &version.to_string())?;
     Ok(())
@@ -311,6 +348,7 @@ fn step_aside(own: &Path, dir: &Path) -> io::Result<()> {
                 if !same_path(Path::new(&place), &temp) {
                     hide(&aside);
                 }
+                delete_soon(&aside);
                 delete_at_restart(&aside);
                 return Ok(());
             }
@@ -332,6 +370,28 @@ fn hide(path: &Path) {
     unsafe { SetFileAttributesW(path.as_ptr(), FILE_ATTRIBUTE_HIDDEN) };
 }
 
+/// Has Windows delete `path` a few seconds after this process exits: the copy that ran the
+/// uninstall is still running now, so it could only be renamed out of the install folder. A `cmd`
+/// started without a window waits and deletes it, hidden file or not, so nothing of the launcher's
+/// is left beside the install folder; [`delete_at_restart`] stays the backstop for when that fails.
+fn delete_soon(path: &Path) {
+    // A script beside the copy rather than a command line: `cmd` splits a whole line handed to
+    // `/C` as one argument wherever its path has spaces, and an install folder can have them.
+    // Windows separators inside it, since `del` reads a forward slash as a switch.
+    let target = path.to_string_lossy().replace('/', "\\");
+    let script = path.with_extension("cmd");
+    let text = format!(
+        "@echo off\r\n\
+         ping -n 4 127.0.0.1 >NUL\r\n\
+         del /F /A /Q \"{target}\" >NUL 2>&1\r\n\
+         (goto) 2>nul & del /F /A /Q \"%~f0\"\r\n"
+    );
+    if fs::write(&script, text).is_err() {
+        return;
+    }
+    let _ = crate::process::command("cmd").arg("/C").arg(&script).spawn();
+}
+
 /// Best effort: without administrator rights Windows refuses, and [`clean_aside`] does it later.
 fn delete_at_restart(path: &Path) {
     use windows_sys::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_DELAY_UNTIL_REBOOT};
@@ -343,6 +403,16 @@ fn delete_at_restart(path: &Path) {
 /// Installs the launcher this process is into `options.dir`. Returns the installed `.exe`.
 pub fn install(options: &Options, progress: impl Fn(Step, f32)) -> Result<PathBuf, String> {
     let source = std::env::current_exe().map_err(|e| e.to_string())?;
+    install_from(&source, options, progress)
+}
+
+/// [`install`] of the file `source`: the setup installs the copy of itself it runs from, and a
+/// test installs a small file it made instead of the whole test binary.
+fn install_from(
+    source: &Path,
+    options: &Options,
+    progress: impl Fn(Step, f32),
+) -> Result<PathBuf, String> {
     let dir = options.dir.clone();
     clean_aside(&dir);
     if dir.file_name().is_none() {
@@ -353,8 +423,8 @@ pub fn install(options: &Options, progress: impl Fn(Step, f32)) -> Result<PathBu
     fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     // Running the installed copy as the setup (`HORIZON_LAUNCHER_SETUP=1`) rewrites the shortcuts
     // and the registry, but does not copy the file onto itself.
-    if !same_path(&source, &exe) {
-        place(&source, &exe).map_err(|e| format!("{}: {e}", exe.display()))?;
+    if !same_path(source, &exe) {
+        place(source, &exe).map_err(|e| format!("{}: {e}", exe.display()))?;
     }
     progress(Step::Shortcuts, 0.6);
     if let Some(link) = start_menu_link() {
@@ -475,7 +545,9 @@ pub fn uninstall(remove_data: bool, progress: impl Fn(Step, f32)) -> Result<Vec<
     let dir = registered()
         .ok_or("OffHorizon Launcher is not installed for this account.")?
         .dir;
-    close_running_launchers(&progress);
+    if !testing() {
+        close_running_launchers(&progress);
+    }
     clean_aside(&dir);
     let exe = dir.join(BINARY);
     let own = backend::exe_path().to_path_buf();
@@ -501,21 +573,25 @@ pub fn uninstall(remove_data: bool, progress: impl Fn(Step, f32)) -> Result<Vec<
 
     progress(Step::Registry, 0.3);
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    for key in [UNINSTALL_KEY, OWN_KEY] {
-        match hkcu.delete_subkey(key) {
+    let (uninstall, own_key) = keys();
+    let parent = parent_of(&own_key);
+    for key in [uninstall, own_key] {
+        match hkcu.delete_subkey(&key) {
             Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::NotFound => {}
             Err(e) => left.push(format!(r"HKCU\{key}: {e}")),
         }
     }
     // `Software\Horizon` goes only when nothing else (the game) keeps anything in it.
-    if let Ok(parent) = hkcu.open_subkey_with_flags(r"Software\Horizon", KEY_READ) {
-        let empty = parent
-            .query_info()
-            .is_ok_and(|info| info.sub_keys == 0 && info.values == 0);
-        drop(parent);
-        if empty {
-            let _ = hkcu.delete_subkey(r"Software\Horizon");
+    if let Some(parent) = parent {
+        if let Ok(key) = hkcu.open_subkey_with_flags(&parent, KEY_READ) {
+            let empty = key
+                .query_info()
+                .is_ok_and(|info| info.sub_keys == 0 && info.values == 0);
+            drop(key);
+            if empty {
+                let _ = hkcu.delete_subkey(&parent);
+            }
         }
     }
 
@@ -584,12 +660,13 @@ pub fn after_update(version: &str) {
     {
         return;
     }
+    let (uninstall, own_key) = keys();
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    if let Ok(key) = hkcu.open_subkey_with_flags(UNINSTALL_KEY, KEY_WRITE) {
+    if let Ok(key) = hkcu.open_subkey_with_flags(&uninstall, KEY_WRITE) {
         let _ = key.set_value("DisplayVersion", &version.to_string());
         let _ = key.set_value("EstimatedSize", &size_kb(exe));
     }
-    if let Ok(key) = hkcu.open_subkey_with_flags(OWN_KEY, KEY_WRITE) {
+    if let Ok(key) = hkcu.open_subkey_with_flags(&own_key, KEY_WRITE) {
         let _ = key.set_value("Version", &version.to_string());
     }
 }
@@ -754,5 +831,113 @@ mod tests {
             Path::new(r"C:\Other\horizon-launcher.exe")
         ));
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A folder under %TEMP% for one test, with spaces in its name as a player's folder has.
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("{name} {}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Sends this test's Start menu shortcut and registry keys into `root`, so an install and an
+    /// uninstall here never touch the account's own menu, App list or launcher.
+    fn own_places(root: &Path) {
+        std::env::set_var(MENU_ENV, root.join("Start Menu"));
+        std::env::set_var(
+            KEY_ENV,
+            format!(r"Software\OffHorizon\Tests\installer-{}", std::process::id()),
+        );
+    }
+
+    fn release_places(root: &Path) {
+        std::env::remove_var(MENU_ENV);
+        std::env::remove_var(KEY_ENV);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn the_release_ships_an_installer_the_launcher_does_not_take_for_one() {
+        assert!(setup_name("OffHorizon-Setup-Windows-x64"));
+        assert!(setup_name("horizon-launcher-setup"));
+        assert!(!setup_name("OffHorizon-Launcher-Windows-x64"));
+        assert!(!setup_name("horizon-launcher"));
+    }
+
+    /// What a player's run of the installer leaves on disk, and what Uninstall takes away: the
+    /// file, the Start menu shortcut and the Apps entry, read from disk and the registry rather
+    /// than from the code that wrote them.
+    #[test]
+    fn install_puts_the_shortcut_and_the_apps_entry_there_and_uninstall_takes_them_away() {
+        let root = scratch("OffHorizon installer test");
+        own_places(&root);
+        let setup = root.join("OffHorizon-Setup-Windows-x64.exe");
+        fs::write(&setup, b"the setup's own bytes").unwrap();
+        let dir = folder_for(&root.join("installed"));
+        let options = Options {
+            dir: dir.clone(),
+            desktop: false,
+            remove_data: false,
+        };
+
+        let exe = install_from(&setup, &options, |_, _| {}).unwrap();
+        assert_eq!(exe, dir.join(BINARY));
+        assert_eq!(fs::read(&exe).unwrap(), b"the setup's own bytes");
+        // A second setup (an update) rewrites the same file and leaves nothing beside it.
+        fs::write(&setup, b"the newer setup").unwrap();
+        install_from(&setup, &options, |_, _| {}).unwrap();
+        assert_eq!(fs::read(&exe).unwrap(), b"the newer setup");
+        let files: Vec<String> = fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(files, [BINARY.to_string()]);
+
+        // The Start menu shortcut, and the program it opens.
+        let link = start_menu_link().unwrap();
+        assert!(link.is_file(), "{}", link.display());
+        assert!(points_to(&link, &exe));
+
+        // The Apps entry: what the player reads, where the program is, and both uninstall
+        // commands, the quiet one a script uses.
+        let (uninstall_key, own_key) = keys();
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let key = hkcu
+            .open_subkey_with_flags(&uninstall_key, KEY_READ)
+            .unwrap();
+        let text = |name: &str| -> String { key.get_value(name).unwrap() };
+        assert_eq!(text("DisplayName"), APP_NAME);
+        assert_eq!(text("Publisher"), PUBLISHER);
+        assert_eq!(text("DisplayVersion"), backend::VERSION);
+        assert_eq!(
+            text("InstallLocation"),
+            dir.to_string_lossy().to_string()
+        );
+        assert_eq!(text("DisplayIcon"), format!("{},0", exe.display()));
+        assert_eq!(
+            text("UninstallString"),
+            format!("\"{}\" uninstall", exe.display())
+        );
+        assert_eq!(
+            text("QuietUninstallString"),
+            format!("\"{}\" uninstall --quiet", exe.display())
+        );
+        drop(key);
+        let own = hkcu.open_subkey_with_flags(&own_key, KEY_READ).unwrap();
+        let registered_dir: String = own.get_value("InstallDir").unwrap();
+        assert!(same_path(Path::new(&registered_dir), &dir));
+        drop(own);
+        assert_eq!(installed().map(|i| i.dir), Some(dir.clone()));
+
+        // Uninstall: the file, the folder, the shortcut and both keys go.
+        let left = uninstall(false, |_, _| {}).unwrap();
+        assert_eq!(left, Vec::<String>::new());
+        assert!(!dir.exists(), "{}", dir.display());
+        assert!(!link.exists(), "{}", link.display());
+        assert!(hkcu.open_subkey_with_flags(&uninstall_key, KEY_READ).is_err());
+        assert!(hkcu.open_subkey_with_flags(&own_key, KEY_READ).is_err());
+        assert!(registered().is_none());
+        release_places(&root);
     }
 }
