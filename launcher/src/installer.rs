@@ -174,6 +174,9 @@ pub fn register_first_run() {
     if std::env::var_os("HORIZON_LAUNCHER_NO_SHORTCUT").is_some_and(|v| !v.is_empty()) {
         return;
     }
+    if !first_run(std::env::args_os().len()) {
+        return;
+    }
     let exe = backend::exe_path().to_path_buf();
     let Some(dir) = exe.parent() else {
         return;
@@ -182,6 +185,13 @@ pub fn register_first_run() {
         let _ = write_link(&link, &exe);
     }
     let _ = register(dir, &exe, backend::VERSION);
+}
+
+/// A double-click and nothing else: `--version`, the MCP tools and the completions are scripts
+/// talking to the launcher, and a script that asks the version does not want a Start menu entry
+/// put where its executable happens to sit.
+fn first_run(arguments: usize) -> bool {
+    arguments <= 1
 }
 
 /// The install this account has, if its launcher is still there.
@@ -855,6 +865,18 @@ mod tests {
         std::env::remove_var(MENU_ENV);
         std::env::remove_var(KEY_ENV);
         let _ = fs::remove_dir_all(root);
+        // The uninstall cleared the keys themselves; the folders this test put them under are
+        // ours as well, and the outer one only goes if nothing else lives there.
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let _ = hkcu.delete_subkey_all(r"Software\OffHorizon\Tests");
+        let _ = hkcu.delete_subkey(r"Software\OffHorizon");
+    }
+
+    #[test]
+    fn only_a_double_click_puts_the_launcher_in_the_menu() {
+        assert!(first_run(1));
+        assert!(!first_run(2));
+        assert!(!first_run(3));
     }
 
     #[test]

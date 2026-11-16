@@ -26,6 +26,11 @@ release, newest first, and an Unreleased section for work that is not released y
   `UninstallString`/`QuietUninstallString` from HKCU, and repeats the install (an update) to see
   the folder still holds one file; `uninstall` must return no leftovers and leave no file, no
   shortcut and no key.
+- `installer::register_first_run` acts only on a double-click (`first_run`, no arguments): a
+  script that runs the release `.exe --version`, or an MCP tool, used to leave a Start menu entry
+  and an Apps entry pointing at whatever folder the executable sat in. The installer's own test
+  now also removes the `Software\OffHorizon\Tests` folders it makes, so a test run leaves the
+  account as it found it.
 - `installer::delete_soon`: the copy the uninstaller runs from can only be renamed out of the
   install folder, so a small `.cmd` written beside it waits for the process to end and deletes the
   copy, then itself. The line goes through a script because `cmd /C` splits a whole command line
