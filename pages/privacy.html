@@ -65,10 +65,14 @@
       connect to. Nothing is sent to OffHorizon.</p>
 
       <h2>This site</h2>
-      <p>The page loads only its own files: one stylesheet, the images beside it, the favicon and the
-      web manifest. It runs no script. Contributor avatars are images fetched from
-      <code>avatars.githubusercontent.com</code>, the same pictures GitHub serves on each profile;
-      they are the only third-party request the page makes.</p>
+      <p>Everything this page needs for its own layout is served from this site: one stylesheet, the
+      images beside it, the favicon and the web manifest. It runs no script, so there is nothing to
+      execute, nothing to count and nothing stored in your browser.</p>
+      <p>One thing comes from somewhere else: the 310 contributor avatars, loaded as images from
+      <code>avatars.githubusercontent.com</code> — the same pictures GitHub serves on each profile.
+      Those requests reach GitHub, never OffHorizon, and they are the only requests this page makes
+      to another host. Blocking them leaves the page readable: an empty square where a face would
+      be.</p>
 
       <h2>What stays on your computer</h2>
       <ul>
