@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docs — OffHorizon</title>
+  <meta name="description" content="How OffHorizon installs, what it downloads, where it keeps your files, and what to do when something is missing.">
+  <meta name="theme-color" content="#100a1f">
+  <meta name="application-name" content="OffHorizon">
+  <link rel="canonical" href="https://piboh.github.io/offhorizon/pages/docs.html">
+  <meta property="og:title" content="Docs — OffHorizon">
+  <meta property="og:description" content="How OffHorizon installs, what it downloads, where it keeps your files, and what to do when something is missing.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://piboh.github.io/offhorizon/pages/docs.html">
+  <meta property="og:site_name" content="OffHorizon">
+  <meta property="og:image" content="https://piboh.github.io/offhorizon/assets/offhorizon.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../favicon.ico" sizes="any">
+  <link rel="icon" href="../assets/offhorizon.png" type="image/png" sizes="64x64">
+  <link rel="apple-touch-icon" href="../assets/offhorizon.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="OffHorizon home">
+      <img src="../assets/offhorizon.png" width="40" height="40" alt="">
+      <span>OffHorizon</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="../index.html#contributors">Contributors</a>
+      <a href="https://github.com/PiBOH/offhorizon" rel="noreferrer">GitHub</a>
+    </nav>
+    <a class="button small" href="https://github.com/PiBOH/offhorizon/releases/latest">Download</a>
+  </header>
+
+  <main>
+    <section class="section prose">
+      <p class="eyebrow">Docs</p>
+      <h1>What to know before you play</h1>
+      <p class="lead">OffHorizon is one portable file. It launches the Rust rewrite of Minecraft: Java Edition 26.3 and your own Java instances, with an offline account and no telemetry.</p>
+
+      <h2>Install and first start</h2>
+      <p>Download <code>OffHorizon-Launcher-Windows-x64.exe</code> (or the Linux file) from
+      <a href="releases.html">Releases</a> and run it from wherever you keep it. There is no
+      installer and no administrator prompt.</p>
+      <ul>
+        <li>On its first start the launcher keeps a copy of itself in
+        <code>%APPDATA%\offhorizon\OffHorizon.exe</code>, so the copy survives an emptied
+        downloads folder.</li>
+        <li>It then asks once whether to add its shortcuts to the Start menu and the desktop. The
+        same switch is in Settings → About → Shortcuts, and turning it off removes them again.</li>
+        <li>Nothing is registered as an installed program, so there is no entry in Settings → Apps.</li>
+      </ul>
+
+      <h2>Accounts</h2>
+      <p>An empty account list gets an offline account automatically: a local name, with the
+      <code>OfflinePlayer:&lt;name&gt;</code> UUID Java uses. Singleplayer and LAN work with it.
+      Online servers still need a Microsoft account that owns the game.</p>
+
+      <h2>What OffHorizon downloads</h2>
+      <ul>
+        <li>Mojang's public version files for Minecraft 26.3, and the libraries the game needs,
+        when they are missing from your game folder.</li>
+        <li>Horizon game builds from <a href="https://github.com/horizon-rust/horizon">horizon-rust/horizon</a>,
+        so the Rust game is always the latest build upstream publishes.</li>
+        <li>Launcher updates and native mods from <a href="https://github.com/PiBOH/offhorizon">PiBOH/offhorizon</a>.</li>
+      </ul>
+
+      <h2>Other launchers</h2>
+      <p>OffHorizon looks in the usual folders, including <code>.minecraft</code>, SKlauncher's
+      <code>minecraft</code>, <code>instances</code> and <code>profiles</code>, and the Prism,
+      MultiMC and Modrinth layouts. A profile whose client jar is missing is completed from
+      Mojang's public files instead of stopping with “Missing …”.</p>
+
+      <h2>Folders</h2>
+      <ul>
+        <li>The launcher's own data lives in <code>%APPDATA%\horizon-launcher</code> (settings,
+        logs, the prepared game).</li>
+        <li>Worlds, options and packs live in the game folder shown in the launcher, one folder per
+        instance.</li>
+        <li>The copy of the launcher itself lives in <code>%APPDATA%\offhorizon</code>.</li>
+      </ul>
+
+      <h2>Logs and crashes</h2>
+      <p>Settings → About opens the logs folder. Crash reports sit beside it. Nothing in those
+      files is ever uploaded: OffHorizon has no telemetry endpoint at all.</p>
+
+      <h2>Updating</h2>
+      <p>Download the newest file from <a href="releases.html">Releases</a> and replace the old
+      launcher. Worlds, settings and the game folder stay where they are.</p>
+
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot-brand">
+      <img src="../assets/offhorizon.png" width="32" height="32" alt="">
+      <b>OffHorizon</b>
+    </div>
+    <p>Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB. OffHorizon is an unofficial fork of Horizon.</p>
+    <p class="foot-links">
+      <a href="../index.html">Home</a>
+      <a href="docs.html">Docs</a>
+      <a href="mods.html">Mods</a>
+      <a href="releases.html">Releases</a>
+      <a href="how-horizon-is-built.html">How it's built</a>
+      <a href="artists.html">3D artists</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/PiBOH/offhorizon">Source</a>
+    </p>
+  </footer>
+</body>
+</html>

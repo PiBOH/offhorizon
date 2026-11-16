@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy — OffHorizon</title>
+  <meta name="description" content="OffHorizon collects nothing: no telemetry, no analytics, no cookies. Here is exactly what leaves your computer.">
+  <meta name="theme-color" content="#100a1f">
+  <meta name="application-name" content="OffHorizon">
+  <link rel="canonical" href="https://piboh.github.io/offhorizon/pages/privacy.html">
+  <meta property="og:title" content="Privacy — OffHorizon">
+  <meta property="og:description" content="OffHorizon collects nothing: no telemetry, no analytics, no cookies. Here is exactly what leaves your computer.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://piboh.github.io/offhorizon/pages/privacy.html">
+  <meta property="og:site_name" content="OffHorizon">
+  <meta property="og:image" content="https://piboh.github.io/offhorizon/assets/offhorizon.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../favicon.ico" sizes="any">
+  <link rel="icon" href="../assets/offhorizon.png" type="image/png" sizes="64x64">
+  <link rel="apple-touch-icon" href="../assets/offhorizon.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="OffHorizon home">
+      <img src="../assets/offhorizon.png" width="40" height="40" alt="">
+      <span>OffHorizon</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="../index.html#contributors">Contributors</a>
+      <a href="https://github.com/PiBOH/offhorizon" rel="noreferrer">GitHub</a>
+    </nav>
+    <a class="button small" href="https://github.com/PiBOH/offhorizon/releases/latest">Download</a>
+  </header>
+
+  <main>
+    <section class="section prose">
+      <p class="eyebrow">Privacy</p>
+      <h1>OffHorizon keeps nothing about you</h1>
+      <p class="lead">There is no telemetry endpoint, no account server of ours and no analytics on this site. This page lists what actually leaves your computer, and what does not.</p>
+
+      <h2>In short</h2>
+      <ul>
+        <li>No telemetry: the launcher has no endpoint to send anything to, and the “I'm playing”
+        ping Horizon documents is not registered here.</li>
+        <li>No analytics, trackers, advertisements or cookies on this site.</li>
+        <li>No account database: an offline account is a name in a JSON file on your own disk.</li>
+        <li>No crash or benchmark upload; those files stay where the game writes them.</li>
+      </ul>
+
+      <h2>What the launcher contacts, and why</h2>
+      <ul>
+        <li><b>Mojang's public files</b> (<code>piston-meta</code>, <code>launchermeta</code> and the
+        library hosts): the version manifest, the client and the libraries the game needs.</li>
+        <li><b>github.com and the GitHub release CDN</b>: Horizon game builds, launcher updates and
+        native mods.</li>
+        <li><b>Maven Central</b>: a library the Minecraft host refuses to serve, checked against the
+        same hash.</li>
+      </ul>
+      <p>Those requests carry what any HTTP request carries — your IP address reaches the host you
+      connect to. Nothing is sent to OffHorizon.</p>
+
+      <h2>This site</h2>
+      <p>The page loads only its own files: one stylesheet, the images beside it, the favicon and the
+      web manifest. It runs no script. Contributor avatars are images fetched from
+      <code>avatars.githubusercontent.com</code>, the same pictures GitHub serves on each profile;
+      they are the only third-party request the page makes.</p>
+
+      <h2>What stays on your computer</h2>
+      <ul>
+        <li><code>settings.json</code>, <code>accounts.json</code> and your launcher choice of
+        folders, in the launcher's data folder.</li>
+        <li>Your worlds, options and packs, in the game folder.</li>
+        <li>Logs and crash reports, for you to read or delete.</li>
+      </ul>
+
+      <h2>Removing it</h2>
+      <p>Turn the Shortcuts switch off to take the menu entries away, then delete the launcher's
+      data folder and the copy in <code>%APPDATA%\offhorizon</code>. Nothing else is left behind,
+      because nothing else was installed.</p>
+
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot-brand">
+      <img src="../assets/offhorizon.png" width="32" height="32" alt="">
+      <b>OffHorizon</b>
+    </div>
+    <p>Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB. OffHorizon is an unofficial fork of Horizon.</p>
+    <p class="foot-links">
+      <a href="../index.html">Home</a>
+      <a href="docs.html">Docs</a>
+      <a href="mods.html">Mods</a>
+      <a href="releases.html">Releases</a>
+      <a href="how-horizon-is-built.html">How it's built</a>
+      <a href="artists.html">3D artists</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/PiBOH/offhorizon">Source</a>
+    </p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How it's built — OffHorizon</title>
+  <meta name="description" content="How OffHorizon and the Rust game are put together, and how the game is checked against vanilla Minecraft.">
+  <meta name="theme-color" content="#100a1f">
+  <meta name="application-name" content="OffHorizon">
+  <link rel="canonical" href="https://piboh.github.io/offhorizon/pages/how-horizon-is-built.html">
+  <meta property="og:title" content="How it's built — OffHorizon">
+  <meta property="og:description" content="How OffHorizon and the Rust game are put together, and how the game is checked against vanilla Minecraft.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://piboh.github.io/offhorizon/pages/how-horizon-is-built.html">
+  <meta property="og:site_name" content="OffHorizon">
+  <meta property="og:image" content="https://piboh.github.io/offhorizon/assets/offhorizon.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../favicon.ico" sizes="any">
+  <link rel="icon" href="../assets/offhorizon.png" type="image/png" sizes="64x64">
+  <link rel="apple-touch-icon" href="../assets/offhorizon.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="OffHorizon home">
+      <img src="../assets/offhorizon.png" width="40" height="40" alt="">
+      <span>OffHorizon</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="../index.html#contributors">Contributors</a>
+      <a href="https://github.com/PiBOH/offhorizon" rel="noreferrer">GitHub</a>
+    </nav>
+    <a class="button small" href="https://github.com/PiBOH/offhorizon/releases/latest">Download</a>
+  </header>
+
+  <main>
+    <section class="section prose">
+      <p class="eyebrow">How it's built</p>
+      <h1>Rust, checked against vanilla</h1>
+      <p class="lead">The game is a new program written in Rust; the launcher is a separate Rust program. Both are built and tested in the open.</p>
+
+      <h2>The game</h2>
+      <p>Minecraft: Java Edition 26.3 is rewritten from scratch in Rust. It reads the same worlds,
+      plays by the same rules and generates the same terrain as the Java game. It is not a mod and
+      it does not run Java.</p>
+
+      <h2>Checked against the real game</h2>
+      <p>Hundreds of harnesses feed the same inputs to the Rust game and to the real one, then compare
+      the results: block updates, mob behaviour, redstone, world generation. Passing them is not proof
+      that nothing differs — players still find differences, and each one becomes a new harness.</p>
+
+      <h2>The launcher</h2>
+      <p>The launcher is its own Cargo workspace. It prepares the game folder, installs mods and
+      packs, starts the Rust game or a Java instance, and updates itself from
+      <a href="https://github.com/PiBOH/offhorizon">PiBOH/offhorizon</a>. Game builds come from
+      <a href="https://github.com/horizon-rust/horizon">horizon-rust/horizon</a>; the two
+      repositories stay separate on purpose.</p>
+
+      <h2>What OffHorizon adds</h2>
+      <ul>
+        <li>Offline accounts: a local name, no Microsoft sign-in gate.</li>
+        <li>No telemetry: the endpoint is hard-wired to nothing, so an old outbox cannot send.</li>
+        <li>A portable release: one file, a copy in <code>%APPDATA%\offhorizon</code>, and the
+        shortcuts only if you ask for them.</li>
+      </ul>
+
+      <h2>Building it yourself</h2>
+      <p>The repository has the build and test commands: <code>cargo check --locked</code>,
+      <code>cargo test --release --locked</code> and <code>cargo build --release --locked</code> in
+      the <code>launcher</code> folder for the launcher, and the root workspace for the game.</p>
+
+      <h2>Licence and attribution</h2>
+      <p>OffHorizon is under the Unlicense. Horizon's original work is MIT-licensed by its
+      contributors, and that attribution stays in the project's notices.</p>
+
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot-brand">
+      <img src="../assets/offhorizon.png" width="32" height="32" alt="">
+      <b>OffHorizon</b>
+    </div>
+    <p>Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB. OffHorizon is an unofficial fork of Horizon.</p>
+    <p class="foot-links">
+      <a href="../index.html">Home</a>
+      <a href="docs.html">Docs</a>
+      <a href="mods.html">Mods</a>
+      <a href="releases.html">Releases</a>
+      <a href="how-horizon-is-built.html">How it's built</a>
+      <a href="artists.html">3D artists</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/PiBOH/offhorizon">Source</a>
+    </p>
+  </footer>
+</body>
+</html>

@@ -299,3 +299,63 @@ footer p { max-width: 820px; }
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.08);
 }
+
+/* Sub-pages: the same plate as the home page, with prose in it. */
+.prose {
+  max-width: 820px;
+}
+
+.prose h1 {
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 6px 0 14px;
+}
+
+.prose h2 {
+  font-size: 1.28rem;
+  letter-spacing: -0.01em;
+  margin: 38px 0 10px;
+}
+
+.prose h3 {
+  font-size: 1.05rem;
+  margin: 24px 0 8px;
+}
+
+.prose p,
+.prose li {
+  color: var(--ink-soft, rgba(255, 255, 255, 0.72));
+  line-height: 1.65;
+  font-size: 0.98rem;
+}
+
+.prose p + p {
+  margin-top: 12px;
+}
+
+.prose ul,
+.prose ol {
+  margin: 12px 0 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.prose a {
+  color: var(--accent, #a98fff);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.prose .lead {
+  margin-bottom: 8px;
+}

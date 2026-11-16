@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mods, packs and shaders — OffHorizon</title>
+  <meta name="description" content="How OffHorizon installs native mods, ported Java mods, modpacks, resource packs and shader packs.">
+  <meta name="theme-color" content="#100a1f">
+  <meta name="application-name" content="OffHorizon">
+  <link rel="canonical" href="https://piboh.github.io/offhorizon/pages/mods.html">
+  <meta property="og:title" content="Mods, packs and shaders — OffHorizon">
+  <meta property="og:description" content="How OffHorizon installs native mods, ported Java mods, modpacks, resource packs and shader packs.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://piboh.github.io/offhorizon/pages/mods.html">
+  <meta property="og:site_name" content="OffHorizon">
+  <meta property="og:image" content="https://piboh.github.io/offhorizon/assets/offhorizon.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../favicon.ico" sizes="any">
+  <link rel="icon" href="../assets/offhorizon.png" type="image/png" sizes="64x64">
+  <link rel="apple-touch-icon" href="../assets/offhorizon.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="OffHorizon home">
+      <img src="../assets/offhorizon.png" width="40" height="40" alt="">
+      <span>OffHorizon</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="../index.html#contributors">Contributors</a>
+      <a href="https://github.com/PiBOH/offhorizon" rel="noreferrer">GitHub</a>
+    </nav>
+    <a class="button small" href="https://github.com/PiBOH/offhorizon/releases/latest">Download</a>
+  </header>
+
+  <main>
+    <section class="section prose">
+      <p class="eyebrow">Mods</p>
+      <h1>Mods, packs and shaders</h1>
+      <p class="lead">OffHorizon installs mods and packs into the instance you pick, from the launcher or from a file you already have.</p>
+
+      <h2>Native mods</h2>
+      <p>Horizon's mod API takes Rust mods (native mods). OffHorizon downloads them from the registry
+      and builds the ones that need a build, into the instance's own folder, so two instances never
+      share a mod by accident.</p>
+
+      <h2>Java mods, ported</h2>
+      <p>When a Java instance has a mod that Horizon has a Rust port for, OffHorizon's Port check
+      tells you what carries over. What ports is installed into the Rust game folder; the mod's own
+      Java code is never run.</p>
+
+      <h2>Shader packs</h2>
+      <p>A shader pack is read the way the game reads it before it lands in <code>shaderpacks/</code>.
+      A pack written for an API line the game no longer draws says so instead of failing silently,
+      and Horizon's own <b>Golden Hour</b> pack is installed and turned on in its place.</p>
+
+      <h2>Resource packs and data packs</h2>
+      <p>Packs go into the instance's <code>resourcepacks/</code> and <code>datapacks/</code>; the
+      Packs page shows what is installed and lets you turn it on. Nothing is installed into a world
+      you did not pick.</p>
+
+      <h2>Where files land</h2>
+      <ul>
+        <li>Rust game instance: its own game folder, chosen in the launcher.</li>
+        <li>Java instance: the instance folder it was imported with, untouched otherwise.</li>
+        <li>Mods you add by hand are left alone; the launcher only writes what it installed.</li>
+      </ul>
+
+      <h2>Something did not install</h2>
+      <p>Settings → About opens the logs folder: every install writes what it did and what refused.
+      A pack or mod that cannot be used is named there, with the reason.</p>
+
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot-brand">
+      <img src="../assets/offhorizon.png" width="32" height="32" alt="">
+      <b>OffHorizon</b>
+    </div>
+    <p>Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB. OffHorizon is an unofficial fork of Horizon.</p>
+    <p class="foot-links">
+      <a href="../index.html">Home</a>
+      <a href="docs.html">Docs</a>
+      <a href="mods.html">Mods</a>
+      <a href="releases.html">Releases</a>
+      <a href="how-horizon-is-built.html">How it's built</a>
+      <a href="artists.html">3D artists</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/PiBOH/offhorizon">Source</a>
+    </p>
+  </footer>
+</body>
+</html>
