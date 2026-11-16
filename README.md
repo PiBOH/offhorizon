@@ -82,6 +82,6 @@
   <a href="https://discord.gg/playhorizon"><b>Discord</b></a>
 </p>
 
-<sub>OffHorizon is released under the [Unlicense](LICENSE). It derives from [Horizon](https://github.com/horizon-rust/horizon), whose code is MIT-licensed by the Horizon contributors; dependencies keep their own licences, see the [notices](THIRD_PARTY_NOTICES.md). Horizon was founded by [Ludovic Marie](https://lu4ovic.com) and built by the Horizon Team and [its contributors](https://github.com/horizon-rust/horizon/graphs/contributors).</sub>
+<sub>OffHorizon is released under the [Unlicense](LICENSE). It derives from [Horizon](https://github.com/horizon-rust/horizon), whose code is MIT-licensed by the Horizon contributors; dependencies keep their own licences, see the [notices](THIRD_PARTY_NOTICES.md). Horizon was founded by [Ludovic Marie](https://lu4ovic.com) and built by the Horizon Team and [its contributors](https://github.com/horizon-rust/horizon/graphs/contributors); OffHorizon is maintained by [PiBOH](https://github.com/PiBOH).</sub>
 
 <sub>NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. OffHorizon is an unofficial fork: it is NOT APPROVED BY OR ASSOCIATED WITH HORIZON-RUST EITHER. Minecraft is a trademark of Mojang Synergies AB; its code and assets belong to Mojang and Microsoft under the [Minecraft EULA](https://www.minecraft.net/en-us/eula).</sub>
