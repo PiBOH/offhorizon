@@ -29,6 +29,8 @@ pub(super) struct Built {
     pub prune: Stateful<Div>,
     pub opening: Stateful<Div>,
     pub menu_entry: Stateful<Div>,
+    /// Windows: the switch for the shortcuts the first start asks about.
+    pub shortcuts: AnyElement,
     pub appearance: AnyElement,
     pub horizon: String,
     pub horizon_action: Option<AnyElement>,
@@ -491,6 +493,19 @@ impl Launcher {
                         "Not in your desktop's menu."
                     }),
                     Some(b.menu_entry.into_any_element()),
+                    &t,
+                ))
+            })
+            .when(cfg!(target_os = "windows"), |d| {
+                d.child(index_row(
+                    0,
+                    tr("Shortcuts"),
+                    note(if self.settings.shortcuts() {
+                        "OffHorizon is in your Start menu and on your desktop."
+                    } else {
+                        "OffHorizon is not in your Start menu or on your desktop."
+                    }),
+                    Some(b.shortcuts),
                     &t,
                 ))
             });

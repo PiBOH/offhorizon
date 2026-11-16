@@ -1228,5 +1228,9 @@
   "Offline account": "Account offline",
   "OffHorizon": "OffHorizon",
   "Dedicated GPU": "GPU dedicata",
-  "Plays on the high-performance graphics card when the computer has one. On by default.": "Gioca sulla scheda grafica ad alte prestazioni quando il computer ne ha una. Attiva per impostazione predefinita."
+  "Plays on the high-performance graphics card when the computer has one. On by default.": "Gioca sulla scheda grafica ad alte prestazioni quando il computer ne ha una. Attiva per impostazione predefinita.",
+  "Add OffHorizon to the Start menu and the desktop?": "Aggiungere OffHorizon al menu Start e al desktop?",
+  "Shortcuts": "Collegamenti",
+  "OffHorizon is in your Start menu and on your desktop.": "OffHorizon è nel menu Start e sul desktop.",
+  "OffHorizon is not in your Start menu or on your desktop.": "OffHorizon non è nel menu Start né sul desktop."
 }

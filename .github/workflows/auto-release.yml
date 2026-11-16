@@ -116,11 +116,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path ..\dist | Out-Null
+          # One portable `.exe`, no setup: it runs from wherever the player saves it, keeps a copy
+          # in %APPDATA%\offhorizon and asks once about its shortcuts (`installer::first_start`).
           Copy-Item "target\release\${{ matrix.binary }}" "..\dist\${{ matrix.asset }}"
-          # The same program under the name that makes it the installer (`installer::is_setup_exe`):
-          # run this one and it copies itself into %LOCALAPPDATA%\Programs\OffHorizon Launcher,
-          # makes the Start menu shortcut and the Apps entry, and starts the installed copy.
-          Copy-Item "target\release\${{ matrix.binary }}" "..\dist\OffHorizon-Setup-Windows-x64.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.name }}

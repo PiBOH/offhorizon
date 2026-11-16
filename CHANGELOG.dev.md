@@ -9,11 +9,34 @@ release, newest first, and an Unreleased section for work that is not released y
 ## [0.1.5-nightly] - 2026-11-15
 
 ### Added
-- `installer::setup_name`: the release asset `OffHorizon-Setup-Windows-x64.exe` is taken for the
-  installer as well as the old `horizon-launcher-setup` name, so the binary a player downloads
-  from the release page opens the setup instead of the launcher. The Windows job of
-  `.github/workflows/auto-release.yml` copies the built binary under both names and uploads
-  `dist/*`, so every release carries the launcher and the installer.
+- A portable release again: the Windows job of `.github/workflows/auto-release.yml` uploads one
+  `OffHorizon-Launcher-Windows-x64.exe`. `installer::setup_name` no longer takes
+  `OffHorizon-Setup-Windows-x64` for an installer (only the legacy `horizon-launcher-setup`), so a
+  release asset cannot turn into a setup by its name; the install/uninstall code of 0.1.5-nightly
+  stays for the player who installed that build, and `installer::tests`
+  `the_portable_release_is_no_setup_and_the_old_one_still_is` holds the line.
+- `installer::{home, home_exe, keep_a_copy}`: a portable launcher keeps itself in
+  `%APPDATA%\offhorizon\OffHorizon.exe`. The copy is written beside the target first
+  (`OffHorizon.exe.new`) and renamed over it, so a failed copy never leaves a broken launcher and a
+  copy that is running (a player started it from there) keeps the old file until the next start;
+  `HORIZON_LAUNCHER_PORTABLE_DIR` moves the folder, for tests.
+- `installer::{first_start, first_start_with}`: the first start copies the launcher and asks once,
+  in a `MessageBoxW` dialog (`Win32_UI_WindowsAndMessaging` is a `windows` feature now), then
+  stores the answer in `Settings::shortcuts` (`Some(false)` is a no that stays a no, `Some(true)`
+  keeps the shortcuts in step on later starts). `first_start_with` takes the question, the file and
+  the argument count, so the whole path is testable without a dialog;
+  `installer::tests::the_first_start_asks_once_and_keeps_the_answer` reads the copy from disk, the
+  answer from `settings.json` (`HORIZON_LAUNCHER_HOME` under `.local/`), the shortcut with
+  `points_to`, and checks that a script's command line asks nothing. The tests that share the
+  process environment take a `PLACES` mutex after two of them raced over `HORIZON_LAUNCHER_SETUP_MENU`.
+- `installer::{create_shortcuts, shortcuts_for, remove_shortcuts, shortcuts_present}`: the Start
+  menu and desktop links, the same two the old setup wrote, without the registry entry: a portable
+  launcher is not an installed program. `Settings::shortcuts()` (unset = no) and the `Shortcuts`
+  switch in Settings → About (`Built.shortcuts`, Windows only, the sibling of the Linux
+  applications-menu switch) change the answer afterwards, and `tr` keys
+  "Add OffHorizon to the Start menu and the desktop?", "Shortcuts",
+  "OffHorizon is in your Start menu and on your desktop." and its negation carry it in every
+  language, with Italian in `launcher/lang/it.json` and the English fallback elsewhere.
 - `installer::install_from(source, options, progress)`: what `install` copies is a parameter now,
   so a test installs a small file rather than the whole test binary.
 - `installer::keys`, `parent_of`, `testing` and the `HORIZON_LAUNCHER_INSTALL_KEY` override, plus
@@ -26,11 +49,10 @@ release, newest first, and an Unreleased section for work that is not released y
   `UninstallString`/`QuietUninstallString` from HKCU, and repeats the install (an update) to see
   the folder still holds one file; `uninstall` must return no leftovers and leave no file, no
   shortcut and no key.
-- `installer::register_first_run` acts only on a double-click (`first_run`, no arguments): a
-  script that runs the release `.exe --version`, or an MCP tool, used to leave a Start menu entry
-  and an Apps entry pointing at whatever folder the executable sat in. The installer's own test
-  now also removes the `Software\OffHorizon\Tests` folders it makes, so a test run leaves the
-  account as it found it.
+- `installer::first_run` still needs a double-click (`first_start` returns early otherwise): a
+  script that runs the release `.exe --version`, or an MCP tool, copies nothing and asks nothing.
+  The installer's own test also removes the `Software\OffHorizon\Tests` folders it makes, so a test
+  run leaves the account as it found it.
 - `installer::delete_soon`: the copy the uninstaller runs from can only be renamed out of the
   install folder, so a small `.cmd` written beside it waits for the process to end and deletes the
   copy, then itself. The line goes through a script because `cmd /C` splits a whole command line
@@ -44,7 +66,7 @@ release, newest first, and an Unreleased section for work that is not released y
   reaches the compiler. The installed `.exe` here now carries all seven frames of
   `packaging/icons/offhorizon.ico` and `FileDescription`/`ProductName`/`CompanyName` = OffHorizon.
   Checked by extracting the icon from the installed copy and by finding the ico's frames in it.
-- `installer::tests::the_release_ships_an_installer_the_launcher_does_not_take_for_one`.
+- `installer::tests::the_portable_release_is_no_setup_and_the_old_one_still_is`.
 - `gpu::apply` (called at start, Windows only): writes the per-program DirectX preference
   (`HKCU\Software\Microsoft\DirectX\UserGpuPreferences`, `GpuPreference=2;`) for the launcher and
   every `horizon-client` under the game home (`gpu::programs`, four folders deep), so the pair

@@ -1,17 +1,20 @@
-//! Per-user setup on Windows, no administrator needed.
+//! Where a portable OffHorizon keeps house on Windows.
 //!
-//! `horizon-launcher-setup.exe` (the launcher's own binary under another name, made by the
-//! release workflow) copies itself to `%LOCALAPPDATA%\Programs\Horizon Launcher\horizon-launcher.exe`,
-//! makes the Start menu shortcut (and the desktop one if asked) and the Uninstall entry under HKCU,
-//! and starts the installed copy. `horizon-launcher.exe uninstall` takes it all away again: the
-//! launcher's data folder only when asked, the game's folder never.
+//! There is no setup: the release serves one `.exe` that runs from wherever the player put it. On
+//! its first start the launcher copies itself into `%APPDATA%\offhorizon` ([`keep_a_copy`]), so
+//! the copy in the player's own folder survives an emptied Downloads folder, and asks once whether
+//! to add its shortcuts to the Start menu and the desktop ([`first_start`]); the answer is stored
+//! in `Settings` and the same switch is in Settings. Nothing is registered as an installed program
+//! and no administrator rights are ever asked for: taking the shortcuts away is
+//! [`remove_shortcuts`], and the folder goes with the file.
 //!
-//! Nothing here deletes a folder it didn't make: the install folder is always called
-//! "Horizon Launcher" ([`folder_for`]) and is removed with `remove_dir`, which only takes an empty one.
+//! The install and uninstall of 0.1.5-nightly's setup stay here for the player who installed that
+//! build: `horizon-launcher-setup.exe` still installs, and `horizon-launcher.exe uninstall` still
+//! takes it away (data folder only when asked, the game's folder never). No release ships that
+//! setup any more ([`setup_name`]).
 //!
-//! Command lines (handled in `main` before the CLI parser, so MCP never sees them):
-//! `horizon-launcher-setup.exe` (window), `... setup --quiet [--dir <folder>] [--desktop-shortcut]`,
-//! `horizon-launcher.exe uninstall` (window), `... uninstall --quiet [--remove-data]`.
+//! Command lines handled in `main` before the CLI parser, so MCP never sees them:
+//! `... uninstall [--quiet] [--remove-data]`, and `horizon-launcher-setup.exe` for that older build.
 use crate::backend;
 use crate::data_location::{self, Roots};
 use crate::shortcut;
@@ -32,6 +35,8 @@ const ASIDE_PREFIX: &str = "horizon-launcher-uninstall-";
 /// test installs and uninstalls without touching an account's own menu and registry.
 const KEY_ENV: &str = "HORIZON_LAUNCHER_INSTALL_KEY";
 const MENU_ENV: &str = "HORIZON_LAUNCHER_SETUP_MENU";
+/// Where the portable copy lives, for a test that must not write to the account's own %APPDATA%.
+const PORTABLE_ENV: &str = "HORIZON_LAUNCHER_PORTABLE_DIR";
 
 /// The Uninstall and own keys of this run: `<base>\Uninstall` and `<base>\Launcher` for a test,
 /// else the account's own.
@@ -119,11 +124,11 @@ pub fn is_setup_exe() -> bool {
         .is_some_and(setup_name)
 }
 
-/// Whether a file stem is one the release ships as the installer: `horizon-launcher-setup` (the
-/// old name) or `OffHorizon-Setup-Windows-x64` (the asset a player downloads).
+/// Whether a file stem is the setup of 0.1.5-nightly, which no release ships any more: the player
+/// who installed that build can still run its installer and its uninstall. The portable asset
+/// (`OffHorizon-Launcher-Windows-x64`) is never taken for one.
 fn setup_name(stem: &str) -> bool {
-    let stem = stem.to_ascii_lowercase();
-    stem.starts_with("horizon-launcher-setup") || stem.starts_with("offhorizon-setup")
+    stem.to_ascii_lowercase().starts_with("horizon-launcher-setup")
 }
 
 /// The window to open instead of the launcher: the wizard for the setup exe started without
@@ -163,35 +168,162 @@ pub fn folder_for(chosen: &Path) -> PathBuf {
     }
 }
 
-/// Registers a launcher the player started without running setup (the `.exe` a release page
-/// serves): the Start menu shortcut and the Apps list entry point at that very file, so
-/// OffHorizon opens from the Start menu like any other program. Nothing is copied or moved; a
-/// later setup replaces both entries with the installed copy.
-pub fn register_first_run() {
-    if cfg!(debug_assertions) || registered().is_some() {
+/// The folder a portable launcher keeps itself in: `%APPDATA%\offhorizon`
+/// (`HORIZON_LAUNCHER_PORTABLE_DIR` replaces it, for tests).
+pub fn home() -> PathBuf {
+    match std::env::var_os(PORTABLE_ENV).filter(|d| !d.is_empty()) {
+        Some(dir) => PathBuf::from(dir),
+        None => dirs::data_dir()
+            .unwrap_or_else(std::env::temp_dir)
+            .join("offhorizon"),
+    }
+}
+
+/// The launcher's copy in [`home`].
+pub fn home_exe() -> PathBuf {
+    home().join("OffHorizon.exe")
+}
+
+/// Puts the launcher's `.exe` in [`home`], creating the folder if it is not there yet. Unset and
+/// unchanged: the copy is left alone, so a start does no work. Returns the copy.
+pub fn keep_a_copy() -> io::Result<PathBuf> {
+    copy_home(&backend::exe_path())
+}
+
+fn copy_home(source: &Path) -> io::Result<PathBuf> {
+    let target = home_exe();
+    if same_path(source, &target) {
+        return Ok(target);
+    }
+    fs::create_dir_all(home())?;
+    // Beside it first, so a copy that fails half way never leaves a broken launcher behind; the
+    // copy may be running (a player started it from there), and then the old one stays and the
+    // next start tries again.
+    let staging = home().join("OffHorizon.exe.new");
+    fs::copy(source, &staging)?;
+    match fs::rename(&staging, &target) {
+        Ok(()) => Ok(target),
+        Err(e) => {
+            let _ = fs::remove_file(&staging);
+            if target.is_file() {
+                Ok(target)
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+/// The Start menu shortcut (and the desktop one when asked), opening this launcher.
+pub fn create_shortcuts(desktop: bool) -> io::Result<()> {
+    shortcuts_for(&backend::exe_path(), desktop)
+}
+
+fn shortcuts_for(exe: &Path, desktop: bool) -> io::Result<()> {
+    if let Some(link) = start_menu_link() {
+        write_link(&link, exe)?;
+    }
+    if desktop {
+        if let Some(link) = desktop_link() {
+            write_link(&link, exe)?;
+        }
+    }
+    Ok(())
+}
+
+/// Takes the shortcuts away again, the ones a launcher of ours made.
+pub fn remove_shortcuts(desktop: bool) {
+    if let Some(link) = start_menu_link() {
+        let _ = fs::remove_file(link);
+    }
+    if desktop {
+        if let Some(link) = desktop_link() {
+            let _ = fs::remove_file(link);
+        }
+    }
+}
+
+    /// Whether the Start menu entry is there and opens this launcher.
+pub fn shortcuts_present() -> bool {
+    start_menu_link().is_some_and(|link| points_to(&link, backend::exe_path()))
+}
+
+/// A portable launcher's first start, before the window opens: its copy in [`home`], and — once,
+/// never again unless the player changes the switch in Settings — the question about shortcuts.
+#[cfg(windows)]
+pub fn first_start() {
+    first_start_with(ask_for_shortcuts, None, std::env::args_os().len())
+}
+
+/// [`first_start`] with the question, the launcher's file and the command line handed in, so a
+/// test drives the whole path without a dialog and without copying the test binary. `None` is this
+/// launcher.
+#[cfg(windows)]
+fn first_start_with(ask: impl FnOnce() -> bool, launcher: Option<&Path>, arguments: usize) {
+    // A development build writes nothing into a player's account; a test does, in its own folders.
+    if (cfg!(debug_assertions) && !cfg!(test)) || !first_run(arguments) {
         return;
     }
     if std::env::var_os("HORIZON_LAUNCHER_NO_SHORTCUT").is_some_and(|v| !v.is_empty()) {
         return;
     }
-    if !first_run(std::env::args_os().len()) {
-        return;
+    let exe = launcher.map_or_else(|| backend::exe_path().to_path_buf(), Path::to_path_buf);
+    let _ = copy_home(&exe);
+    let mut settings = backend::Settings::load();
+    crate::i18n::set(settings.language());
+    let (stored, wanted) = remembered(ask, settings.shortcuts);
+    if stored != settings.shortcuts {
+        settings.shortcuts = stored;
+        let _ = settings.save();
     }
-    let exe = backend::exe_path().to_path_buf();
-    let Some(dir) = exe.parent() else {
-        return;
-    };
-    if let Some(link) = start_menu_link() {
-        let _ = write_link(&link, &exe);
+    // Asked before: a shortcut the player deleted by hand comes back, a No stays a no.
+    if wanted {
+        let _ = shortcuts_for(&exe, true);
     }
-    let _ = register(dir, &exe, backend::VERSION);
+}
+
+/// The answer the launcher keeps: the question when the player has never answered it, and what
+/// they said otherwise. Returns what to store and whether the shortcuts are wanted.
+#[cfg(windows)]
+fn remembered(ask: impl FnOnce() -> bool, stored: Option<bool>) -> (Option<bool>, bool) {
+    match stored {
+        Some(wanted) => (stored, wanted),
+        None => {
+            let wanted = ask();
+            (Some(wanted), wanted)
+        }
+    }
 }
 
 /// A double-click and nothing else: `--version`, the MCP tools and the completions are scripts
-/// talking to the launcher, and a script that asks the version does not want a Start menu entry
-/// put where its executable happens to sit.
+/// talking to the launcher, and a script that asks the version is not a player's first start.
 fn first_run(arguments: usize) -> bool {
     arguments <= 1
+}
+
+/// The one question, as a Windows dialog: Yes puts OffHorizon in the Start menu and on the
+/// desktop, No leaves it portable, and Settings carries the same switch afterwards.
+#[cfg(windows)]
+fn ask_for_shortcuts() -> bool {
+    use windows::core::HSTRING;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        MessageBoxW, IDYES, MB_ICONQUESTION, MB_SETFOREGROUND, MB_TOPMOST, MB_YESNO,
+    };
+    let text = HSTRING::from(crate::i18n::tr(
+        "Add OffHorizon to the Start menu and the desktop?",
+    ));
+    let title = HSTRING::from(APP_NAME);
+    // SAFETY: two strings that outlive the call and a null owner window, which puts the question
+    // on the desktop: this runs before the launcher has a window.
+    let answer = unsafe {
+        MessageBoxW(
+            None,
+            &text,
+            &title,
+            MB_YESNO | MB_ICONQUESTION | MB_TOPMOST | MB_SETFOREGROUND,
+        )
+    };
+    answer == IDYES
 }
 
 /// The install this account has, if its launcher is still there.
@@ -727,6 +859,15 @@ pub fn run_quiet() -> Option<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, MutexGuard};
+
+    /// The tests here share the process's environment (the Start menu folder, the registry keys,
+    /// the portable folder): they take turns instead of writing in each other's.
+    static PLACES: Mutex<()> = Mutex::new(());
+
+    fn alone() -> MutexGuard<'static, ()> {
+        PLACES.lock().unwrap_or_else(|e| e.into_inner())
+    }
 
     #[test]
     fn the_install_folder_is_always_ours() {
@@ -880,11 +1021,64 @@ mod tests {
     }
 
     #[test]
-    fn the_release_ships_an_installer_the_launcher_does_not_take_for_one() {
-        assert!(setup_name("OffHorizon-Setup-Windows-x64"));
+    fn the_portable_release_is_no_setup_and_the_old_one_still_is() {
         assert!(setup_name("horizon-launcher-setup"));
         assert!(!setup_name("OffHorizon-Launcher-Windows-x64"));
+        assert!(!setup_name("OffHorizon-Setup-Windows-x64"));
+        assert!(!setup_name("OffHorizon"));
         assert!(!setup_name("horizon-launcher"));
+    }
+
+    /// The answer: asked once when the player has never said, kept from then on (a No stays a no,
+    /// a Yes comes back if the shortcut is deleted by hand).
+    #[test]
+    fn the_first_start_asks_once_and_keeps_the_answer() {
+        assert_eq!(remembered(|| false, None), (Some(false), false));
+        assert_eq!(remembered(|| true, None), (Some(true), true));
+        // Answered before: the question is not asked again.
+        assert_eq!(remembered(|| panic!("asked twice"), Some(false)), (Some(false), false));
+        assert_eq!(remembered(|| panic!("asked twice"), Some(true)), (Some(true), true));
+    }
+
+    /// What a portable player gets on disk: the launcher copied into its own folder in %APPDATA%
+    /// (written beside the target and renamed over it, so a second start adds no file), and the
+    /// shortcuts exactly when they are asked for.
+    #[test]
+    fn the_launcher_keeps_a_copy_and_only_the_shortcuts_it_is_told_to_make() {
+        let _places = alone();
+        let root = scratch("OffHorizon portable test");
+        std::env::set_var(PORTABLE_ENV, root.join("roaming"));
+        std::env::set_var(MENU_ENV, root.join("Start Menu"));
+        std::env::set_var(shortcut::DESKTOP_ENV, root.join("Desktop"));
+        let exe = root.join("Downloads").join("OffHorizon.exe");
+        fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        fs::write(&exe, b"the portable launcher").unwrap();
+
+        // The copy: the folder is made, the name is ours, the bytes are the launcher's, once.
+        copy_home(&exe).unwrap();
+        assert_eq!(home_exe(), root.join("roaming").join("OffHorizon.exe"));
+        assert_eq!(fs::read(home_exe()).unwrap(), b"the portable launcher");
+        copy_home(&exe).unwrap();
+        let kept: Vec<String> = fs::read_dir(home())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(kept, ["OffHorizon.exe"]);
+
+        // The shortcuts: both, pointing at this launcher, and both gone when taken away.
+        let link = start_menu_link().unwrap();
+        let desktop = desktop_link().unwrap();
+        assert!(shortcuts_for(&exe, true).is_ok());
+        assert!(points_to(&link, &exe));
+        assert!(points_to(&desktop, &exe));
+        remove_shortcuts(true);
+        assert!(!link.exists());
+        assert!(!desktop.exists());
+
+        std::env::remove_var(PORTABLE_ENV);
+        std::env::remove_var(MENU_ENV);
+        std::env::remove_var(shortcut::DESKTOP_ENV);
+        let _ = fs::remove_dir_all(&root);
     }
 
     /// What a player's run of the installer leaves on disk, and what Uninstall takes away: the
@@ -892,6 +1086,7 @@ mod tests {
     /// than from the code that wrote them.
     #[test]
     fn install_puts_the_shortcut_and_the_apps_entry_there_and_uninstall_takes_them_away() {
+        let _places = alone();
         let root = scratch("OffHorizon installer test");
         own_places(&root);
         let setup = root.join("OffHorizon-Setup-Windows-x64.exe");

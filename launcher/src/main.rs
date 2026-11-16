@@ -3879,6 +3879,24 @@ impl Launcher {
                 cx.notify();
             }),
         );
+        // Windows: the shortcuts the first start asks about, and the switch that changes the
+        // answer afterwards. A portable launcher registers nothing as an installed program.
+        #[cfg(windows)]
+        let shortcuts = switch("shortcuts", self.settings.shortcuts(), &t)
+            .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                let on = !this.settings.shortcuts();
+                this.settings.shortcuts = Some(on);
+                this.save_settings();
+                if on {
+                    let _ = horizon_launcher::installer::create_shortcuts(true);
+                } else {
+                    horizon_launcher::installer::remove_shortcuts(true);
+                }
+                cx.notify();
+            }))
+            .into_any_element();
+        #[cfg(not(windows))]
+        let shortcuts = div().into_any_element();
         let horizon = match (&self.updates.horizon, &self.update_error) {
             (Some(r), _) => trf("{version} available", &[("version", update_name(r))]),
             (None, Some(e)) => e.clone(),
@@ -4013,6 +4031,7 @@ impl Launcher {
                     prune,
                     opening,
                     menu_entry,
+                    shortcuts,
                     appearance: appearance.into_any_element(),
                     horizon,
                     horizon_action,
@@ -5790,10 +5809,10 @@ fn main() {
     let _location_error = horizon_launcher::data_location::startup();
     perf::process_started();
     backend::exe_path();
-    // A launcher started straight from a downloaded `.exe` gets its Start menu entry (and its
-    // place in the Apps list) on that first start, so it installs like every other program.
+    // A portable launcher: it puts a copy of itself in `%APPDATA%\offhorizon`, and on the first
+    // start asks once whether to add its shortcuts (Settings carries the same switch).
     #[cfg(windows)]
-    horizon_launcher::installer::register_first_run();
+    horizon_launcher::installer::first_start();
     // The dedicated GPU, unless the player turned it off: written for the launcher and for every
     // prepared game, so the pair does not run on the card the screen is plugged into.
     #[cfg(windows)]

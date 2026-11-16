@@ -12,13 +12,11 @@ section, one section per version, and Added / Changed / Fixed groups.
 ## [0.1.5-nightly] - 2026-11-15
 
 ### ✨ Added
-- **The release now ships a real installer**, `OffHorizon-Setup-Windows-x64.exe`: run it and
-  OffHorizon is installed for your account in `%LOCALAPPDATA%\Programs\OffHorizon Launcher`,
-  with a Start menu shortcut and an entry in Settings → Apps that uninstalls it and takes its
-  file, its shortcuts and its entry away again — nothing of it is left beside the install folder.
-  The `.exe`, the shortcut and the window all carry the OffHorizon icon.
-- **The launcher puts itself in the Start menu** the first time it runs from the downloaded
-  `.exe`, and in Windows' Apps list with its OffHorizon name and icon, like any other program.
+- **One portable `.exe`, as in 0.1.4**: download it, run it from wherever you keep it, and
+  OffHorizon needs no installer and no administrator rights. On its first start it keeps a copy of
+  itself in `%APPDATA%\offhorizon` and asks once whether to add its shortcuts to the Start menu
+  and the desktop; the same switch lives in Settings → About, and the `.exe`, the shortcut and the
+  window all carry the OffHorizon icon.
 - **A tooltip shows what a clipped label hides**: an instance's name and state, a server's, the
   account chip and the Play button's progress all read in full when the pointer rests on them.
 - **Dedicated GPU on by default**: on a laptop with two graphics cards the launcher now asks

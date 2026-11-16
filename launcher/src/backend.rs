@@ -4600,6 +4600,10 @@ pub struct Settings {
     /// means yes; removing the entry stores `false`, so it doesn't come back on the next start.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub desktop_entry: Option<bool>,
+    /// Windows: whether the launcher put its shortcuts in the Start menu and on the desktop.
+    /// Unset means the player has not been asked yet: the first start asks, once.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shortcuts: Option<bool>,
     /// Extra arguments for the game's command line, as one line (see [`split_args`]). Empty by
     /// default. Appended after the launcher's own arguments, so they can add to or override them.
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -4732,6 +4736,10 @@ impl Settings {
         serde_json::from_value(value).unwrap_or_default()
     }
     /// Whether the launcher keeps its entry in the applications menu (Linux).
+    pub fn shortcuts(&self) -> bool {
+        self.shortcuts.unwrap_or(false)
+    }
+
     pub fn desktop_entry(&self) -> bool {
         self.desktop_entry.unwrap_or(true)
     }

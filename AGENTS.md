@@ -55,6 +55,16 @@ line, for example `0.1.2-nightly`.
 - Assets are the finished native files, never `.zip`/`.tar.gz` wrappers: the Windows `.exe`, the
   Linux executable, and the macOS executable. `SHA256SUMS` accompanies them for the launcher's
   unsigned self-update.
+- The Windows release is **one portable `.exe`**, as in 0.1.4: no setup, no administrator rights,
+  no `…Setup…` asset. On its first start it copies itself to
+  `%APPDATA%\offhorizon\OffHorizon.exe` (`installer::keep_a_copy`) and asks once, in a Windows
+  dialog, whether to add its shortcuts to the Start menu and the desktop
+  (`installer::first_start`). The answer is `Settings::shortcuts` (`Some(false)` is a no that
+  stays), and Settings → About carries the same `Shortcuts` switch. Nothing is written under
+  `…\CurrentVersion\Uninstall`: a portable launcher is not an installed program. The
+  install/uninstall code in `launcher/src/installer.rs` exists only for the players who installed
+  the 0.1.5-nightly setup that shipped briefly; `installer::setup_name` no longer recognises an
+  `OffHorizon-Setup…` file name.
 - The launcher updates itself from `PiBOH/offhorizon`; Minecraft/Rust builds still come from
   `horizon-rust/horizon`. Keep both repositories separate in `launcher/src/backend.rs`.
 - An empty account list gets an offline account automatically. Microsoft sign-in is optional; Java
@@ -109,8 +119,15 @@ failed" and pushes nothing. The sync never opens an OffHorizon PR.
 ## Branding and languages
 
 The product is **OffHorizon** in the game and the launcher. The launcher rewrites the visible
-"Horizon" to "OffHorizon" in every language; the game's strings do it in their own files. The
-word **Rust** is a language name and stays `Rust` in every language, never translated.
+"Horizon" to "OffHorizon" in every language; the game's strings do it in their own files. The word **Rust** is a language name and stays `Rust` in every language, never translated.
+Nothing technical or branded is translated anywhere: `Rust`, `Vanilla`, `Java`, `Launcher`,
+`Discord` stay as they are, and `ON`/`OFF` stay English instead of becoming “su” and “giù”. A new
+launcher string is the English text wrapped in `tr(...)`; a table that lacks the key reads it in
+English until it is translated (`launcher/lang/<language>.json` maps the English key to the
+translation), so a new switch ships with its Italian line in the same commit and the English
+fallback everywhere else. Menu entries added for a new switch belong in Settings → About, inside a
+`cfg!(target_os = …)` block: the Linux applications-menu row and the Windows `Shortcuts` row are
+the pattern.
 
 Release assets and installers are named `offhorizon-launcher-…` (not `horizon-launcher-…`). The
 Cargo package and binary names stay as they are; only what a player downloads and sees changes.
