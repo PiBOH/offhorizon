@@ -55,8 +55,13 @@ line, for example `0.1.2-nightly`.
 - Assets are the finished native files, never `.zip`/`.tar.gz` wrappers: the Windows `.exe`, the
   Linux executable, and the macOS executable. `SHA256SUMS` accompanies them for the launcher's
   unsigned self-update.
-- The Windows release is **one portable `.exe`**, as in 0.1.4: no setup, no administrator rights,
-  no `…Setup…` asset. On its first start it copies itself to
+- The Windows release is a **portable `.exe`**, as in 0.1.4: no administrator rights, and it is
+  what the download buttons offer. Beside it the release carries an optional
+  `OffHorizon-Setup-Windows-x64.exe`, built by `packaging/windows/offhorizon.iss` (Inno Setup, no
+  administrator rights either): it installs the same launcher with a Start menu entry, an optional
+  desktop icon and a working uninstaller, and on uninstall it removes the install folder and
+  `%APPDATA%\offhorizon` while leaving `horizon-launcher` (settings, accounts, worlds) alone. On
+  its first start the launcher copies itself to
   `%APPDATA%\offhorizon\OffHorizon.exe` (`installer::keep_a_copy`) and asks once, in a Windows
   dialog, whether to add its shortcuts to the Start menu and the desktop
   (`installer::first_start`). The answer is `Settings::shortcuts` (`Some(false)` is a no that

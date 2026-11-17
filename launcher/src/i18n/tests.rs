@@ -261,3 +261,54 @@ fn polish_entries_are_valid_and_keep_placeholders() {
         assert_eq!(holes(en), holes(said), "Polish: {en:?}");
     }
 }
+
+/// Whether `text` says `word` on its own (not as part of a longer word).
+fn mentions(text: &str, word: &str) -> bool {
+    let (bytes, word) = (text.as_bytes(), word.as_bytes());
+    let mut i = 0;
+    while i + word.len() <= bytes.len() {
+        if &bytes[i..i + word.len()] == word {
+            let before = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+            let after =
+                i + word.len() == bytes.len() || !bytes[i + word.len()].is_ascii_alphanumeric();
+            if before && after {
+                return true;
+            }
+        }
+        i += 1;
+    }
+    false
+}
+
+/// The names that are never translated (AGENTS.md): a table that has a string mentioning one
+/// keeps it exactly, in every language.
+#[test]
+fn the_names_that_are_never_translated_stay_english() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("lang");
+    let mut wrong = Vec::new();
+    for entry in std::fs::read_dir(&dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().map(|e| e == "json") != Some(true) {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(table) = serde_json::from_str::<std::collections::BTreeMap<String, serde_json::Value>>(&text)
+        else {
+            continue;
+        };
+        let code = path.file_stem().unwrap().to_string_lossy().into_owned();
+        for (english, translated) in table {
+            let Some(translated) = translated.as_str() else {
+                continue;
+            };
+            for name in ["Discord", "Rust", "Java", "Vanilla"] {
+                if mentions(&english, name) && !mentions(translated, name) {
+                    wrong.push(format!("{code}: {english} -> {translated}"));
+                }
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "translated names:\n{}", wrong.join("\n"));
+}

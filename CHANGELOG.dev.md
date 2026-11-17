@@ -20,6 +20,43 @@ release, newest first, and an Unreleased section for work that is not released y
   release. The buttons carry a tag rather than `/releases/latest/download/…` because a nightly is
   a pre-release and `/latest` leaves pre-releases out (that URL answers 404).
 
+## [0.2.2-nightly] - 2026-11-17
+
+### Added
+- `other_launchers::bring_known_players` (and `bring_known_players_in`, which takes the accounts
+  file and the skin folder so a test drives it): at startup `Launcher::new` reads each known
+  launcher's folder — the official `.minecraft`, Prism, MultiMC, SKLauncher, ATLauncher, the
+  Modrinth App, GDLauncher, OffHorizon — and every account it recorded becomes an offline account
+  with that nickname, plus the skin the launcher kept. The cause of “I can't see my profile”: the
+  GUI never called `bring_player` (only `import` on the command line did), so the launcher kept
+  the synthetic `offline_name()` account and the real nickname never appeared. The first profile
+  brought in is selected unless a Microsoft account was picked; an account of the same name is
+  never shadowed. Check: `the_player_another_launcher_recorded_comes_across_at_startup`.
+- `instance_icons::MARK` is `packaging/icons/hicolor/256x256/apps/offhorizon.png` again (it said
+  `horizon.png`), so an instance's fallback mark is OffHorizon's own logo.
+- `packaging/windows/offhorizon.iss`: Inno Setup script for an optional
+  `OffHorizon-Setup-Windows-x64.exe`. `auto-release.yml`'s Windows job installs Inno Setup with
+  Chocolatey, compiles the script into `dist/` and uploads it beside the portable exe; the
+  uninstaller removes `%APPDATA%\offhorizon` and the install folder, never `horizon-launcher`.
+
+### Fixed
+- `mojang::libraries` (the version file's library list, shared by `download` and the new
+  `download_libraries`) and `backend::preparer`: before the preparer runs, OffHorizon's own game
+  folder gets every library of the pinned manifest from Mojang's public Maven files. A folder
+  copied from another launcher, or a download that stopped, was left without `jtracy-1.14.38.jar`
+  and `horizon-prepare` failed with the misleading “Horizon does not download the game” hint. The
+  client jar and the assets are still only downloaded for an owner.
+- `Launcher::scene_size`: a frame whose window size differs from the last one paints the sky tiles
+  instead of the glass scene, so a resize no longer shows the window's white clear (the flash).
+- `launcher/lang/*.json` and `crates/horizon-client/assets/horizon/lang/*.json`: a repair pass put
+  the protected names back (`Discord`, `Rust`, `Java`, `Vanilla`), replaced building nouns used
+  for a program's build with `build`, and rebranded `Horizon` to `OffHorizon`. Check:
+  `the_names_that_are_never_translated_stay_english` in `i18n/tests.rs`.
+- The site in `.local/site_final` is the playhorizon.dev capture with Next's runtime removed (its
+  hydration rewrote the brand back), `/_next/image` rewritten to the captured pictures, `_next`
+  CSS kept at the paths the markup asks for, and every download, repository and site link pointed
+  at OffHorizon.
+
 ## [0.2.1-nightly] - 2026-11-17
 
 ### Added

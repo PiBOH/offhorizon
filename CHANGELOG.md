@@ -14,6 +14,33 @@ section, one section per version, and Added / Changed / Fixed groups.
   links on `piboh.github.io/offhorizon` to that build's files, so the Download button always
   downloads the newest launcher instead of waiting for the pages to be edited by hand.
 
+## [0.2.2-nightly] - 2026-11-17
+
+### ✨ Added
+- **Your profile from another launcher is already here**: OffHorizon reads the nickname and skin
+  the other launcher recorded — the official launcher, Prism Launcher, MultiMC, SKlauncher,
+  ATLauncher, the Modrinth App, GDLauncher, or OffHorizon itself — and plays as that offline
+  account from the first start, even when a Microsoft account is signed in. Nothing to import by
+  hand.
+- **Instances wear OffHorizon's icon**: the mark a game instance shows is OffHorizon's own logo,
+  not Horizon's.
+- **A Windows setup**: `OffHorizon-Setup-Windows-x64.exe` installs the launcher with a Start menu
+  entry, an optional desktop shortcut and an uninstaller that removes it cleanly. The portable
+  `.exe` is still the main download and needs no administrator rights.
+
+### 🔧 Changed
+- **Translations say what they mean**: a program's build is never called a building, Discord stays
+  `Discord`, and `Rust`, `Java` and `Vanilla` keep their names in every language.
+
+### 🐛 Fixed
+- **26.3's missing libraries arrive on their own**: a game folder that came from another launcher,
+  or a download that stopped, fetches the libraries it lacks — the `jtracy` jar — before the
+  game is prepared, instead of stopping with “Horizon does not download the game”.
+- **Resizing no longer flashes white**: while the window changes size the frame paints the sky,
+  not the unpainted window behind it.
+- **The site is playhorizon.dev's, page for page**: same layout, text and pictures, with
+  OffHorizon's name, logo and download links.
+
 ## [0.2.1-nightly] - 2026-11-17
 
 ### ✨ Added

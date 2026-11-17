@@ -236,6 +236,47 @@ fn an_imported_profile_becomes_the_offline_account_with_its_skin() {
 }
 
 #[test]
+fn the_player_another_launcher_recorded_comes_across_at_startup() {
+    let root = scratch("known-player");
+    let data = root.join("appdata");
+    let folders = Folders {
+        home: root.join("home"),
+        data: data.clone(),
+        config: root.join("config"),
+    };
+    // Prism Launcher's own folder: the account it remembers, and the skin it kept for it.
+    let prism = data.join("PrismLauncher");
+    write(
+        &prism.join("accounts.json"),
+        &json!({"accounts": [{"username": "Notch",
+            "uuid": "11111111111111111111111111111111", "type": "offline"}]})
+        .to_string(),
+    );
+    fs::create_dir_all(prism.join("skins")).unwrap();
+    fs::write(prism.join("skins/notch.png"), b"png").unwrap();
+    // OffHorizon starts with no account of its own.
+    let accounts = root.join("horizon-launcher/accounts.json");
+    write(&accounts, &json!({"accounts": []}).to_string());
+    let skins = root.join("horizon-launcher/skins");
+
+    let brought = bring_known_players_in(Os::Windows, &folders, &accounts, &skins);
+    assert_eq!(brought.len(), 1);
+    assert_eq!(brought[0].name, "Notch");
+    assert!(brought[0].offline);
+    assert_eq!(brought[0].uuid, crate::account::offline_uuid("Notch"));
+    // It plays, and it wears the skin the other launcher kept.
+    let saved = crate::account::Accounts::load_from(&accounts);
+    assert_eq!(saved.selected.as_deref(), Some(brought[0].uuid.as_str()));
+    assert_eq!(
+        fs::read(skins.join(format!("{}.png", brought[0].uuid))).unwrap(),
+        b"png"
+    );
+    // Starting again brings nothing new: the account is already there.
+    assert!(bring_known_players_in(Os::Windows, &folders, &accounts, &skins).is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn official_launcher_profiles() {
     let root = scratch("official");
     let custom = root.join("custom");

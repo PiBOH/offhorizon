@@ -696,7 +696,7 @@
   "Copper Golem Statues": "Kupfergolem-Statuen",
   "Reuses statue geometry until its block state changes.": "Verwendet die Statuengeometrie erneut, bis sich ihr Blockzustand ändert.",
   "Leaf Culling": "Laub-Culling",
-  "Every leaf face. Vanilla's fancy leaves.": "Jede Blattfläche, wie Minecraft sie bei schönen Blättern zeichnet.",
+  "Every leaf face. Vanilla's fancy leaves.": "Every leaf face. Vanilla's fancy leaves.",
   "Parallel Tick": "Parallel Tick",
   "Shares your world's tick among threads. Auto: only while that is faster.": "Shares your world's tick among threads. Auto: only while that is faster.",
   "Opaque Ice": "Undurchsichtiges Eis",

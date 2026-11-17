@@ -501,6 +501,9 @@ struct Launcher {
     sky_wake: Option<(Instant, gpui::Task<()>)>,
     /// The window's scale, as of its last frame, for art drawn outside `render`'s reach.
     scale: f32,
+    /// The window's size as of the last frame: while a resize is under way the sky tiles are
+    /// painted instead of the glass scene, so the frame never shows the window's own white.
+    scene_size: Option<(f32, f32)>,
 }
 
 impl Launcher {
@@ -751,7 +754,20 @@ impl Launcher {
             scene: cx.new(|_| scene::Scene::new()),
             sky_wake: None,
             scale: window.scale_factor(),
+            scene_size: None,
         };
+        // The nickname and skin the player had in another launcher are here from the first
+        // start: each launcher's own accounts file is read and becomes an offline account, so
+        // nothing has to be imported by hand to see the same player.
+        if let Some(folders) = horizon_launcher::sources::Folders::current() {
+            let brought = horizon_launcher::other_launchers::bring_known_players(
+                horizon_launcher::sources::Os::current(),
+                &folders,
+            );
+            if !brought.is_empty() {
+                this.accounts = Accounts::load();
+            }
+        }
         // OffHorizon starts with an offline account when there is none: no Microsoft sign-in is
         // needed to play either edition. Adding a Microsoft account later is optional.
         this.ensure_offline_account();
@@ -5457,7 +5473,13 @@ impl Render for Launcher {
         // the blocky looks keep the baked sky. The sky is tiles that don't depend on the
         // window's size, so a resize costs no rebake.
         glass::begin_build(window);
-        let sky = if t.glass && t.dark {
+        // A resize paints the sky tiles for that frame: a glass scene at the new size is what
+        // showed the window's own white clear through, until the size settled.
+        let resizing = self.scene_size.is_some_and(|(w, h)| {
+            (w - f32::from(size.width)).abs() > 0.5 || (h - f32::from(size.height)).abs() > 0.5
+        });
+        self.scene_size = Some((f32::from(size.width), f32::from(size.height)));
+        let sky = if t.glass && t.dark && !resizing {
             self.scene.clone().into_any_element()
         } else {
             let (sky, next) = self.sky.render(

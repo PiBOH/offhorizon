@@ -73,29 +73,9 @@ pub fn download(
         size: client["size"].as_u64(),
         path: versions.join(format!("{v}.jar")),
     }];
-    let libraries = manifest["libraries"]
-        .as_array()
-        .ok_or("The version file has no libraries")?;
-    for library in libraries.iter().filter(|l| allowed(l, os)) {
-        // Before 1.19 a library's natives for this system are a classifier of its own.
-        let native = native_classifier(library, os)
-            .map(|key| &library["downloads"]["classifiers"][key.as_str()]);
-        for artifact in [Some(&library["downloads"]["artifact"]), native]
-            .into_iter()
-            .flatten()
-            .filter(|a| !a.is_null())
-        {
-            game.push(File {
-                url: text(artifact, "url")?,
-                sha1: text(artifact, "sha1")?,
-                size: artifact["size"].as_u64(),
-                path: dir
-                    .join("libraries")
-                    .join(relative(&text(artifact, "path")?)?),
-            });
-        }
-    }
-    let libraries = game.len() - 1;
+    let libraries = libraries(&manifest, dir, os)?;
+    let count = libraries.len();
+    game.extend(libraries);
     // The logging setup the game is started with (`logging.client.argument`): for 1.7 to 1.18,
     // Mojang's fixed one is what keeps Log4Shell out.
     let logging = &manifest["logging"]["client"]["file"];
@@ -110,7 +90,7 @@ pub fn download(
         });
     }
     log(format!(
-        "Downloading Minecraft {v} from Mojang: the game and {libraries} libraries"
+        "Downloading Minecraft {v} from Mojang: the game and {count} libraries"
     ));
     // One reset connection (a home network, an antivirus, a host that closes TLS) must not end
     // the whole preparation with "No connection", and one library that keeps failing must not
@@ -151,6 +131,57 @@ pub fn download(
         Ok(()) => {}
     }
     Ok(())
+}
+
+/// The libraries the version file lists for `os`, each with the path it lives at under `dir`: the
+/// plain artifact and, before 1.19, its natives for this system as a classifier of its own.
+fn libraries(manifest: &Value, dir: &Path, os: &str) -> Result<Vec<File>, String> {
+    let list = manifest["libraries"]
+        .as_array()
+        .ok_or("The version file has no libraries")?;
+    let mut files = Vec::new();
+    for library in list.iter().filter(|l| allowed(l, os)) {
+        let native = native_classifier(library, os)
+            .map(|key| &library["downloads"]["classifiers"][key.as_str()]);
+        for artifact in [Some(&library["downloads"]["artifact"]), native]
+            .into_iter()
+            .flatten()
+            .filter(|a| !a.is_null())
+        {
+            files.push(File {
+                url: text(artifact, "url")?,
+                sha1: text(artifact, "sha1")?,
+                size: artifact["size"].as_u64(),
+                path: dir
+                    .join("libraries")
+                    .join(relative(&text(artifact, "path")?)?),
+            });
+        }
+    }
+    Ok(files)
+}
+
+/// Downloads the pinned version's libraries into `dir`, and only them: a folder that came from
+/// another launcher, or a download that stopped, can be missing one (26.3's `jtracy` jar, say) and
+/// the preparer refuses to run without it. Libraries are Mojang's public Maven files, so no
+/// account is needed; the game's client jar and its assets are never fetched here.
+pub fn download_libraries(
+    pins: &Pins,
+    dir: &Path,
+    os: &str,
+    jobs: usize,
+    fetch: Fetch,
+    cancel: &AtomicBool,
+    log: &dyn Fn(String),
+) -> Result<(), String> {
+    let v = &pins.version;
+    let manifest = dir.join("versions").join(v).join(format!("{v}.json"));
+    if !manifest.is_file() {
+        return Err(format!("{} is missing", manifest.display()));
+    }
+    let files = libraries(&read_json(&manifest)?, dir, os)?;
+    let again = resilient(fetch);
+    fetch_each(&files, jobs, &again, cancel, log, false)
 }
 
 /// A fetch that tries a broken connection again, then asks Maven Central for a library: a

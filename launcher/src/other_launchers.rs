@@ -953,6 +953,74 @@ fn bring_player_with(
     Some(account)
 }
 
+/// The players the other launchers on this computer recorded, brought in as OffHorizon's own
+/// offline accounts: their nickname, and the skin their launcher kept for them. Read at startup,
+/// so a player who came from another launcher finds both in OffHorizon without importing
+/// anything by hand; the first one brought in is selected unless a Microsoft account was already
+/// picked.
+pub fn bring_known_players(os: Os, folders: &Folders) -> Vec<crate::account::Account> {
+    bring_known_players_in(
+        os,
+        folders,
+        &crate::account::Accounts::path(),
+        &crate::backend::data_dir().join("skins"),
+    )
+}
+
+/// [`bring_known_players`] with the accounts file and the skin folder handed in, so a test drives
+/// it without the player's own account.
+fn bring_known_players_in(
+    os: Os,
+    folders: &Folders,
+    accounts_path: &Path,
+    skins: &Path,
+) -> Vec<crate::account::Account> {
+    let mut accounts = crate::account::Accounts::load_from(accounts_path);
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for (_, dir) in sources::known_folders(os, folders) {
+        // The launcher's own folder, and the game folder it keeps below it.
+        for root in [dir.clone(), dir.join(".minecraft"), dir.join("minecraft")] {
+            if !roots.contains(&root) {
+                roots.push(root);
+            }
+        }
+    }
+    let mut brought = Vec::new();
+    for root in roots {
+        let Some((name, recorded)) = player_profile(&root) else {
+            continue;
+        };
+        // An account of the same name is already here (the player's Microsoft one, or one
+        // brought in before): it stays, and is never shadowed by an offline copy.
+        if accounts
+            .accounts
+            .iter()
+            .any(|a| a.name.eq_ignore_ascii_case(&name))
+        {
+            continue;
+        }
+        let Ok(account) = accounts.add_offline(&name) else {
+            continue;
+        };
+        if let Some(png) = player_skin(&root, &name, recorded.as_deref())
+            .and_then(|file| fs::read(file).ok())
+        {
+            let _ = fs::create_dir_all(skins);
+            let _ = fs::write(skins.join(format!("{}.png", account.uuid)), png);
+        }
+        brought.push(account);
+    }
+    if !brought.is_empty() {
+        // A Microsoft account already picked stays picked; otherwise the player who came from
+        // another launcher plays.
+        if accounts.selected().is_none_or(|a| a.offline) {
+            accounts.selected = Some(brought[0].uuid.clone());
+        }
+        let _ = accounts.save_to(accounts_path);
+    }
+    brought
+}
+
 /// A new Java instance named `name` playing what `found` plays (or `minecraft`, the version the
 /// player names), with its loader when Horizon installs it ([`loader`]) and a copy of its game
 /// folder.

@@ -2620,6 +2620,32 @@ pub fn preparer(
         .join("versions")
         .join(&version)
         .join(format!("{version}.json"));
+    // A copy of the game that came from another launcher, or a download that stopped, can leave
+    // one library out — 26.3's jtracy jar, say — and the preparer then refuses to run while
+    // naming the wrong cause. Libraries are Mojang's public Maven files, so OffHorizon's own
+    // download fetches the missing ones here; the client jar and the assets are never touched.
+    let own = data_dir().join("minecraft");
+    if minecraft == own {
+        if let Some(pins) = read_json(&dir.join("research-lock.json"))
+            .and_then(|lock| sources::Pins::read(&lock))
+        {
+            let fetch = |url: &str| -> Result<Vec<u8>, String> {
+                let mut body = Vec::new();
+                get(url)?
+                    .into_reader()
+                    .read_to_end(&mut body)
+                    .map_err(|e| e.to_string())?;
+                Ok(body)
+            };
+            let os = match sources::Os::current() {
+                sources::Os::Linux => "linux",
+                sources::Os::MacOs => "osx",
+                sources::Os::Windows => "windows",
+            };
+            mojang::download_libraries(&pins, &minecraft, os, 8, &fetch, &mojang::CANCEL, log)
+                .map_err(|e| format!("The game's libraries are not all here: {e}"))?;
+        }
+    }
     let binary = preparer_binary(&dir);
     let python = match binary {
         Some(_) => None,
