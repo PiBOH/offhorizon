@@ -2489,7 +2489,8 @@ async fn surface_and_adapter(
     };
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
+            // The system and its driver choose the GPU: no high-performance override.
+            power_preference: wgpu::PowerPreference::default(),
             compatible_surface: surface.as_ref(),
             force_fallback_adapter: false,
             ..Default::default()

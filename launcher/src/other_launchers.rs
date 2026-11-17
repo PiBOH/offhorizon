@@ -102,6 +102,7 @@ const CURSEFORGE: &str = "the CurseForge app";
 const MODRINTH_APP: &str = "the Modrinth App";
 const ATLAUNCHER: &str = "ATLauncher";
 const SKLAUNCHER: &str = "SKlauncher";
+const HORIZON: &str = "OffHorizon";
 
 /// The name a launcher goes by on its own window, for a list: `launcher` as [`Found`] names it.
 pub fn app_name(launcher: &'static str) -> &'static str {
@@ -109,6 +110,7 @@ pub fn app_name(launcher: &'static str) -> &'static str {
         OFFICIAL => "Minecraft Launcher",
         CURSEFORGE => "CurseForge",
         MODRINTH_APP => "Modrinth App",
+        HORIZON => "OffHorizon",
         other => other,
     }
 }
@@ -392,29 +394,45 @@ pub fn sklauncher_instance(dir: &Path) -> Option<Found> {
     })
 }
 
-/// The SKlauncher instances under `root`: its `instances/` folder, a single instance, or the
-/// `skprofiles/` folder SKlauncher 3.2 kept. A folder with no `instance.json` is still found
-/// when it holds the game's own files, as 3.2's profiles do.
+/// The SKlauncher instances under `root`: a single instance, 4.0's `instances/` folder, and the
+/// `profiles/` or `skprofiles/` folder SKlauncher 3.2 kept — a folder may hold both, and neither
+/// may hide the other. A folder with no `instance.json` is still found when it holds the game's
+/// own files (or a `minecraft/` one), as 3.2's profiles do: its worlds and `servers.dat` come
+/// across with it.
 pub fn sklauncher_instances(root: &Path) -> Vec<Found> {
     if root.join("instance.json").is_file() {
         return sklauncher_instance(root).into_iter().collect();
     }
-    let dir = if root.join("instances").is_dir() {
-        root.join("instances")
-    } else if root.join(".sklauncher/instances").is_dir() {
-        root.join(".sklauncher/instances")
-    } else {
-        root.to_path_buf()
-    };
-    let mut found: Vec<Found> = fs::read_dir(&dir)
-        .into_iter()
-        .flatten()
-        .flatten()
-        .filter_map(|entry| sklauncher_instance(&entry.path()))
-        .collect();
-    for folder in game_folders(&dir, SKLAUNCHER) {
-        if !found.iter().any(|found| found.game == folder.game) {
-            found.push(folder);
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    for sub in [
+        "instances",
+        ".sklauncher/instances",
+        "profiles",
+        "skprofiles",
+    ] {
+        let dir = root.join(sub);
+        if dir.is_dir() && !dirs.contains(&dir) {
+            dirs.push(dir);
+        }
+    }
+    // A 3.2 root keeps each profile directly in it (`skprofiles/<name>`): no subfolder names
+    // them, so the root itself is read as the folder of instances.
+    if dirs.is_empty() {
+        dirs.push(root.to_path_buf());
+    }
+    let mut found: Vec<Found> = Vec::new();
+    for dir in dirs {
+        for entry in fs::read_dir(&dir).into_iter().flatten().flatten() {
+            if let Some(one) = sklauncher_instance(&entry.path()) {
+                if !found.iter().any(|known| known.game == one.game) {
+                    found.push(one);
+                }
+            }
+        }
+        for folder in game_folders(&dir, SKLAUNCHER) {
+            if !found.iter().any(|known| known.game == folder.game) {
+                found.push(folder);
+            }
         }
     }
     found.sort_by_key(|f| f.name.to_lowercase());
@@ -569,6 +587,16 @@ pub fn in_folder(dir: &Path, launcher: Option<&'static str>) -> Vec<Found> {
     if dir.join("instance.json").is_file() {
         return atlauncher_instance(dir).into_iter().collect();
     }
+    if dir.file_name().and_then(|n| n.to_str()).is_some_and(|n| {
+        n.eq_ignore_ascii_case("horizon")
+            || n.eq_ignore_ascii_case("horizon-launcher")
+            || n.eq_ignore_ascii_case("offhorizon")
+    }) {
+        let found = horizon_instances(dir);
+        if !found.is_empty() {
+            return found;
+        }
+    }
     let atlauncher = atlauncher_instances(dir);
     if !atlauncher.is_empty() {
         return atlauncher;
@@ -631,6 +659,7 @@ pub fn scan(os: Os, folders: &Folders) -> Vec<Found> {
             "Modrinth App" => found.extend(modrinth_app_profiles(&dir)),
             ATLAUNCHER => found.extend(atlauncher_instances(&dir)),
             SKLAUNCHER => found.extend(sklauncher_instances(&dir)),
+            HORIZON => found.extend(horizon_instances(&dir)),
             _ => {}
         }
     }
@@ -685,24 +714,47 @@ pub fn copy_game(found: &Found, to: &Path) -> std::io::Result<()> {
 }
 
 /// The player name another launcher recorded for its account, when it keeps one where OffHorizon
-/// can read it: the Modrinth App's `accounts.json`, the official launcher's
-/// `launcher_accounts.json`, and SKlauncher's `profiles/*.json` or an instance's `instance.json`.
-/// A name OffHorizon can't use (empty, too long, punctuation) is not one.
+/// can read it ([`player_profile`]). A name OffHorizon can't use (empty, too long, punctuation)
+/// is not one.
 pub fn player_name(root: &Path) -> Option<String> {
+    player_profile(root).map(|(name, _)| name)
+}
+
+/// The player another launcher played as: their name and, when the launcher recorded it, the
+/// UUID its worlds key `playerdata` by (undashed, lowercase). Read from the Modrinth App's
+/// `accounts.json`, the official launcher's `launcher_accounts.json`, OffHorizon's own
+/// `accounts.json`, and SKlauncher's `profiles/*.json`.
+pub fn player_profile(root: &Path) -> Option<(String, Option<String>)> {
     fn usable(name: &str) -> Option<String> {
         let name = name.trim();
         ((3..=16).contains(&name.chars().count())
             && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'))
         .then(|| name.to_string())
     }
-    fn from_json(value: &Value) -> Option<String> {
+    fn uuid(value: &Value) -> Option<String> {
+        ["id", "uuid", "playerUuid"]
+            .iter()
+            .find_map(|k| value.get(*k).and_then(Value::as_str))
+            .map(|u| u.replace('-', "").to_ascii_lowercase())
+            .filter(|u| u.len() == 32 && u.chars().all(|c| c.is_ascii_hexdigit()))
+    }
+    fn named(value: &Value) -> Option<String> {
+        ["username", "name", "playerName"]
+            .iter()
+            .find_map(|k| value.get(*k).and_then(Value::as_str))
+            .and_then(usable)
+    }
+    fn from_json(value: &Value) -> Option<(String, Option<String>)> {
         let accounts = value.get("accounts")?;
         let pick = |a: &Value| {
-            ["username", "name", "playerName"]
+            let profile = a.get("minecraftProfile");
+            let name = ["username", "name", "playerName"]
                 .iter()
                 .find_map(|k| a.get(*k).and_then(Value::as_str))
-                .or_else(|| a.get("minecraftProfile")?.get("name")?.as_str())
-                .and_then(usable)
+                .or_else(|| profile?.get("name")?.as_str())
+                .and_then(usable)?;
+            let id = uuid(a).or_else(|| profile.and_then(uuid));
+            Some((name, id))
         };
         match accounts {
             Value::Array(list) => list.iter().find_map(pick),
@@ -710,10 +762,10 @@ pub fn player_name(root: &Path) -> Option<String> {
             _ => None,
         }
     }
-    let read = |path: PathBuf| -> Option<String> {
+    let read = |path: PathBuf| -> Option<(String, Option<String>)> {
         let text = fs::read_to_string(path).ok()?;
         let json: Value = serde_json::from_str(&text).ok()?;
-        from_json(&json)
+        from_json(&json).or_else(|| Some((named(&json)?, uuid(&json))))
     };
     read(root.join("accounts.json"))
         .or_else(|| read(root.join("launcher_accounts.json")))
@@ -726,12 +778,90 @@ pub fn player_name(root: &Path) -> Option<String> {
                 .find_map(|e| {
                     let json: Value =
                         serde_json::from_str(&fs::read_to_string(e.path()).ok()?).ok()?;
-                    ["username", "playerName"]
-                        .iter()
-                        .find_map(|k| json.get(*k).and_then(Value::as_str))
-                        .and_then(usable)
+                    Some((named(&json)?, uuid(&json)))
                 })
         })
+}
+
+/// Where a launcher keeps what it knows about its players, from the game folder `game` it handed
+/// over: `launcher_accounts.json` and `accounts.json` sit in the launcher's folder, one or two
+/// above an instance's game folder (the official `.minecraft`, the Modrinth App's
+/// `profiles/<name>`, SKlauncher's `instances/<name>`).
+fn account_root(game: &Path) -> PathBuf {
+    let holds = |dir: &Path| {
+        dir.join("launcher_accounts.json").is_file()
+            || dir.join("accounts.json").is_file()
+            || dir.join("profiles").is_dir()
+    };
+    for dir in game.ancestors().take(3) {
+        if holds(dir) {
+            return dir.to_path_buf();
+        }
+        // OffHorizon keeps its accounts in `horizon-launcher`, beside the game folder `horizon`.
+        for beside in ["horizon-launcher", "offhorizon"] {
+            let beside = dir.join(beside);
+            if holds(&beside) {
+                return beside;
+            }
+        }
+    }
+    game.to_path_buf()
+}
+
+/// `saves/<world>/{playerdata,stats,advancements}/<uuid>` copied from `old` to `new`: the world
+/// keeps every file it came with, and the account plays with its own UUID, so the inventory,
+/// ender chest, position, experience and advancements it had in the other launcher are there at
+/// the first load.
+fn relink_player_files(home: &Path, old: &str, new: &str) {
+    let old = old.replace('-', "").to_ascii_lowercase();
+    let new = new.replace('-', "").to_ascii_lowercase();
+    if old == new || old.len() != 32 || new.len() != 32 {
+        return;
+    }
+    let Ok(worlds) = fs::read_dir(home.join("saves")) else {
+        return;
+    };
+    for world in worlds.flatten() {
+        for (folder, extension) in [
+            ("playerdata", "dat"),
+            ("stats", "json"),
+            ("advancements", "json"),
+        ] {
+            let folder = world.path().join(folder);
+            let from = folder.join(format!("{old}.{extension}"));
+            let to = folder.join(format!("{new}.{extension}"));
+            if from.is_file() && !to.exists() {
+                let _ = fs::copy(&from, &to);
+            }
+        }
+    }
+}
+
+/// An OffHorizon (or Horizon) game folder: `game/` in the launcher's data folder, or the folder
+/// itself when it already holds the game's files. Its version is not recorded where this reads,
+/// so the player names it on import when the folder doesn't carry one.
+pub fn horizon_instances(root: &Path) -> Vec<Found> {
+    let nested = root.join("game");
+    let game = if holds_game(&nested) {
+        nested
+    } else {
+        root.to_path_buf()
+    };
+    if !holds_game(&game) {
+        return Vec::new();
+    }
+    let name = root
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| HORIZON.to_string());
+    vec![Found {
+        launcher: HORIZON,
+        name,
+        minecraft: None,
+        loader: None,
+        game,
+        shared: false,
+    }]
 }
 
 /// The loader `found` runs, at the same version, when Horizon installs it ([`loaders::Kind`]).
@@ -769,12 +899,30 @@ pub fn import(found: &Found, name: &str, minecraft: Option<&str>) -> Result<Inst
         &links.official_server,
         &links.official_server_previous,
     );
-    if let Some(name) = player_name(&found.game) {
+    // The player comes along too: the name the other launcher played as becomes an offline
+    // account, and the worlds' player files are linked to that account's UUID, so the inventory,
+    // ender chest, position, experience and advancements are there at the first load.
+    if let Some((name, recorded)) = player_profile(&account_root(&found.game)) {
         let mut accounts = crate::account::Accounts::load();
-        if accounts.accounts.is_empty() {
-            if accounts.add_offline(&name).is_ok() {
-                let _ = accounts.save();
+        let existing = accounts
+            .accounts
+            .iter()
+            .find(|a| a.name.eq_ignore_ascii_case(&name))
+            .cloned();
+        let account = match existing {
+            Some(account) => Some(account),
+            None if accounts.accounts.is_empty() => {
+                let made = accounts.add_offline(&name).ok();
+                if made.is_some() {
+                    let _ = accounts.save();
+                }
+                made
             }
+            None => None,
+        };
+        if let Some(account) = account {
+            let old = recorded.unwrap_or_else(|| crate::account::offline_uuid(&name));
+            relink_player_files(&instance.home, &old, &account.uuid);
         }
     }
     match loader(found) {

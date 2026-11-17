@@ -109,6 +109,8 @@ impl Os {
 
 const OFFICIAL: &str = "the official launcher";
 const SKLAUNCHER: &str = "SKlauncher";
+/// OffHorizon and the Horizon launcher it is a fork of: the same folders.
+const HORIZON: &str = "OffHorizon";
 
 /// Every launcher's default game folder on `os`, the official launcher's first. MultiMC on
 /// macOS and Windows has none (it lives where it was unzipped): it is chosen by hand.
@@ -137,6 +139,9 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
             ("Dawn Client", f.home.join(".dawn")),
             (SKLAUNCHER, f.home.join(".sklauncher")),
             (SKLAUNCHER, f.home.join(".minecraft").join("skprofiles")),
+            // OffHorizon's game folder, and the launcher folder beside it (`game/`).
+            (HORIZON, f.data.join("horizon")),
+            (HORIZON, f.data.join("horizon-launcher")),
         ],
         Os::MacOs => vec![
             (OFFICIAL, f.data.join("minecraft")),
@@ -149,6 +154,8 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
             (SKLAUNCHER, f.data.join("sklauncher").join("minecraft")),
             (SKLAUNCHER, f.data.join(".sklauncher")),
             (SKLAUNCHER, f.data.join("minecraft").join("skprofiles")),
+            (HORIZON, f.data.join("horizon")),
+            (HORIZON, f.data.join("horizon-launcher")),
         ],
         Os::Windows => vec![
             (OFFICIAL, f.data.join(".minecraft")),
@@ -163,6 +170,8 @@ pub fn known_folders(os: Os, f: &Folders) -> Vec<(&'static str, PathBuf)> {
             (SKLAUNCHER, f.data.join("sklauncher").join("instances")),
             (SKLAUNCHER, f.data.join("sklauncher").join("profiles")),
             (SKLAUNCHER, f.data.join(".minecraft").join("skprofiles")),
+            (HORIZON, f.data.join("horizon")),
+            (HORIZON, f.data.join("horizon-launcher")),
         ],
     };
     // Names every system shares: the Modrinth App before its rename, GDLauncher and its

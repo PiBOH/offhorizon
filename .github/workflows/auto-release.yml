@@ -69,10 +69,12 @@ jobs:
             os: ubuntu-22.04
             asset: OffHorizon-Launcher-Linux-x86_64
             binary: horizon-launcher
+            uninstaller: OffHorizon-Uninstaller-Linux-x86_64
           - name: windows-x64
             os: windows-latest
             asset: OffHorizon-Launcher-Windows-x64.exe
             binary: horizon-launcher.exe
+            uninstaller: OffHorizon-Uninstaller-Windows-x64.exe
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -111,6 +113,9 @@ jobs:
           mkdir -p ../dist
           cp "target/release/${{ matrix.binary }}" "../dist/${{ matrix.asset }}"
           chmod +x "../dist/${{ matrix.asset }}"
+          # The portable uninstaller: `cargo build` makes every binary of the package.
+          cp "target/release/offhorizon-uninstaller" "../dist/${{ matrix.uninstaller }}"
+          chmod +x "../dist/${{ matrix.uninstaller }}"
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -119,6 +124,8 @@ jobs:
           # One portable `.exe`, no setup: it runs from wherever the player saves it, keeps a copy
           # in %APPDATA%\offhorizon and asks once about its shortcuts (`installer::first_start`).
           Copy-Item "target\release\${{ matrix.binary }}" "..\dist\${{ matrix.asset }}"
+          # The portable uninstaller, built by the same `cargo build` (it is a binary of the package).
+          Copy-Item "target\release\offhorizon-uninstaller.exe" "..\dist\${{ matrix.uninstaller }}"
       - uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.name }}

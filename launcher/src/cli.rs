@@ -259,8 +259,8 @@ enum InstanceCmd {
     /// starts only if it succeeds), a wrapper it runs through (`nice -n 5`), environment
     /// variables ("NAME=value NAME2=value") and a shell command after it exits. An empty value
     /// clears one. The game and the commands also get INST_NAME, INST_ID, INST_DIR,
-    /// INST_MC_DIR and, for a Java instance, INST_JAVA. On Linux, also GameMode, MangoHud and
-    /// the dedicated graphics card, when the computer has them
+    /// INST_MC_DIR and, for a Java instance, INST_JAVA. On Linux, also GameMode and MangoHud,
+    /// when the computer has them
     Launch {
         instance: String,
         #[arg(long)]
@@ -277,9 +277,6 @@ enum InstanceCmd {
         /// Linux: MangoHud's overlay, on or off
         #[arg(long)]
         mangohud: Option<String>,
-        /// Linux: the dedicated graphics card (DRI_PRIME, or NVIDIA's offload), on or off
-        #[arg(long)]
-        dedicated_gpu: Option<String>,
     },
     /// Put a shortcut on the desktop that plays an instance (`play --instance`): a .desktop
     /// file (also in the applications menu) on Linux, an app on macOS, a .lnk on Windows
@@ -2877,23 +2874,16 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
             env,
             gamemode,
             mangohud,
-            dedicated_gpu,
             post_exit,
         } => {
             use horizon_launcher::launch;
             let env = env.as_deref().map(launch::parse_env).transpose()?;
-            let [gamemode, mangohud, dedicated_gpu] =
-                [gamemode, mangohud, dedicated_gpu].map(|v| v.as_deref().map(on_off));
-            let [gamemode, mangohud, dedicated_gpu] = [
-                gamemode.transpose()?,
-                mangohud.transpose()?,
-                dedicated_gpu.transpose()?,
-            ];
+            let [gamemode, mangohud] = [gamemode, mangohud].map(|v| v.as_deref().map(on_off));
+            let [gamemode, mangohud] = [gamemode.transpose()?, mangohud.transpose()?];
             let found = launch::Found::here();
             for (on, has, name) in [
                 (gamemode, found.gamemode, "GameMode (gamemoderun)"),
                 (mangohud, found.mangohud, "MangoHud"),
-                (dedicated_gpu, found.two_gpus, "A second graphics card"),
             ] {
                 if on == Some(true) && !has {
                     eprintln!(
@@ -2906,8 +2896,7 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                 || post_exit.is_some()
                 || env.is_some()
                 || gamemode.is_some()
-                || mangohud.is_some()
-                || dedicated_gpu.is_some();
+                || mangohud.is_some();
             let i = match changing {
                 false => instances::find(&instance)?,
                 true => instances::edit(&instance, |m| {
@@ -2929,9 +2918,6 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                     if let Some(on) = mangohud {
                         m.launch.mangohud = on;
                     }
-                    if let Some(on) = dedicated_gpu {
-                        m.launch.dedicated_gpu = on;
-                    }
                 })?,
             };
             let l = &i.launch;
@@ -2939,10 +2925,9 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                 json(serde_json::json!({
                     "instance": i.id, "pre_launch": l.pre_launch, "wrapper": l.wrapper, "env": l.env,
                     "post_exit": l.post_exit,
-                    "gamemode": l.gamemode, "mangohud": l.mangohud, "dedicated_gpu": l.dedicated_gpu,
+                    "gamemode": l.gamemode, "mangohud": l.mangohud,
                     "found": {
                         "gamemode": found.gamemode, "mangohud": found.mangohud,
-                        "two_gpus": found.two_gpus, "nvidia": found.nvidia,
                     },
                 }));
             } else {
@@ -2959,7 +2944,6 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                 for (name, on, has) in [
                     ("gamemode:", l.gamemode, found.gamemode),
                     ("mangohud:", l.mangohud, found.mangohud),
-                    ("gpu:", l.dedicated_gpu, found.two_gpus),
                 ] {
                     let note = if has { "" } else { " (not on this computer)" };
                     println!("  {name:<11} {}{note}", yes(on));

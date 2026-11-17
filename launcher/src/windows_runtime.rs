@@ -24,10 +24,14 @@ fn redirect_in(cmd: Command, root: &Path) -> Command {
     if value(&cmd, SOURCE).is_none() || value(&cmd, SLOT).is_some() {
         return cmd;
     }
-    let home = value(&cmd, "HORIZON_HOME")
+    // Neither a home nor a folder is not one of ours: leave the command exactly as it is, never
+    // a panic on the way to the game.
+    let Some(home) = value(&cmd, "HORIZON_HOME")
         .map(Path::new)
         .or(cmd.get_current_dir())
-        .expect("the game command has a home");
+    else {
+        return cmd;
+    };
     let home = fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
     let key = format!("{:x}", Sha256::digest(home.as_os_str().as_encoded_bytes()));
     let slot = root.join(key);

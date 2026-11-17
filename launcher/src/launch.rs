@@ -40,9 +40,6 @@ pub struct Launch {
     /// Linux: MangoHud's overlay (`mangohud`), when it is installed.
     #[serde(default, skip_serializing_if = "is_false")]
     pub mangohud: bool,
-    /// Linux: the dedicated graphics card of a computer with two (PRIME render offload).
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub dedicated_gpu: bool,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -126,19 +123,15 @@ fn system_memory_bytes() -> Option<u64> {
     Some(kib * 1024)
 }
 
-/// What this Linux computer has for the three switches. Elsewhere, nothing.
+/// What this Linux computer has for the switches. Elsewhere, nothing.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Found {
     pub gamemode: bool,
     pub mangohud: bool,
-    /// More than one graphics card.
-    pub two_gpus: bool,
-    /// NVIDIA's own driver is loaded: offload asks for it, not Mesa.
-    pub nvidia: bool,
 }
 
-/// `HORIZON_LAUNCHER_LINUX_TOOLS=gamemode,mangohud,gpu,nvidia`: what [`Found::here`] says is
-/// installed, on any system (for tests and screenshots).
+/// `HORIZON_LAUNCHER_LINUX_TOOLS=gamemode,mangohud`: what [`Found::here`] says is installed, on
+/// any system (for tests and screenshots).
 pub const TOOLS_ENV: &str = "HORIZON_LAUNCHER_LINUX_TOOLS";
 
 pub(crate) fn on_path(program: &str) -> bool {
@@ -158,8 +151,7 @@ pub(crate) fn on_path(program: &str) -> bool {
 }
 
 impl Found {
-    /// What is installed here: on Linux, `gamemoderun` and `mangohud` on the PATH, the cards
-    /// under `/sys/class/drm`, and `/proc/driver/nvidia`.
+    /// What is installed here: on Linux, `gamemoderun` and `mangohud` on the PATH.
     pub fn here() -> Found {
         if let Some(list) = std::env::var_os(TOOLS_ENV) {
             let list = list.to_string_lossy();
@@ -167,35 +159,20 @@ impl Found {
             return Found {
                 gamemode: has("gamemode"),
                 mangohud: has("mangohud"),
-                two_gpus: has("gpu"),
-                nvidia: has("nvidia"),
             };
         }
         if !cfg!(target_os = "linux") {
             return Found::default();
         }
-        let cards = std::fs::read_dir("/sys/class/drm")
-            .into_iter()
-            .flatten()
-            .flatten()
-            .filter(|e| {
-                let name = e.file_name();
-                let name = name.to_string_lossy();
-                name.strip_prefix("card")
-                    .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
-            })
-            .count();
         Found {
             gamemode: on_path("gamemoderun"),
             mangohud: on_path("mangohud"),
-            two_gpus: cards >= 2,
-            nvidia: std::path::Path::new("/proc/driver/nvidia/gpus").is_dir(),
         }
     }
 
     /// Whether any switch can be shown.
     pub fn any(&self) -> bool {
-        self.gamemode || self.mangohud || self.two_gpus
+        self.gamemode || self.mangohud
     }
 }
 
@@ -209,20 +186,6 @@ fn switch_programs(launch: &Launch, found: &Found) -> Vec<OsString> {
         out.push("mangohud".into());
     }
     out
-}
-
-/// The variables the dedicated GPU switch sets: NVIDIA's offload variables with its driver,
-/// else Mesa's `DRI_PRIME`. The player's own variables come after and win.
-pub fn switch_env(launch: &Launch, found: &Found) -> Vec<(&'static str, &'static str)> {
-    match (launch.dedicated_gpu && found.two_gpus, found.nvidia) {
-        (false, _) => vec![],
-        (true, true) => vec![
-            ("__NV_PRIME_RENDER_OFFLOAD", "1"),
-            ("__VK_LAYER_NV_optimus", "NVIDIA_only"),
-            ("__GLX_VENDOR_LIBRARY_NAME", "nvidia"),
-        ],
-        (true, false) => vec![("DRI_PRIME", "1")],
-    }
 }
 
 impl Launch {
@@ -256,9 +219,6 @@ impl Launch {
         }
         if self.mangohud {
             parts.push(crate::i18n::tr("with MangoHud").to_string());
-        }
-        if self.dedicated_gpu {
-            parts.push(crate::i18n::tr("on the dedicated GPU").to_string());
         }
         match self.env.len() {
             0 => {}
@@ -504,7 +464,6 @@ pub fn wrap(cmd: Command, launch: &Launch) -> Command {
             None => out.env_remove(key),
         };
     }
-    out.envs(switch_env(launch, &found));
     out.envs(&launch.env);
     out
 }

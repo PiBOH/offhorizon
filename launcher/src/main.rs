@@ -5813,15 +5813,6 @@ fn main() {
     // start asks once whether to add its shortcuts (Settings carries the same switch).
     #[cfg(windows)]
     horizon_launcher::installer::first_start();
-    // The dedicated GPU, unless the player turned it off: written for the launcher and for every
-    // prepared game, so the pair does not run on the card the screen is plugged into.
-    #[cfg(windows)]
-    {
-        let settings = horizon_launcher::backend::Settings::load();
-        for line in horizon_launcher::gpu::apply(settings.dedicated_gpu()) {
-            eprintln!("dedicated GPU: {line}");
-        }
-    }
     // The launcher's own installer (`update_handoff`): no window, no CLI parser.
     if let Some(code) = horizon_launcher::update_handoff::run() {
         std::process::exit(code);

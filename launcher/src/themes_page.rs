@@ -362,37 +362,6 @@ impl Launcher {
         )
     }
 
-    /// The Dedicated GPU row: the game and the launcher ask Windows for the high-performance
-    /// card (`crate::gpu`). On by default; off asks Windows to decide again.
-    pub(super) fn dedicated_gpu_row(&mut self, cx: &mut Context<Self>) -> Div {
-        let t = self.theme;
-        let on = self.settings.dedicated_gpu();
-        ui::setting_row(
-            tr("Dedicated GPU"),
-            Some(
-                div()
-                    .child(tr(
-                        "Plays on the high-performance graphics card when the computer has one. On by default.",
-                    ))
-                    .into_any_element(),
-            ),
-            Some(
-                crate::switch("dedicated-gpu", on, &t)
-                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
-                        let on = !this.settings.dedicated_gpu();
-                        this.settings.dedicated_gpu = Some(on);
-                        this.save_settings();
-                        let lines = horizon_launcher::gpu::apply(on);
-                        for line in lines {
-                            eprintln!("dedicated GPU: {line}");
-                        }
-                        cx.notify();
-                    }))
-                    .into_any_element(),
-            ),
-        )
-    }
-
     /// The value under the pointer, in whole steps, as the look; saved when the drag ends.
     fn pick_look(&mut self, knob: LookKnob, at: Point<Pixels>, cx: &mut Context<Self>) {
         let Some(area) = self.look_sliders.areas[knob as usize].get() else {

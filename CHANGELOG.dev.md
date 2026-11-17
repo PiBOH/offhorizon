@@ -20,6 +20,44 @@ release, newest first, and an Unreleased section for work that is not released y
   release. The buttons carry a tag rather than `/releases/latest/download/…` because a nightly is
   a pre-release and `/latest` leaves pre-releases out (that URL answers 404).
 
+## [0.2.0-nightly] - 2026-11-17
+
+### Added
+- `launcher/src/bin/offhorizon-uninstaller.rs`: a portable uninstaller, built by
+  `.github/workflows/auto-release.yml` for Linux and Windows and attached beside the launcher (so
+  `SHA256SUMS` covers it). Every folder goes through `ours()`, an allowlist of the names OffHorizon
+  and Horizon use (`horizon`, `horizon-launcher`, `offhorizon`, `OffHorizon`, `Horizon Launcher`,
+  `OffHorizon Launcher`); a folder it does not know is reported, never deleted, so `.minecraft`,
+  Prism, MultiMC or SKlauncher data cannot be removed. `--remove-data` and `--remove-worlds` are
+  opt-in, `--dry-run` prints the plan.
+- `other_launchers::horizon_instances`, `player_profile`, `account_root` and
+  `relink_player_files`, plus the `sources::known_folders` rows for `data/horizon` and
+  `data/horizon-launcher`: OffHorizon and Horizon game folders are importable, the profile is read
+  from the launcher's root (`launcher_accounts.json`, `accounts.json`, `profiles/`) rather than
+  the game folder, and `saves/<world>/{playerdata,stats,advancements}` gain a copy under the
+  offline account's UUID (Java's `OfflinePlayer:<name>`), which is what the world loads by.
+  `account::offline_uuid` is public for that fallback when the other launcher recorded no UUID.
+- `other_launchers::sklauncher_instances` reads every folder SKlauncher used at once — 4.0's
+  `instances/`, and 3.2's `profiles/` or `skprofiles/` — instead of stopping at the first that
+  exists, so 3.2 profiles without an `instance.json` are no longer hidden by a newer `instances/`
+  folder. Deduplicated by game folder; `sklauncher_3_profiles_come_across_beside_the_new_instances_folder`
+  holds a 3.2 profile with `saves/`, `playerdata/` and `servers.dat` next to a 4.0 instance and
+  checks both are found and that `copy_game` copies the world.
+
+### Changed
+- Dedicated GPU removed end to end: `launcher/src/gpu.rs` (and `lib.rs`'s module), `Settings::dedicated_gpu`
+  and its `offhorizon::DEDICATED_GPU` default, `Launch::dedicated_gpu` and `launch::switch_env`
+  (`DRI_PRIME`, `__NV_PRIME_RENDER_OFFLOAD`, `__VK_LAYER_NV_optimus`, `__GLX_VENDOR_LIBRARY_NAME`),
+  `Found::{two_gpus,nvidia}`, the Launch panel's switch, the Appearance row, and
+  `instance launch --dedicated-gpu`. Old `settings.json`/instance files that still carry
+  `dedicated_gpu` load unchanged: serde ignores the unknown key. `gfx.rs`'s device request no
+  longer asks for `PowerPreference::HighPerformance`.
+
+### Fixed
+- `windows_runtime::redirect_in` returns a command with neither `HORIZON_HOME` nor a working
+  folder unchanged instead of `expect`ing one, and `backend::client_as` refuses a missing or
+  non-executable game program with a message before `spawn`.
+
 ## [0.1.5-nightly] - 2026-11-15
 
 ### Added

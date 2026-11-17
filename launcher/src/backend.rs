@@ -3317,6 +3317,25 @@ pub fn client_as(tag: &str, who: Option<&str>) -> Result<Command, String> {
     complete_assets(tag);
     crate::browser::horizon::before_play(&game_home());
     let mut cmd = client_command(tag);
+    // A prepared version whose program has gone is a message here, not a spawn that fails with
+    // the system's own words after the window has already said Play.
+    let program = PathBuf::from(cmd.get_program());
+    if !program.is_file() {
+        return Err(format!(
+            "{} is missing: {tag} is not prepared any more. Prepare it again.",
+            program.display()
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if program
+            .metadata()
+            .is_ok_and(|m| m.permissions().mode() & 0o111 == 0)
+        {
+            return Err(format!("{} is not executable.", program.display()));
+        }
+    }
     if let Some(name) = &session.offline_name {
         cmd.arg("--name").arg(name);
     }
@@ -4654,11 +4673,6 @@ pub struct Settings {
     /// OffHorizon; only a player who turned it off has `false` here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub performance: Option<bool>,
-    /// Windows: the game and the launcher ask for the dedicated GPU (`gpu`, the same preference
-    /// Settings > Display > Graphics writes). Unset is on for OffHorizon; only a player who
-    /// turned it off has `false` here.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dedicated_gpu: Option<bool>,
     /// Home's background: a picture the player picked, kept in the data folder under this name
     /// (`themes::keep_background`). Unset shows Horizon's landscape.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4766,12 +4780,6 @@ impl Settings {
         self.blur
             .filter(|v| v.is_finite())
             .map_or(horizon_theme::glass::BLUR, |v| v.clamp(0., 48.))
-    }
-    /// The game and the launcher ask Windows for the dedicated GPU ([`crate::gpu`]). On unless
-    /// turned off.
-    pub fn dedicated_gpu(&self) -> bool {
-        self.dedicated_gpu
-            .unwrap_or(crate::offhorizon::DEDICATED_GPU)
     }
     /// Whether the cheaper scene is on ([`performance`](Self::performance)).
     pub fn performance(&self) -> bool {

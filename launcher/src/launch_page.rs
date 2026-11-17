@@ -54,7 +54,6 @@ impl MemorySlider {
 enum Toggle {
     GameMode,
     MangoHud,
-    Gpu,
 }
 
 impl Launcher {
@@ -120,7 +119,6 @@ impl Launcher {
             let on = match toggle {
                 Toggle::GameMode => &mut m.launch.gamemode,
                 Toggle::MangoHud => &mut m.launch.mangohud,
-                Toggle::Gpu => &mut m.launch.dedicated_gpu,
             };
             *on = !*on;
         });
@@ -463,16 +461,11 @@ impl Launcher {
         )
     }
 
-    /// The Linux switches this computer can use: GameMode and MangoHud when installed, the
-    /// dedicated GPU with two cards.
+    /// The Linux switches this computer can use: GameMode and MangoHud when installed.
     fn linux_switches(&self, cx: &mut Context<Self>) -> Option<Div> {
         let t = self.theme;
         let found = self.launch.as_ref()?.found;
         let now = self.selected_instance()?.launch.clone();
-        let gpu_about = match found.nvidia {
-            true => "NVIDIA render offload: __NV_PRIME_RENDER_OFFLOAD and its Vulkan layer.",
-            false => "Mesa's DRI_PRIME=1, so Vulkan picks the other card.",
-        };
         let mut list = div().flex().flex_col().gap(px(10.));
         for (toggle, shown, on, label, about) in [
             (
@@ -488,13 +481,6 @@ impl Launcher {
                 now.mangohud,
                 "MangoHud",
                 "The frame time, CPU and GPU overlay.",
-            ),
-            (
-                Toggle::Gpu,
-                found.two_gpus,
-                now.dedicated_gpu,
-                "Dedicated graphics card",
-                gpu_about,
             ),
         ] {
             if !shown {

@@ -484,7 +484,7 @@ pub struct Account {
 }
 
 /// Java's offline UUID: MD5 of `OfflinePlayer:<name>`, with the version and variant bits set.
-fn offline_uuid(name: &str) -> String {
+pub fn offline_uuid(name: &str) -> String {
     use md5::{Digest, Md5};
     let mut hash = Md5::new();
     hash.update(format!("OfflinePlayer:{name}").as_bytes());

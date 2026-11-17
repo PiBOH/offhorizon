@@ -176,32 +176,16 @@ fn the_linux_switches_act_only_where_their_tools_are() {
     let all = Found {
         gamemode: true,
         mangohud: true,
-        two_gpus: true,
-        nvidia: false,
     };
     let launch = Launch {
         wrapper: "nice".into(),
         gamemode: true,
         mangohud: true,
-        dedicated_gpu: true,
         ..Launch::default()
     };
     assert_eq!(
         plan(&launch, os(&["game"]), false, &all),
         Plan::Direct(os(&["gamemoderun", "mangohud", "nice", "game"]))
-    );
-    assert_eq!(switch_env(&launch, &all), [("DRI_PRIME", "1")]);
-    let nvidia = Found {
-        nvidia: true,
-        ..all
-    };
-    assert_eq!(
-        switch_env(&launch, &nvidia),
-        [
-            ("__NV_PRIME_RENDER_OFFLOAD", "1"),
-            ("__VK_LAYER_NV_optimus", "NVIDIA_only"),
-            ("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
-        ]
     );
     // Not installed (or not Linux): switched on, but nothing is added.
     let none = Found::default();
@@ -209,11 +193,10 @@ fn the_linux_switches_act_only_where_their_tools_are() {
         plan(&launch, os(&["game"]), false, &none),
         Plan::Direct(os(&["nice", "game"]))
     );
-    assert!(switch_env(&launch, &none).is_empty());
     assert!(!none.any() && all.any());
     assert_eq!(
         launch.summary().unwrap(),
-        "through nice, with GameMode, with MangoHud, on the dedicated GPU"
+        "through nice, with GameMode, with MangoHud"
     );
     // Off switches aren't written.
     let text = serde_json::to_string(&Launch::default()).unwrap();

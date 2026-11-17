@@ -104,6 +104,89 @@ fn prism_and_multimc_instances() {
 }
 
 #[test]
+fn sklauncher_3_profiles_come_across_beside_the_new_instances_folder() {
+    let root = scratch("sklauncher-32");
+    // 4.0's instances folder: a reader that stopped here never saw 3.2's profiles.
+    let modern = root.join("instances/Modern");
+    write(
+        &modern.join("instance.json"),
+        &json!({"name": "Modern", "minecraft": {"version": "1.20.1"}}).to_string(),
+    );
+    fs::create_dir_all(modern.join("minecraft/saves")).unwrap();
+    // 3.2's profile: no instance.json, the game's own files in the profile folder.
+    let steve = root.join("profiles/Steve");
+    write(&steve.join("saves/World/level.dat"), "level");
+    write(
+        &steve.join("saves/World/playerdata/11111111111111111111111111111111.dat"),
+        "nbt",
+    );
+    write(&steve.join("servers.dat"), "servers");
+
+    let found = sklauncher_instances(&root);
+    assert_eq!(
+        found.iter().map(|f| f.name.as_str()).collect::<Vec<_>>(),
+        ["Modern", "Steve"]
+    );
+    let profile = found.iter().find(|f| f.name == "Steve").unwrap();
+    assert_eq!(profile.game, steve);
+    assert!(profile.minecraft.is_none());
+    // Its worlds and its server list travel with it.
+    let copy = root.join("copy");
+    copy_game(profile, &copy).unwrap();
+    assert!(copy.join("saves/World/level.dat").is_file());
+    assert!(copy
+        .join("saves/World/playerdata/11111111111111111111111111111111.dat")
+        .is_file());
+    assert_eq!(
+        fs::read_to_string(copy.join("servers.dat")).unwrap(),
+        "servers"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn an_offhorizon_folder_and_its_player_come_across() {
+    let root = scratch("horizon");
+    let game = root.join("horizon/game");
+    write(
+        &game.join("saves/World/playerdata/11111111111111111111111111111111.dat"),
+        "nbt",
+    );
+    write(&game.join("saves/World/level.dat"), "level");
+    write(&game.join("servers.dat"), "servers");
+    // OffHorizon keeps its accounts in its launcher folder, beside the game folder.
+    write(
+        &root.join("horizon-launcher/accounts.json"),
+        &json!({"accounts": [
+            {"name": "Steve", "uuid": "11111111111111111111111111111111", "offline": true}
+        ]})
+        .to_string(),
+    );
+
+    let found = horizon_instances(&root.join("horizon"));
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].launcher, "OffHorizon");
+    assert_eq!(found[0].game, game);
+    assert_eq!(
+        player_profile(&account_root(&found[0].game)),
+        Some((
+            "Steve".into(),
+            Some("11111111111111111111111111111111".into())
+        ))
+    );
+    // The import's copy: the world loads the player under the account's own UUID.
+    relink_player_files(
+        &game,
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+    );
+    assert!(game
+        .join("saves/World/playerdata/22222222222222222222222222222222.dat")
+        .is_file());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn official_launcher_profiles() {
     let root = scratch("official");
     let custom = root.join("custom");

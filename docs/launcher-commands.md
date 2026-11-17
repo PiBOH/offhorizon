@@ -416,7 +416,7 @@ MCP: `instance_export`.
 
 ## `horizon-launcher instance launch`
 
-Show or set what runs around an instance's game: a shell command before it (the game starts only if it succeeds), a wrapper it runs through (`nice -n 5`), environment variables ("NAME=value NAME2=value") and a shell command after it exits. An empty value clears one. The game and the commands also get INST_NAME, INST_ID, INST_DIR, INST_MC_DIR and, for a Java instance, INST_JAVA. On Linux, also GameMode, MangoHud and the dedicated graphics card, when the computer has them.
+Show or set what runs around an instance's game: a shell command before it (the game starts only if it succeeds), a wrapper it runs through (`nice -n 5`), environment variables ("NAME=value NAME2=value") and a shell command after it exits. An empty value clears one. The game and the commands also get INST_NAME, INST_ID, INST_DIR, INST_MC_DIR and, for a Java instance, INST_JAVA. On Linux, also GameMode and MangoHud, when the computer has them.
 
     horizon-launcher instance launch <INSTANCE>
 
@@ -427,7 +427,6 @@ Show or set what runs around an instance's game: a shell command before it (the 
 - `--env`
 - `--gamemode`: Linux: run it through GameMode (gamemoderun), on or off
 - `--mangohud`: Linux: MangoHud's overlay, on or off
-- `--dedicated-gpu`: Linux: the dedicated graphics card (DRI_PRIME, or NVIDIA's offload), on or off
 
 MCP: `instance_launch`, needs `confirm: true`.
 

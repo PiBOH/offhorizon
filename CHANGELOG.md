@@ -14,6 +14,29 @@ section, one section per version, and Added / Changed / Fixed groups.
   links on `piboh.github.io/offhorizon` to that build's files, so the Download button always
   downloads the newest launcher instead of waiting for the pages to be edited by hand.
 
+## [0.2.0-nightly] - 2026-11-17
+
+### ✨ Added
+- **A portable uninstaller**: every release carries `OffHorizon-Uninstaller` for Linux and
+  Windows. It removes only OffHorizon's and Horizon's own folders, shortcuts and registry keys;
+  your worlds stay unless you ask for them, and your other launchers (`.minecraft`, Prism,
+  MultiMC, SKlauncher…) are never touched.
+- **Worlds from SKlauncher 3.2 come across too**: a profile that keeps no `instance.json` is
+  found — even beside a newer `instances/` folder — with its worlds and server list.
+- **Importing from another launcher finds OffHorizon and Horizon too**, and the player comes with
+  the instance: their name, the worlds (inventory, ender chest, position, experience and
+  advancements are linked to the offline account), and the server list.
+
+### 🔧 Changed
+- **The graphics card is the system's choice again**: OffHorizon no longer asks Windows for the
+  high-performance GPU and no longer sets `DRI_PRIME` or NVIDIA's offload variables, so the
+  driver picks the card that runs the game. A settings file from an older version keeps every
+  other choice.
+
+### 🐛 Fixed
+- **Play reports a missing game program instead of failing at spawn**, and a Windows game command
+  without a home folder no longer panics.
+
 ## [0.1.5-nightly] - 2026-11-15
 
 ### ✨ Added
