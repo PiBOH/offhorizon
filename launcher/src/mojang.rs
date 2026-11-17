@@ -43,8 +43,9 @@ struct File {
 }
 
 /// Downloads the pinned version into `dir`, `jobs` files at a time; files already there and
-/// whole are kept. An asset that fails is a line in the log (the game is then partly silent),
-/// anything else an error. `cancel` stops it between files.
+/// whole are kept, and one that fails does not stop the others, so an interrupted preparation
+/// goes on from where it stopped. An asset that fails is a line in the log (the game is then
+/// partly silent), anything else an error. `cancel` stops it between files.
 pub fn download(
     pins: &Pins,
     dir: &Path,
@@ -111,7 +112,12 @@ pub fn download(
     log(format!(
         "Downloading Minecraft {v} from Mojang: the game and {libraries} libraries"
     ));
-    fetch_all(&game, jobs, fetch, cancel, log)?;
+    // One reset connection (a home network, an antivirus, a host that closes TLS) must not end
+    // the whole preparation with "No connection", and one library that keeps failing must not
+    // leave the rest unfetched: every file that arrives stays, and the next preparation asks
+    // only for the ones missing (each is checked against its sha1 before it is asked for).
+    let again = resilient(fetch);
+    fetch_each(&game, jobs, &again, cancel, log, false)?;
     let index = &manifest["assetIndex"];
     let index = File {
         url: text(index, "url")?,
@@ -121,23 +127,23 @@ pub fn download(
             .join("assets/indexes")
             .join(relative(&format!("{}.json", text(index, "id")?))?),
     };
-    let assets = fetch_all(std::slice::from_ref(&index), 1, fetch, cancel, log)
+    let assets = fetch_all(std::slice::from_ref(&index), 1, &again, cancel, log)
         .and_then(|_| objects(&read_json(&index.path)?, dir))
         .and_then(|objects| {
             log(format!("Downloading the sounds ({} files)", objects.len()));
-            // A connection that fails now and then is tried again, and a file that still fails
-            // does not stop the others: the next download fetches what is left.
-            let retrying = |url: &str| {
-                let mut got = fetch(url);
+            // A missing sound is asked for three times and then left to the next download, so
+            // one gone file does not stop the others (or the game).
+            let sounds = |url: &str| {
+                let mut got = again(url);
                 for _ in 0..2 {
                     if got.is_ok() {
                         break;
                     }
-                    got = fetch(url);
+                    got = again(url);
                 }
                 got
             };
-            fetch_each(&objects, jobs, &retrying, cancel, log, false)
+            fetch_each(&objects, jobs, &sounds, cancel, log, false)
         });
     match assets {
         Err(e) if e == CANCELLED => return Err(e),
@@ -145,6 +151,39 @@ pub fn download(
         Ok(()) => {}
     }
     Ok(())
+}
+
+/// A fetch that tries a broken connection again, then asks Maven Central for a library: a
+/// network that closes one TLS connection to Mojang's library host still finishes the download.
+fn resilient<'a>(fetch: Fetch<'a>) -> impl Fn(&str) -> Result<Vec<u8>, String> + 'a {
+    move |url| {
+        let mut last = String::new();
+        for attempt in 1..=3u64 {
+            match fetch(url) {
+                Ok(body) => return Ok(body),
+                Err(e) if broken(&e) => {
+                    last = e;
+                    if attempt < 3 {
+                        std::thread::sleep(Duration::from_millis(400 * attempt));
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        // The same library is published on Maven Central; the caller still checks its sha1.
+        if let Some(elsewhere) = mirror(url) {
+            if let Ok(body) = fetch(&elsewhere) {
+                return Ok(body);
+            }
+        }
+        Err(last)
+    }
+}
+
+/// Whether a request failed the network's way: the server never answered, or the connection
+/// broke part-way ("peer closed connection without sending TLS close_notify").
+fn broken(error: &str) -> bool {
+    error.starts_with("No connection") || error.starts_with("Download interrupted")
 }
 
 /// Mojang's name for this system in its Java runtime index.
@@ -219,7 +258,8 @@ pub fn java_runtime(
         "Downloading Minecraft's Java {name} from Mojang ({} files)",
         downloads.len()
     ));
-    fetch_all(&downloads, jobs, fetch, cancel, log)?;
+    let again = resilient(fetch);
+    fetch_all(&downloads, jobs, &again, cancel, log)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -401,16 +441,25 @@ fn fetch_each(
                             failed.lock().unwrap().get_or_insert(CANCELLED.to_string());
                             break;
                         }
+                        let mut wrong = false;
                         if sha1_file(&file.path).as_ref() != Some(&file.sha1) {
                             let got = fetch_file(fetch, file)
                                 .map_err(|e| format!("{} {e}", file.url))
                                 .and_then(|body| write_file(&file.path, &body));
                             if let Err(e) = got {
                                 errors.fetch_add(1, Relaxed);
+                                // A file whose size or sha1 is not Mojang's is refused here and
+                                // stops this worker: fetching the good files beside a download
+                                // that has to fail anyway helps nobody. A missing one does not
+                                // stop the others, so the next try asks only for what is left.
+                                wrong = refused(&e);
                                 failed.lock().unwrap().get_or_insert(e);
                             }
                         }
                         DONE.store(done.fetch_add(1, Relaxed) + 1, Relaxed);
+                        if wrong {
+                            break;
+                        }
                     }
                 })
             })
@@ -426,7 +475,9 @@ fn fetch_each(
     });
     TOTAL.store(0, Relaxed);
     match failed.into_inner().unwrap() {
-        Some(e) if !stop_on_error && e != CANCELLED => Err(format!(
+        // A file that is not Mojang's is the answer on its own (the caller shows it as it is);
+        // a handful of files that were missing are a count.
+        Some(e) if !stop_on_error && e != CANCELLED && !refused(&e) => Err(format!(
             "{} of {} files failed, the first: {e}",
             errors.load(Relaxed),
             files.len()
@@ -434,6 +485,12 @@ fn fetch_each(
         Some(e) => Err(e),
         None => Ok(()),
     }
+}
+
+/// Whether a failed file is not the one Mojang lists (its size or sha1 differs), rather than one
+/// that did not arrive: only the second is worth carrying on past.
+fn refused(error: &str) -> bool {
+    error.contains("is not the one Horizon pins") || error.contains("bytes, not the")
 }
 
 /// Where else a library is published: Maven Central carries the same artifact under the same

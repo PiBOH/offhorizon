@@ -31,6 +31,8 @@ pub(super) struct Built {
     pub menu_entry: Stateful<Div>,
     /// Windows: the switch for the shortcuts the first start asks about.
     pub shortcuts: AnyElement,
+    /// Windows: the button that puts OffHorizon on the desktop again.
+    pub desktop: AnyElement,
     pub appearance: AnyElement,
     pub horizon: String,
     pub horizon_action: Option<AnyElement>,
@@ -505,6 +507,15 @@ impl Launcher {
                         "OffHorizon is not in your Start menu or on your desktop."
                     }),
                     Some(b.shortcuts),
+                    &t,
+                ))
+                .child(index_row(
+                    0,
+                    tr("Desktop shortcut"),
+                    note(tr(
+                        "Creates a shortcut on your desktop that opens OffHorizon.",
+                    )),
+                    Some(b.desktop),
                     &t,
                 ))
             });

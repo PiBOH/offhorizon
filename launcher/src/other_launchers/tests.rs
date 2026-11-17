@@ -187,6 +187,55 @@ fn an_offhorizon_folder_and_its_player_come_across() {
 }
 
 #[test]
+fn an_imported_profile_becomes_the_offline_account_with_its_skin() {
+    let root = scratch("imported-player");
+    let game = root.join(".minecraft");
+    write(
+        &game.join("launcher_accounts.json"),
+        &json!({"accounts": {"a": {"minecraftProfile": {
+            "name": "Steve", "id": "11111111111111111111111111111111"
+        }}}})
+        .to_string(),
+    );
+    fs::create_dir_all(root.join("skins")).unwrap();
+    fs::write(root.join("skins/steve.png"), b"png").unwrap();
+    // The launcher already has another account: the imported player must still come across
+    // (an older launcher only made one when the list was empty).
+    let accounts = root.join("data/accounts.json");
+    write(
+        &accounts,
+        &json!({"accounts": [
+            {"name": "Alex", "uuid": "33333333333333333333333333333333", "offline": true}
+        ]})
+        .to_string(),
+    );
+    let skins = root.join("data/skins");
+    let found = Found {
+        launcher: "Minecraft Launcher",
+        name: "Steve".into(),
+        minecraft: Some("26.3".into()),
+        loader: None,
+        game: game.clone(),
+        shared: true,
+    };
+
+    let account = bring_player_with(&found, &game, &accounts, &skins).unwrap();
+    assert_eq!(account.name, "Steve");
+    assert!(account.offline);
+    assert_eq!(account.uuid, crate::account::offline_uuid("Steve"));
+    // The skin the other launcher kept is the account's now.
+    assert_eq!(
+        fs::read(skins.join(format!("{}.png", account.uuid))).unwrap(),
+        b"png"
+    );
+    // The imported player plays, the older account stays.
+    let saved = crate::account::Accounts::load_from(&accounts);
+    assert_eq!(saved.accounts.len(), 2);
+    assert_eq!(saved.selected.as_deref(), Some(account.uuid.as_str()));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn official_launcher_profiles() {
     let root = scratch("official");
     let custom = root.join("custom");

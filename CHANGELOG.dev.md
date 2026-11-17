@@ -20,7 +20,7 @@ release, newest first, and an Unreleased section for work that is not released y
   release. The buttons carry a tag rather than `/releases/latest/download/…` because a nightly is
   a pre-release and `/latest` leaves pre-releases out (that URL answers 404).
 
-## [0.2.0-nightly] - 2026-11-17
+## [0.2.1-nightly] - 2026-11-17
 
 ### Added
 - `launcher/src/bin/offhorizon-uninstaller.rs`: a portable uninstaller, built by
@@ -43,6 +43,23 @@ release, newest first, and an Unreleased section for work that is not released y
   folder. Deduplicated by game folder; `sklauncher_3_profiles_come_across_beside_the_new_instances_folder`
   holds a 3.2 profile with `saves/`, `playerdata/` and `servers.dat` next to a 4.0 instance and
   checks both are found and that `copy_game` copies the world.
+- `other_launchers::bring_player` (with `bring_player_with` for the test) makes the imported
+  profile an offline account whenever it is missing — a signed-in Microsoft account no longer hid
+  it — selects it, copies the other launcher's `skins/<name>.png` to `data/skins/<uuid>.png` and
+  links `playerdata`, `stats` and `advancements` to its UUID. `heads::offline_skin_in` shows that
+  face for offline accounts instead of the UUID's default. Test:
+  `an_imported_profile_becomes_the_offline_account_with_its_skin`.
+- `Settings::glass_tint` defaults to 0 (flat plates);
+  `glass_and_blur_default_to_flat_plates_and_stay_in_range` holds it.
+- `installer::first_start_with` makes the shortcuts only on the start that answers the question,
+  so a deleted one stays deleted; `installer::create_desktop_shortcut` is the new Windows button
+  in Settings → About, tested by `the_settings_button_makes_the_desktop_shortcut_alone`.
+- `mojang::resilient` retries a dropped connection three times and asks Maven Central for a
+  library, so one TLS reset (`peer closed connection without sending TLS close_notify`) no longer
+  ends a 26.3 preparation at a single jar.
+- `mojang::download` fetches the game and its libraries with `fetch_each(..., false)`: a file that
+  fails no longer stops the others, so one attempt finishes as much as it can and the next asks
+  only for what is missing. Test: `a_download_resumes_where_it_stopped`.
 
 ### Changed
 - Dedicated GPU removed end to end: `launcher/src/gpu.rs` (and `lib.rs`'s module), `Settings::dedicated_gpu`

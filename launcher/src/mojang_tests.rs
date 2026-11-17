@@ -572,6 +572,66 @@ fn any_listed_version_comes_with_its_natives() {
 }
 
 #[test]
+fn a_download_resumes_where_it_stopped() {
+    let (pins, mut files) = mojang();
+    // A library the server has lost: the rest of the game must still arrive.
+    let common = "https://libraries.minecraft.net/org/fake/common/1/common-1.jar".to_string();
+    files.remove(&common).unwrap();
+    let server = Server {
+        files,
+        asked: Mutex::new(Vec::new()),
+    };
+    let dir = scratch("resume");
+    let all = mojang().1;
+    let refused = download(
+        &pins,
+        &dir,
+        "linux",
+        1,
+        &|url| server.fetch(url),
+        &GO,
+        &|_| {},
+    );
+    assert!(refused.unwrap_err().contains(&common), "names what failed");
+    // What arrived stays: the client jar and the library beside the missing one.
+    assert_eq!(
+        fs::read(dir.join("versions/26.3/26.3.jar")).unwrap(),
+        CLIENT
+    );
+    assert!(dir.join("libraries/org/fake/linux/1/linux-1.jar").is_file());
+
+    // The next run asks only for what was missing, not the finished files again.
+    let second = Server {
+        files: all,
+        asked: Mutex::new(Vec::new()),
+    };
+    download(
+        &pins,
+        &dir,
+        "linux",
+        1,
+        &|url| second.fetch(url),
+        &GO,
+        &|_| {},
+    )
+    .unwrap();
+    let asked = second.asked();
+    assert!(asked.contains(&common), "{asked:?}");
+    assert!(
+        !asked.iter().any(|u| u.ends_with("/26.3.jar")),
+        "the client jar is not downloaded again: {asked:?}"
+    );
+    assert!(
+        !asked.iter().any(|u| u.ends_with("linux-1.jar")),
+        "a finished library is not downloaded again: {asked:?}"
+    );
+    assert!(dir
+        .join("libraries/org/fake/common/1/common-1.jar")
+        .is_file());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_download_goes_on_past_an_asset_that_keeps_failing() {
     let (pins, mut files) = mojang();
     // The sound is gone from the server; the language still comes.
@@ -619,5 +679,8 @@ fn a_library_has_a_maven_central_mirror() {
     );
     // Anything that is not a library has no mirror: trying another host would only be another
     // failed request.
-    assert_eq!(super::mirror("https://piston-meta.mojang.com/v1/packages/26.3.json"), None);
+    assert_eq!(
+        super::mirror("https://piston-meta.mojang.com/v1/packages/26.3.json"),
+        None
+    );
 }

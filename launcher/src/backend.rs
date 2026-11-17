@@ -4657,7 +4657,7 @@ pub struct Settings {
     #[serde(default)]
     pub accent: crate::themes::Accent,
     /// How much white the glass look's plates take, in percent (the mockup's Glass, 0 to 16).
-    /// Unset is the mockup's 6.
+    /// Unset is OffHorizon's flat 0: the plates take no white until the player asks for it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub glass: Option<f32>,
     /// How much the glass look's plates blur the scene behind them, in px (0 to 48). Unset is
@@ -4769,11 +4769,12 @@ impl Settings {
     pub fn auto_prune(&self) -> bool {
         self.prune_old_versions.unwrap_or(true)
     }
-    /// The plates' white as a fraction (0 to 0.16): [`glass`](Self::glass) in percent.
+    /// The plates' white as a fraction (0 to 0.16): [`glass`](Self::glass) in percent. OffHorizon
+    /// installs flat: no white on the plates until the player moves the slider.
     pub fn glass_tint(&self) -> f32 {
         self.glass
             .filter(|v| v.is_finite())
-            .map_or(horizon_theme::glass::TINT, |v| v.clamp(0., 16.) / 100.)
+            .map_or(0., |v| v.clamp(0., 16.) / 100.)
     }
     /// The plates' blur in px (0 to 48).
     pub fn glass_blur(&self) -> f32 {
@@ -5812,9 +5813,9 @@ pub fn {f}("
     }
 
     #[test]
-    fn glass_and_blur_default_to_the_mockups_and_stay_in_range() {
+    fn glass_and_blur_default_to_flat_plates_and_stay_in_range() {
         let unset = Settings::parse("{}");
-        assert_eq!((unset.glass_tint(), unset.glass_blur()), (0.06, 24.));
+        assert_eq!((unset.glass_tint(), unset.glass_blur()), (0., 24.));
         let set = Settings::parse(r#"{"glass": 12, "blur": 8.5}"#);
         assert_eq!((set.glass_tint(), set.glass_blur()), (0.12, 8.5));
         let wild = Settings::parse(r#"{"glass": 90, "blur": -3}"#);
@@ -5827,7 +5828,7 @@ pub fn {f}("
                 wrong.glass_blur(),
                 wrong.game_args.as_str()
             ),
-            (0.06, 24., "--x")
+            (0., 24., "--x")
         );
     }
 

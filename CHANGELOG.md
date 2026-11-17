@@ -14,7 +14,7 @@ section, one section per version, and Added / Changed / Fixed groups.
   links on `piboh.github.io/offhorizon` to that build's files, so the Download button always
   downloads the newest launcher instead of waiting for the pages to be edited by hand.
 
-## [0.2.0-nightly] - 2026-11-17
+## [0.2.1-nightly] - 2026-11-17
 
 ### ✨ Added
 - **A portable uninstaller**: every release carries `OffHorizon-Uninstaller` for Linux and
@@ -23,6 +23,16 @@ section, one section per version, and Added / Changed / Fixed groups.
   MultiMC, SKlauncher…) are never touched.
 - **Worlds from SKlauncher 3.2 come across too**: a profile that keeps no `instance.json` is
   found — even beside a newer `instances/` folder — with its worlds and server list.
+- **The profile imported from another launcher is the offline account**: it keeps the name and
+  the skin that launcher kept, even when a Microsoft account is already signed in.
+- **Glass starts flat**: the panels take no white (0 %) until the slider moves, and 0 % is what
+  Reset brings back.
+- **Shortcuts are asked once**: the question is on the first start only, and Settings → About
+  has a **Create a desktop shortcut** button that puts one back.
+- **A dropped download is tried again**: a library that Mojang's host closes half-way now comes
+  from Maven Central too, so 26.3 no longer stops at a missing `jtracy` jar.
+- **A download picks up where it stopped**: the files already complete are kept, and one library
+  that fails no longer leaves the rest unfetched.
 - **Importing from another launcher finds OffHorizon and Horizon too**, and the player comes with
   the instance: their name, the worlds (inventory, ender chest, position, experience and
   advancements are linked to the offline account), and the server list.

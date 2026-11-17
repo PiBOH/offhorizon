@@ -30,6 +30,13 @@ pub fn default_skin(uuid: u128) -> &'static str {
     SKINS[hash.rem_euclid(SKINS.len() as i32) as usize]
 }
 
+/// An offline account's own skin, as the import from another launcher left it:
+/// `skins/<uuid>.png` in the launcher's data folder. None when there is none.
+fn offline_skin_in(data: &Path, uuid: &str) -> Option<Vec<u8>> {
+    let file = data.join("skins").join(format!("{uuid}.png"));
+    file.is_file().then(|| std::fs::read(file).ok()).flatten()
+}
+
 /// A UUID written with or without dashes.
 pub fn parse_uuid(text: &str) -> Option<u128> {
     let hex: String = text.chars().filter(|c| *c != '-').collect();
@@ -177,6 +184,15 @@ fn profile_face_with(
     fetch: &dyn Fn(&str) -> Option<Vec<u8>>,
 ) -> Option<Vec<[u8; 4]>> {
     use sha1::{Digest, Sha1};
+    // An offline account wears the skin its import from another launcher brought, when there is
+    // one: the game still gives it its UUID's default skin, but the launcher shows its own face.
+    if account.offline {
+        if let Some(face) = offline_skin_in(&crate::backend::data_dir(), &account.uuid)
+            .and_then(|png| profile_pixels(&png))
+        {
+            return Some(face);
+        }
+    }
     // An account saved without its skin (signed in before skins were kept, or its profile
     // answered without one) asks Mojang's session server, which needs no token.
     let url = account
@@ -227,6 +243,33 @@ mod tests {
         assert_eq!(default_skin(1), "slim/ari");
         assert_eq!(default_skin(u128::MAX), "slim/alex");
         assert!(parse_uuid("not-a-uuid").is_none());
+    }
+
+    #[test]
+    fn an_offline_account_wears_the_skin_the_import_brought() {
+        let dir = std::env::temp_dir().join(format!(
+            "hz-offline-skin-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(dir.join("skins")).unwrap();
+        let mut skin = image::RgbaImage::new(64, 64);
+        skin.put_pixel(8, 8, image::Rgba([200, 100, 50, 255]));
+        let mut png = Vec::new();
+        skin.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        let uuid = "22222222222222222222222222222222";
+        std::fs::write(dir.join("skins").join(format!("{uuid}.png")), &png).unwrap();
+        let face = offline_skin_in(&dir, uuid)
+            .and_then(|png| profile_pixels(&png))
+            .unwrap();
+        assert_eq!(face[0], [200, 100, 50, 255]);
+        // Another account keeps its default skin.
+        assert!(offline_skin_in(&dir, "11111111111111111111111111111111").is_none());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -873,6 +873,86 @@ pub fn loader(found: &Found) -> Option<loaders::Loader> {
     })
 }
 
+/// The skin another launcher kept for its player: `skins/<name>.png` or `skins/<uuid>.png` beside
+/// its accounts, or in its launcher folder. None when it kept none.
+fn player_skin(root: &Path, name: &str, uuid: Option<&str>) -> Option<PathBuf> {
+    let mut names = vec![name.to_ascii_lowercase()];
+    if names[0] != name {
+        names.push(name.to_string());
+    }
+    if let Some(uuid) = uuid {
+        names.push(uuid.to_ascii_lowercase());
+    }
+    // The launcher's data folder, and the game folder one or two below it (an official
+    // `.minecraft` inside the launcher's folder): OffHorizon keeps `skins/` beside its
+    // `accounts.json`.
+    let mut dirs = Vec::new();
+    for dir in root.ancestors().take(3) {
+        dirs.push(dir.join("skins"));
+        for beside in ["horizon-launcher", "offhorizon"] {
+            dirs.push(dir.join(beside).join("skins"));
+        }
+    }
+    dirs.iter()
+        .flat_map(|dir| {
+            names
+                .iter()
+                .map(move |name| dir.join(format!("{name}.png")))
+        })
+        .find(|file| file.is_file())
+}
+
+/// The player another launcher played as, now the one who plays here.
+fn bring_player(found: &Found, home: &Path) -> Option<crate::account::Account> {
+    let skins = crate::backend::data_dir().join("skins");
+    bring_player_with(found, home, &crate::account::Accounts::path(), &skins)
+}
+
+/// [`bring_player`] with the accounts file and the skin folder handed in, so a test drives it
+/// without the player's own account.
+///
+/// The name the other launcher recorded becomes (or selects) an offline account, with the skin
+/// that launcher kept, and the worlds' player files are linked to the account's UUID: the
+/// inventory, ender chest, position, experience and advancements are there at the first load.
+fn bring_player_with(
+    found: &Found,
+    home: &Path,
+    accounts_path: &Path,
+    skins: &Path,
+) -> Option<crate::account::Account> {
+    let root = account_root(&found.game);
+    let (name, recorded) = player_profile(&root)?;
+    let mut accounts = crate::account::Accounts::load_from(accounts_path);
+    let account = match accounts
+        .accounts
+        .iter()
+        .find(|a| a.name.eq_ignore_ascii_case(&name))
+        .cloned()
+    {
+        Some(account) => account,
+        None => {
+            let made = accounts.add_offline(&name).ok()?;
+            let _ = accounts.save_to(accounts_path);
+            made
+        }
+    };
+    if accounts.selected.as_deref() != Some(account.uuid.as_str()) {
+        accounts.selected = Some(account.uuid.clone());
+        let _ = accounts.save_to(accounts_path);
+    }
+    if account.offline {
+        if let Some(png) =
+            player_skin(&root, &name, recorded.as_deref()).and_then(|file| fs::read(file).ok())
+        {
+            let _ = fs::create_dir_all(skins);
+            let _ = fs::write(skins.join(format!("{}.png", account.uuid)), png);
+        }
+    }
+    let old = recorded.unwrap_or_else(|| crate::account::offline_uuid(&name));
+    relink_player_files(home, &old, &account.uuid);
+    Some(account)
+}
+
 /// A new Java instance named `name` playing what `found` plays (or `minecraft`, the version the
 /// player names), with its loader when Horizon installs it ([`loader`]) and a copy of its game
 /// folder.
@@ -899,32 +979,9 @@ pub fn import(found: &Found, name: &str, minecraft: Option<&str>) -> Result<Inst
         &links.official_server,
         &links.official_server_previous,
     );
-    // The player comes along too: the name the other launcher played as becomes an offline
-    // account, and the worlds' player files are linked to that account's UUID, so the inventory,
-    // ender chest, position, experience and advancements are there at the first load.
-    if let Some((name, recorded)) = player_profile(&account_root(&found.game)) {
-        let mut accounts = crate::account::Accounts::load();
-        let existing = accounts
-            .accounts
-            .iter()
-            .find(|a| a.name.eq_ignore_ascii_case(&name))
-            .cloned();
-        let account = match existing {
-            Some(account) => Some(account),
-            None if accounts.accounts.is_empty() => {
-                let made = accounts.add_offline(&name).ok();
-                if made.is_some() {
-                    let _ = accounts.save();
-                }
-                made
-            }
-            None => None,
-        };
-        if let Some(account) = account {
-            let old = recorded.unwrap_or_else(|| crate::account::offline_uuid(&name));
-            relink_player_files(&instance.home, &old, &account.uuid);
-        }
-    }
+    // The player comes along too, whatever accounts the launcher already had (an older launcher
+    // only brought one when there were none, so a Microsoft account hid the imported name).
+    let _ = bring_player(found, &instance.home);
     match loader(found) {
         Some(l) => instances::edit(&instance.id, |m| {
             m.java.get_or_insert_with(Default::default).loader = Some(l)

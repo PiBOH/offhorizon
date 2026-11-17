@@ -3897,6 +3897,21 @@ impl Launcher {
             .into_any_element();
         #[cfg(not(windows))]
         let shortcuts = div().into_any_element();
+        // Windows: the button that puts OffHorizon on the desktop again, without asking again.
+        #[cfg(windows)]
+        let desktop = button(
+            "settings-desktop-shortcut",
+            "Create a desktop shortcut",
+            Kind::Secondary,
+            &t,
+        )
+        .on_click(cx.listener(|_, _: &ClickEvent, _, cx| {
+            let _ = horizon_launcher::installer::create_desktop_shortcut();
+            cx.notify();
+        }))
+        .into_any_element();
+        #[cfg(not(windows))]
+        let desktop = div().into_any_element();
         let horizon = match (&self.updates.horizon, &self.update_error) {
             (Some(r), _) => trf("{version} available", &[("version", update_name(r))]),
             (None, Some(e)) => e.clone(),
@@ -4032,6 +4047,7 @@ impl Launcher {
                     opening,
                     menu_entry,
                     shortcuts,
+                    desktop,
                     appearance: appearance.into_any_element(),
                     horizon,
                     horizon_action,
@@ -4150,6 +4166,17 @@ impl Launcher {
                                 "Not in your desktop's menu."
                             })),
                             Some(menu_entry.into_any_element()),
+                            &t,
+                        ))
+                    })
+                    .when(cfg!(target_os = "windows"), |d| {
+                        d.child(index_row(
+                            n + 12,
+                            tr("Desktop shortcut"),
+                            Some(plain(tr(
+                                "Creates a shortcut on your desktop that opens OffHorizon.",
+                            ))),
+                            Some(desktop),
                             &t,
                         ))
                     }),

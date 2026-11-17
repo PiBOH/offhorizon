@@ -261,6 +261,18 @@ pub fn create_shortcuts(desktop: bool) -> io::Result<()> {
     shortcuts_for(&shortcut_target(), desktop)
 }
 
+/// Puts OffHorizon on the desktop alone, the way the first start's Yes does: the button in
+/// Settings, for a player who said No then or deleted the shortcut since.
+pub fn create_desktop_shortcut() -> io::Result<()> {
+    let link = desktop_link().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "this account has no desktop folder",
+        )
+    })?;
+    write_link(&link, &shortcut_target())
+}
+
 fn shortcuts_for(exe: &Path, desktop: bool) -> io::Result<()> {
     if let Some(link) = start_menu_link() {
         write_link(&link, exe)?;
@@ -313,15 +325,17 @@ fn first_start_with(ask: impl FnOnce() -> bool, launcher: Option<&Path>, argumen
     let _ = copy_home(&exe);
     let mut settings = backend::Settings::load();
     crate::i18n::set(settings.language());
+    // The question is asked once, and only the start that answers it makes the shortcuts: one
+    // the player deletes later stays deleted, and Settings carries the button that makes it
+    // again. Both point at the copy in `home`, which every update replaces.
+    let first = settings.shortcuts.is_none();
     let (stored, wanted) = remembered(ask, settings.shortcuts);
-    if stored != settings.shortcuts {
+    if first {
         settings.shortcuts = stored;
         let _ = settings.save();
-    }
-    // Asked before: a shortcut the player deleted by hand comes back, a No stays a no, and the
-    // entry opens the copy in `home`, which the next update replaces.
-    if wanted {
-        let _ = shortcuts_for(&shortcut_target(), true);
+        if wanted {
+            let _ = shortcuts_for(&shortcut_target(), true);
+        }
     }
 }
 
@@ -1128,6 +1142,31 @@ mod tests {
         remove_shortcuts(true);
         assert!(!link.exists());
         assert!(!desktop.exists());
+
+        std::env::remove_var(PORTABLE_ENV);
+        std::env::remove_var(MENU_ENV);
+        std::env::remove_var(shortcut::DESKTOP_ENV);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// Settings' button: the desktop shortcut alone, whether the first start's answer was No or
+    /// the player deleted it since.
+    #[test]
+    fn the_settings_button_makes_the_desktop_shortcut_alone() {
+        let _places = alone();
+        let root = scratch("OffHorizon desktop button test");
+        own_places(&root);
+        std::env::set_var(PORTABLE_ENV, root.join("roaming"));
+        std::env::set_var(shortcut::DESKTOP_ENV, root.join("Desktop"));
+        let exe = root.join("Downloads").join("OffHorizon.exe");
+        fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        fs::write(&exe, b"the portable launcher").unwrap();
+        copy_home(&exe).unwrap();
+
+        create_desktop_shortcut().unwrap();
+        let desktop = desktop_link().unwrap();
+        assert!(points_to(&desktop, &home_exe()), "{}", desktop.display());
+        assert!(!start_menu_link().unwrap().exists());
 
         std::env::remove_var(PORTABLE_ENV);
         std::env::remove_var(MENU_ENV);
