@@ -8,7 +8,7 @@
 
 #define AppName "OffHorizon"
 #define AppExe "OffHorizon.exe"
-#define Version Trim(FileRead(FileOpen("..\..\version.txt")))
+#define Version Trim(FileRead(FileOpen(AddBackslash(SourcePath) + "..\..\version.txt")))
 
 [Setup]
 AppId={{7A0C8C2E-6F41-4F3A-9B7D-2F1A4E0C9B11}
